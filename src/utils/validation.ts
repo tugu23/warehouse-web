@@ -38,10 +38,29 @@ export const orderItemSchema = z.object({
   quantity: z.number().min(1, 'Quantity must be at least 1'),
 });
 
-export const orderSchema = z.object({
-  customerId: z.number().min(1, 'Customer is required'),
-  items: z.array(orderItemSchema).min(1, 'At least one item is required'),
-});
+export const orderSchema = z
+  .object({
+    customerId: z.number().min(1, 'Customer is required'),
+    paymentMethod: z.enum(['Бэлэн', 'Данс', 'Борлуулалт', 'Падаан'], {
+      errorMap: () => ({ message: 'Payment method is required' }),
+    }),
+    isCredit: z.boolean().optional(),
+    paidAmount: z.number().min(0, 'Paid amount must be non-negative').optional(),
+    creditTermDays: z.number().min(1, 'Credit term must be at least 1 day').optional(),
+    items: z.array(orderItemSchema).min(1, 'At least one item is required'),
+  })
+  .refine(
+    (data) => {
+      if (data.isCredit && data.creditTermDays) {
+        return data.paidAmount !== undefined && data.paidAmount >= 0;
+      }
+      return true;
+    },
+    {
+      message: 'Paid amount is required for credit orders',
+      path: ['paidAmount'],
+    }
+  );
 
 export const returnSchema = z.object({
   orderId: z.number().min(1, 'Order is required'),

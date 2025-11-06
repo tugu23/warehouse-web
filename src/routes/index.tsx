@@ -8,11 +8,18 @@ import DashboardLayout from '../layouts/DashboardLayout';
 const LoginPage = lazy(() => import('../features/auth/LoginPage'));
 const DashboardPage = lazy(() => import('../features/dashboard/DashboardPage'));
 const ProductsPage = lazy(() => import('../features/products/ProductsPage'));
+const ProductBatchesPage = lazy(() => import('../features/products/ProductBatchesPage'));
+const MonthlyInventoryPage = lazy(() => import('../features/products/MonthlyInventoryPage'));
 const CustomersPage = lazy(() => import('../features/customers/CustomersPage'));
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'));
 const ReturnsPage = lazy(() => import('../features/returns/ReturnsPage'));
 const EmployeesPage = lazy(() => import('../features/employees/EmployeesPage'));
 const AgentsPage = lazy(() => import('../features/agents/AgentsPage'));
+const VisitPlansPage = lazy(() => import('../features/workplan/VisitPlansPage'));
+const WorkTasksPage = lazy(() => import('../features/workplan/WorkTasksPage'));
+const SalesTargetsPage = lazy(() => import('../features/workplan/SalesTargetsPage'));
+const PosIntegrationPage = lazy(() => import('../features/pos/PosIntegrationPage'));
+const SalesReportPage = lazy(() => import('../features/reports/SalesReportPage'));
 const ForbiddenPage = lazy(() => import('../features/auth/ForbiddenPage'));
 const NotFoundPage = lazy(() => import('../features/auth/NotFoundPage'));
 
@@ -42,9 +49,26 @@ export default function AppRoutes() {
           <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
+              
+              {/* Products & Inventory */}
               <Route path="/products" element={<ProductsPage />} />
+              <Route path="/products/batches" element={<ProductBatchesPage />} />
+              <Route path="/products/inventory/monthly" element={<MonthlyInventoryPage />} />
+              
+              {/* Customers & Orders */}
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/orders" element={<OrdersPage />} />
+              
+              {/* Work Plans */}
+              <Route path="/work-plans/visits" element={<VisitPlansPage />} />
+              <Route path="/work-plans/tasks" element={<WorkTasksPage />} />
+              <Route path="/work-plans/targets" element={<SalesTargetsPage />} />
+              
+              {/* Reports */}
+              <Route path="/reports/sales" element={<SalesReportPage />} />
+              
+              {/* PosAPI Integration */}
+              <Route path="/pos-integration" element={<PosIntegrationPage />} />
 
               {/* Manager and Admin only */}
               <Route element={<ProtectedRoute allowedRoles={['Admin', 'Manager']} />}>

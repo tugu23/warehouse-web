@@ -2,7 +2,6 @@ import api from '../lib/axios';
 import {
   AuthResponse,
   LoginRequest,
-  User,
   Employee,
   CreateEmployeeRequest,
   UpdateEmployeeRequest,
@@ -14,6 +13,12 @@ import {
   CreateProductBatchRequest,
   UpdateProductBatchRequest,
   MonthlyInventory,
+  Supplier,
+  CreateSupplierRequest,
+  UpdateSupplierRequest,
+  Category,
+  CreateCategoryRequest,
+  UpdateCategoryRequest,
   Customer,
   CreateCustomerRequest,
   UpdateCustomerRequest,
@@ -36,6 +41,13 @@ import {
   SalesTarget,
   CreateSalesTargetRequest,
   UpdateSalesTargetRequest,
+  DeliveryPlan,
+  CreateDeliveryPlanRequest,
+  UpdateDeliveryPlanRequest,
+  SalesReportData,
+  CreditStatusReport,
+  InventoryReportData,
+  DeliveryScheduleReport,
   ApiResponse,
 } from '../types';
 
@@ -57,9 +69,11 @@ export const employeesApi = {
 
 // Products API
 export const productsApi = {
-  getAll: (params?: { search?: string; supplierId?: number }) =>
+  getAll: (params?: { search?: string; supplierId?: number; categoryId?: number }) =>
     api.get<ApiResponse<{ products: Product[] }>>('/api/products', { params }),
   getById: (id: number) => api.get<ApiResponse<{ product: Product }>>(`/api/products/${id}`),
+  getByBarcode: (barcode: string) =>
+    api.get<ApiResponse<{ product: Product }>>(`/api/products/barcode/${barcode}`),
   create: (data: CreateProductRequest) =>
     api.post<ApiResponse<{ product: Product }>>('/api/products', data),
   update: (id: number, data: UpdateProductRequest) =>
@@ -106,6 +120,9 @@ export const ordersApi = {
     ),
   getPayments: (orderId: number) =>
     api.get<ApiResponse<{ payments: PaymentRecord[] }>>(`/api/orders/${orderId}/payments`),
+  getReceipt: (id: number) => api.get(`/api/orders/${id}/receipt`),
+  getDocument: (id: number) => api.get(`/api/orders/${id}/document`),
+  exportToExcel: (id: number) => api.get(`/api/orders/${id}/export`, { responseType: 'blob' }),
 };
 
 // Returns API
@@ -166,6 +183,86 @@ export const salesTargetsApi = {
   delete: (id: number) => api.delete<ApiResponse<void>>(`/api/sales-targets/${id}`),
 };
 
+// Categories API
+export const categoriesApi = {
+  getAll: () => api.get<ApiResponse<{ categories: Category[] }>>('/api/categories'),
+  getById: (id: number) => api.get<ApiResponse<{ category: Category }>>(`/api/categories/${id}`),
+  create: (data: CreateCategoryRequest) =>
+    api.post<ApiResponse<{ category: Category }>>('/api/categories', data),
+  update: (id: number, data: UpdateCategoryRequest) =>
+    api.put<ApiResponse<{ category: Category }>>(`/api/categories/${id}`, data),
+  delete: (id: number) => api.delete<ApiResponse<void>>(`/api/categories/${id}`),
+};
+
+// Suppliers API
+export const suppliersApi = {
+  getAll: () => api.get<ApiResponse<{ suppliers: Supplier[] }>>('/api/suppliers'),
+  getById: (id: number) => api.get<ApiResponse<{ supplier: Supplier }>>(`/api/suppliers/${id}`),
+  create: (data: CreateSupplierRequest) =>
+    api.post<ApiResponse<{ supplier: Supplier }>>('/api/suppliers', data),
+  update: (id: number, data: UpdateSupplierRequest) =>
+    api.put<ApiResponse<{ supplier: Supplier }>>(`/api/suppliers/${id}`, data),
+  delete: (id: number) => api.delete<ApiResponse<void>>(`/api/suppliers/${id}`),
+};
+
+// Delivery Plans API
+export const deliveryPlansApi = {
+  getAll: (params?: {
+    agentId?: number;
+    customerId?: number;
+    status?: string;
+    planDate?: string;
+  }) => api.get<ApiResponse<{ deliveryPlans: DeliveryPlan[] }>>('/api/delivery-plans', { params }),
+  getById: (id: number) =>
+    api.get<ApiResponse<{ deliveryPlan: DeliveryPlan }>>(`/api/delivery-plans/${id}`),
+  create: (data: CreateDeliveryPlanRequest) =>
+    api.post<ApiResponse<{ deliveryPlan: DeliveryPlan }>>('/api/delivery-plans', data),
+  update: (id: number, data: UpdateDeliveryPlanRequest) =>
+    api.put<ApiResponse<{ deliveryPlan: DeliveryPlan }>>(`/api/delivery-plans/${id}`, data),
+  delete: (id: number) => api.delete<ApiResponse<void>>(`/api/delivery-plans/${id}`),
+};
+
+// Reports API
+export const reportsApi = {
+  getSalesReport: (params: {
+    startDate: string;
+    endDate: string;
+    agentId?: number;
+    customerId?: number;
+  }) => api.get<ApiResponse<SalesReportData>>('/api/reports/sales', { params }),
+  getCreditStatus: (params?: { customerId?: number; agentId?: number }) =>
+    api.get<ApiResponse<CreditStatusReport>>('/api/reports/credit-status', { params }),
+  getInventoryReport: (params?: { categoryId?: number; supplierId?: number; lowStock?: boolean }) =>
+    api.get<ApiResponse<InventoryReportData>>('/api/reports/inventory', { params }),
+  getDeliverySchedule: (params: {
+    startDate: string;
+    endDate: string;
+    agentId?: number;
+    status?: string;
+  }) => api.get<ApiResponse<DeliveryScheduleReport>>('/api/reports/delivery-schedule', { params }),
+  // Excel exports
+  exportSales: (params: {
+    startDate: string;
+    endDate: string;
+    agentId?: number;
+    customerId?: number;
+  }) => api.get('/api/reports/sales/export', { params, responseType: 'blob' }),
+  exportOrders: (params: {
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    customerId?: number;
+    paymentStatus?: string;
+    paymentMethod?: string;
+  }) => api.get('/api/reports/orders/export', { params, responseType: 'blob' }),
+  exportCustomers: (params?: { district?: string; customerTypeId?: number; agentId?: number }) =>
+    api.get('/api/reports/customers/export', { params, responseType: 'blob' }),
+  exportProducts: (params?: { categoryId?: number; supplierId?: number }) =>
+    api.get('/api/reports/products/export', { params, responseType: 'blob' }),
+  exportInventory: (params?: { categoryId?: number; supplierId?: number; lowStock?: boolean }) =>
+    api.get('/api/reports/inventory/export', { params, responseType: 'blob' }),
+};
+
 export default {
   auth: authApi,
   employees: employeesApi,
@@ -177,4 +274,8 @@ export default {
   visitPlans: visitPlansApi,
   workTasks: workTasksApi,
   salesTargets: salesTargetsApi,
+  categories: categoriesApi,
+  suppliers: suppliersApi,
+  deliveryPlans: deliveryPlansApi,
+  reports: reportsApi,
 };

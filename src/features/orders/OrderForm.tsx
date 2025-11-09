@@ -17,13 +17,16 @@ import {
   FormHelperText,
   Checkbox,
   FormControlLabel,
+  Alert,
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { addDays, format } from 'date-fns';
 import { orderSchema } from '../../utils/validation';
-import { CreateOrderRequest, Customer, Product, PaymentMethod, Employee } from '../../types';
+import { CreateOrderRequest, Customer, Product, Employee } from '../../types';
 import { customersApi, productsApi, employeesApi } from '../../api';
 import { z } from 'zod';
+import BarcodeInput from '../../components/BarcodeInput';
+import toast from 'react-hot-toast';
 
 type OrderFormData = z.infer<typeof orderSchema>;
 
@@ -36,6 +39,8 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [barcodeValue, setBarcodeValue] = useState('');
+  const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
 
   const {
     control,
@@ -48,7 +53,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     defaultValues: {
       customerId: 0,
       distributorId: undefined,
-      paymentMethod: 'Бэлэн',
+      paymentMethod: 'Cash',
       isCredit: false,
       paidAmount: 0,
       creditTermDays: 7,
@@ -85,6 +90,51 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     }
   };
 
+  const handleBarcodeChange = async (barcode: string) => {
+    setBarcodeValue(barcode);
+    if (!barcode) {
+      setScannedProduct(null);
+      return;
+    }
+
+    try {
+      const response = await productsApi.getByBarcode(barcode);
+      const product = response.data.data?.product;
+      if (product) {
+        setScannedProduct(product);
+        toast.success(`Product found: ${product.nameMongolian}`);
+      } else {
+        setScannedProduct(null);
+        toast.error('Product not found');
+      }
+    } catch (error) {
+      setScannedProduct(null);
+      toast.error('Product not found');
+      console.error('Error searching barcode:', error);
+    }
+  };
+
+  const handleAddScannedProduct = () => {
+    if (!scannedProduct) return;
+
+    // Check if product already exists in items
+    const existingIndex = fields.findIndex((field) => field.productId === scannedProduct.id);
+    if (existingIndex >= 0) {
+      // Increment quantity
+      const currentQty = watch(`items.${existingIndex}.quantity`);
+      setValue(`items.${existingIndex}.quantity`, currentQty + 1);
+      toast.success('Product quantity increased');
+    } else {
+      // Add new item
+      append({ productId: scannedProduct.id, quantity: 1 });
+      toast.success('Product added to cart');
+    }
+
+    // Reset barcode scanner
+    setBarcodeValue('');
+    setScannedProduct(null);
+  };
+
   const calculateTotal = () => {
     return items.reduce((total, item) => {
       const product = products.find((p) => p.id === item.productId);
@@ -102,9 +152,8 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
 
   const totalAmount = calculateTotal();
   const remainingAmount = isCredit ? totalAmount - (paidAmount || 0) : 0;
-  const creditDueDate = isCredit && creditTermDays
-    ? format(addDays(new Date(), creditTermDays), 'yyyy-MM-dd')
-    : null;
+  const creditDueDate =
+    isCredit && creditTermDays ? format(addDays(new Date(), creditTermDays), 'yyyy-MM-dd') : null;
 
   const handleFormSubmit = async (data: OrderFormData) => {
     const submitData: CreateOrderRequest = {
@@ -161,7 +210,9 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                   {...field}
                   label="Түгээгч"
                   value={field.value || ''}
-                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                  onChange={(e) =>
+                    field.onChange(e.target.value ? Number(e.target.value) : undefined)
+                  }
                 >
                   <MenuItem value="">Түгээгч сонгохгүй байх</MenuItem>
                   {employees.map((employee) => (
@@ -186,10 +237,11 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
               <FormControl fullWidth error={!!errors.paymentMethod}>
                 <InputLabel>Төлбөрийн хэлбэр *</InputLabel>
                 <Select {...field} label="Төлбөрийн хэлбэр *">
-                  <MenuItem value="Бэлэн">Бэлэн</MenuItem>
-                  <MenuItem value="Данс">Данс</MenuItem>
-                  <MenuItem value="Борлуулалт">Борлуулалт</MenuItem>
-                  <MenuItem value="Падаан">Падаан</MenuItem>
+                  <MenuItem value="Cash">Бэлэн (Cash)</MenuItem>
+                  <MenuItem value="BankTransfer">Данс (Bank Transfer)</MenuItem>
+                  <MenuItem value="Sales">Борлуулалт (Sales)</MenuItem>
+                  <MenuItem value="Padan">Падаан (Padan)</MenuItem>
+                  <MenuItem value="Credit">Зээл (Credit)</MenuItem>
                 </Select>
                 {errors.paymentMethod && (
                   <FormHelperText>{errors.paymentMethod.message}</FormHelperText>
@@ -274,9 +326,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                 <Typography variant="body2">
                   Үлдэгдэл: ₮{remainingAmount.toLocaleString()}
                 </Typography>
-                <Typography variant="body2">
-                  Төлөх огноо: {creditDueDate || 'N/A'}
-                </Typography>
+                <Typography variant="body2">Төлөх огноо: {creditDueDate || 'N/A'}</Typography>
               </Paper>
             </Grid>
           </>
@@ -284,6 +334,50 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
       </Grid>
 
       <Divider sx={{ my: 3 }} />
+
+      {/* Barcode Scanner Section */}
+      <Paper sx={{ p: 2, mb: 3, bgcolor: 'background.default' }}>
+        <Typography variant="h6" gutterBottom>
+          Баркодоор бараа хайх
+        </Typography>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={8}>
+            <BarcodeInput
+              value={barcodeValue}
+              onChange={handleBarcodeChange}
+              label="Barcode"
+              placeholder="Scan or enter barcode..."
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={handleAddScannedProduct}
+              disabled={!scannedProduct}
+              sx={{ height: '56px' }}
+            >
+              Add to Cart
+            </Button>
+          </Grid>
+          {scannedProduct && (
+            <Grid item xs={12}>
+              <Alert severity="success" sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="subtitle1">
+                    {scannedProduct.nameMongolian} ({scannedProduct.nameEnglish})
+                  </Typography>
+                  <Typography variant="body2">
+                    Stock: {scannedProduct.stockQuantity} | Price: ₮
+                    {Number(scannedProduct.priceRetail).toLocaleString()}
+                    {scannedProduct.unitsPerBox && ` | ${scannedProduct.unitsPerBox} units/box`}
+                  </Typography>
+                </Box>
+              </Alert>
+            </Grid>
+          )}
+        </Grid>
+      </Paper>
 
       <Typography variant="h6" gutterBottom>
         Барааны жагсаалт
@@ -319,8 +413,8 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                       )}
                       {selectedProduct && (
                         <FormHelperText>
-                          Үнэ: ₮{Number(selectedProduct.priceRetail).toLocaleString()} | 
-                          Бөөний: ₮{Number(selectedProduct.priceWholesale).toLocaleString()}
+                          Үнэ: ₮{Number(selectedProduct.priceRetail).toLocaleString()} | Бөөний: ₮
+                          {Number(selectedProduct.priceWholesale).toLocaleString()}
                         </FormHelperText>
                       )}
                     </FormControl>
@@ -333,17 +427,30 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
               <Controller
                 name={`items.${index}.quantity`}
                 control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Тоо ширхэг *"
-                    type="number"
-                    fullWidth
-                    error={!!errors.items?.[index]?.quantity}
-                    helperText={errors.items?.[index]?.quantity?.message}
-                    onChange={(e) => field.onChange(parseInt(e.target.value))}
-                  />
-                )}
+                render={({ field }) => {
+                  const selectedProduct = products.find(
+                    (p) => p.id === watch(`items.${index}.productId`)
+                  );
+                  const boxQuantity = selectedProduct?.unitsPerBox
+                    ? (field.value / selectedProduct.unitsPerBox).toFixed(2)
+                    : null;
+
+                  return (
+                    <TextField
+                      {...field}
+                      label="Тоо ширхэг *"
+                      type="number"
+                      fullWidth
+                      error={!!errors.items?.[index]?.quantity}
+                      helperText={
+                        boxQuantity
+                          ? `${boxQuantity} хайрцаг`
+                          : errors.items?.[index]?.quantity?.message
+                      }
+                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    />
+                  );
+                }}
               />
             </Grid>
 

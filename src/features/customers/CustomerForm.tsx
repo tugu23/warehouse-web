@@ -15,6 +15,7 @@ import {
 import { customerSchema } from '../../utils/validation';
 import { Customer, CreateCustomerRequest, UpdateCustomerRequest } from '../../types';
 import { z } from 'zod';
+import MapPicker from '../../components/MapPicker';
 
 type CustomerFormData = z.infer<typeof customerSchema>;
 
@@ -30,6 +31,8 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    setValue,
+    watch,
   } = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
@@ -93,10 +96,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
             render={({ field }) => (
               <FormControl fullWidth error={!!errors.organizationType}>
                 <InputLabel>Байгууллагын төрөл</InputLabel>
-                <Select
-                  {...field}
-                  label="Байгууллагын төрөл"
-                >
+                <Select {...field} label="Байгууллагын төрөл">
                   <MenuItem value="">Сонгох</MenuItem>
                   <MenuItem value="Дэлгүүр">Дэлгүүр</MenuItem>
                   <MenuItem value="Сүлжээ">Сүлжээ</MenuItem>
@@ -189,10 +189,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
             render={({ field }) => (
               <FormControl fullWidth error={!!errors.district}>
                 <InputLabel>Дүүрэг</InputLabel>
-                <Select
-                  {...field}
-                  label="Дүүрэг"
-                >
+                <Select {...field} label="Дүүрэг">
                   <MenuItem value="">Сонгох</MenuItem>
                   <MenuItem value="Баянзүрх">Баянзүрх</MenuItem>
                   <MenuItem value="Баянгол">Баянгол</MenuItem>
@@ -204,9 +201,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
                   <MenuItem value="Багануур">Багануур</MenuItem>
                   <MenuItem value="Багахангай">Багахангай</MenuItem>
                 </Select>
-                {errors.district && (
-                  <FormHelperText>{errors.district.message}</FormHelperText>
-                )}
+                {errors.district && <FormHelperText>{errors.district.message}</FormHelperText>}
               </FormControl>
             )}
           />
@@ -251,39 +246,19 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12}>
           <Controller
             name="locationLatitude"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Байршил (Өрөг)"
-                type="number"
-                fullWidth
-                error={!!errors.locationLatitude}
-                helperText={errors.locationLatitude?.message || 'X координат (Latitude)'}
-                inputProps={{ step: '0.000001' }}
-                onChange={(e) => field.onChange(parseFloat(e.target.value))}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="locationLongitude"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Байршил (Уртраг)"
-                type="number"
-                fullWidth
-                error={!!errors.locationLongitude}
-                helperText={errors.locationLongitude?.message || 'Y координат (Longitude)'}
-                inputProps={{ step: '0.000001' }}
-                onChange={(e) => field.onChange(parseFloat(e.target.value))}
+            render={() => (
+              <MapPicker
+                latitude={watch('locationLatitude')}
+                longitude={watch('locationLongitude')}
+                onChange={(lat, lng) => {
+                  setValue('locationLatitude', lat);
+                  setValue('locationLongitude', lng);
+                }}
+                label="Байршил (Location)"
               />
             )}
           />
@@ -300,7 +275,9 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
                 type="number"
                 fullWidth
                 error={!!errors.assignedAgentId}
-                helperText={errors.assignedAgentId?.message || 'Борлуулагч томилохгүй бол хоосон үлдээнэ'}
+                helperText={
+                  errors.assignedAgentId?.message || 'Борлуулагч томилохгүй бол хоосон үлдээнэ'
+                }
                 onChange={(e) =>
                   field.onChange(e.target.value ? parseInt(e.target.value) : undefined)
                 }

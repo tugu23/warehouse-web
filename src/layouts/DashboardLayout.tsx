@@ -32,9 +32,13 @@ import {
   Brightness4,
   Brightness7,
   Logout,
+  Category as CategoryIcon,
+  Event as EventIcon,
+  Assessment as ReportIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../config/ThemeProvider';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const drawerWidth = 260;
 
@@ -48,9 +52,12 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Products', icon: <InventoryIcon />, path: '/products' },
+  { text: 'Categories', icon: <CategoryIcon />, path: '/categories' },
   { text: 'Customers', icon: <PeopleIcon />, path: '/customers' },
   { text: 'Orders', icon: <ShoppingCartIcon />, path: '/orders' },
   { text: 'Returns', icon: <ReturnIcon />, path: '/returns', roles: ['Admin', 'Manager'] },
+  { text: 'Work Plans', icon: <EventIcon />, path: '/work-plans/visits' },
+  { text: 'Reports', icon: <ReportIcon />, path: '/reports/sales' },
   { text: 'Employees', icon: <GroupIcon />, path: '/employees', roles: ['Admin'] },
   { text: 'Agent Tracking', icon: <LocationIcon />, path: '/agents', roles: ['Admin', 'Manager'] },
 ];
@@ -149,6 +156,8 @@ export default function DashboardLayout() {
           <IconButton color="inherit" onClick={toggleTheme} sx={{ mr: 1 }}>
             {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
           </IconButton>
+
+          <LanguageSwitcher />
 
           <IconButton onClick={handleMenuOpen} sx={{ ml: 2 }}>
             <Avatar sx={{ bgcolor: 'secondary.main' }}>{user?.name.charAt(0).toUpperCase()}</Avatar>

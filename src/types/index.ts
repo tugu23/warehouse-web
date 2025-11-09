@@ -168,6 +168,46 @@ export interface Supplier {
   name: string;
   contactPerson?: string;
   phoneNumber?: string;
+  email?: string;
+  address?: string;
+  createdAt?: string;
+}
+
+export interface CreateSupplierRequest {
+  name: string;
+  contactPerson?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
+}
+
+export interface UpdateSupplierRequest {
+  name?: string;
+  contactPerson?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
+}
+
+// Category Types
+export interface Category {
+  id: number;
+  nameMongolian: string;
+  nameEnglish?: string;
+  description?: string;
+  createdAt?: string;
+}
+
+export interface CreateCategoryRequest {
+  nameMongolian: string;
+  nameEnglish?: string;
+  description?: string;
+}
+
+export interface UpdateCategoryRequest {
+  nameMongolian?: string;
+  nameEnglish?: string;
+  description?: string;
 }
 
 // Customer Types
@@ -224,7 +264,7 @@ export interface UpdateCustomerRequest {
 }
 
 // Payment Types
-export type PaymentMethod = 'Бэлэн' | 'Данс' | 'Борлуулалт' | 'Падаан';
+export type PaymentMethod = 'Cash' | 'Credit' | 'BankTransfer' | 'Sales' | 'Padan';
 export type PaymentStatus = 'Paid' | 'Partial' | 'Unpaid' | 'Overdue';
 
 export interface PaymentRecord {
@@ -490,4 +530,122 @@ export interface UpdateSalesTargetRequest {
   achievedAmount?: number;
   achievedOrders?: number;
   status?: 'Active' | 'Completed' | 'Failed';
+}
+
+// Delivery Plans (per specification)
+export interface DeliveryPlan {
+  id: number;
+  planDate: string;
+  agentId: number;
+  agent?: User;
+  customerId: number;
+  customer?: Customer;
+  orderId?: number;
+  order?: Order;
+  scheduledTime?: string;
+  status: 'Planned' | 'InProgress' | 'Completed' | 'Cancelled';
+  description?: string;
+  targetArea?: string;
+  estimatedOrders?: number;
+  deliveryNotes?: string;
+  actualDeliveryTime?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateDeliveryPlanRequest {
+  planDate: string;
+  agentId: number;
+  customerId: number;
+  orderId?: number;
+  scheduledTime?: string;
+  description?: string;
+  targetArea?: string;
+  estimatedOrders?: number;
+  deliveryNotes?: string;
+}
+
+export interface UpdateDeliveryPlanRequest {
+  planDate?: string;
+  agentId?: number;
+  customerId?: number;
+  orderId?: number;
+  scheduledTime?: string;
+  status?: 'Planned' | 'InProgress' | 'Completed' | 'Cancelled';
+  description?: string;
+  targetArea?: string;
+  estimatedOrders?: number;
+  deliveryNotes?: string;
+  actualDeliveryTime?: string;
+}
+
+// Report Types
+export interface SalesReportData {
+  dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+  summary: {
+    totalOrders: number;
+    totalRevenue: number;
+    totalPaid: number;
+    totalUnpaid: number;
+    byPaymentMethod: Record<string, number>;
+    byPaymentStatus: Record<string, number>;
+  };
+  orders: Order[];
+}
+
+export interface CreditStatusReport {
+  overduePayments: Array<{
+    order: Order;
+    customer: Customer;
+    daysOverdue: number;
+    overdueAmount: number;
+  }>;
+  creditCustomers: Array<{
+    customer: Customer;
+    totalCredit: number;
+    paidAmount: number;
+    remainingAmount: number;
+    orders: Order[];
+  }>;
+  summary: {
+    totalOverdueAmount: number;
+    totalCreditCustomers: number;
+    totalOverdueOrders: number;
+  };
+}
+
+export interface InventoryReportData {
+  lowStockProducts: Product[];
+  byCategory: Array<{
+    category: string;
+    products: Product[];
+    totalStock: number;
+    totalValue: number;
+  }>;
+  bySupplier: Array<{
+    supplier: Supplier;
+    products: Product[];
+    totalStock: number;
+    totalValue: number;
+  }>;
+  summary: {
+    totalProducts: number;
+    totalStockValue: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+  };
+}
+
+export interface DeliveryScheduleReport {
+  deliveryPlans: DeliveryPlan[];
+  summary: {
+    planned: number;
+    inProgress: number;
+    completed: number;
+    cancelled: number;
+    totalOrders: number;
+  };
 }

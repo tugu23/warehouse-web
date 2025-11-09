@@ -20,6 +20,9 @@ const WorkTasksPage = lazy(() => import('../features/workplan/WorkTasksPage'));
 const SalesTargetsPage = lazy(() => import('../features/workplan/SalesTargetsPage'));
 const PosIntegrationPage = lazy(() => import('../features/pos/PosIntegrationPage'));
 const SalesReportPage = lazy(() => import('../features/reports/SalesReportPage'));
+const CreditStatusReportPage = lazy(() => import('../features/reports/CreditStatusReportPage'));
+const CategoriesPage = lazy(() => import('../features/categories/CategoriesPage'));
+const DeliveryPlansPage = lazy(() => import('../features/delivery/DeliveryPlansPage'));
 const ForbiddenPage = lazy(() => import('../features/auth/ForbiddenPage'));
 const NotFoundPage = lazy(() => import('../features/auth/NotFoundPage'));
 
@@ -49,24 +52,31 @@ export default function AppRoutes() {
           <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
-              
+
               {/* Products & Inventory */}
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/products/batches" element={<ProductBatchesPage />} />
               <Route path="/products/inventory/monthly" element={<MonthlyInventoryPage />} />
-              
+
+              {/* Categories */}
+              <Route path="/categories" element={<CategoriesPage />} />
+
               {/* Customers & Orders */}
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/orders" element={<OrdersPage />} />
-              
+
               {/* Work Plans */}
               <Route path="/work-plans/visits" element={<VisitPlansPage />} />
               <Route path="/work-plans/tasks" element={<WorkTasksPage />} />
               <Route path="/work-plans/targets" element={<SalesTargetsPage />} />
-              
+
+              {/* Delivery Plans */}
+              <Route path="/delivery-plans" element={<DeliveryPlansPage />} />
+
               {/* Reports */}
               <Route path="/reports/sales" element={<SalesReportPage />} />
-              
+              <Route path="/reports/credit-status" element={<CreditStatusReportPage />} />
+
               {/* PosAPI Integration */}
               <Route path="/pos-integration" element={<PosIntegrationPage />} />
 

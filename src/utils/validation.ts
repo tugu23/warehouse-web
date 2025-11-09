@@ -54,7 +54,7 @@ export const orderSchema = z
   .object({
     customerId: z.number().min(1, 'Customer is required'),
     distributorId: z.number().optional(),
-    paymentMethod: z.enum(['Бэлэн', 'Данс', 'Борлуулалт', 'Падаан'], {
+    paymentMethod: z.enum(['Cash', 'BankTransfer', 'Sales', 'Padan', 'Credit'], {
       errorMap: () => ({ message: 'Payment method is required' }),
     }),
     isCredit: z.boolean().optional(),

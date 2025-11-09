@@ -1,20 +1,9 @@
 // PosAPI 3.0 Integration
 // Монгол Улсын И-баримтын систем (PosAPI 3.0)
 
-import axios from 'axios';
-
 // PosAPI base URL - үүнийг .env файлд тохируулна
-const POSAPI_BASE_URL = import.meta.env.VITE_POSAPI_URL || 'https://api.posapi.mn/v3';
-const POSAPI_TOKEN = import.meta.env.VITE_POSAPI_TOKEN || '';
 
 // PosAPI client
-const posApiClient = axios.create({
-  baseURL: POSAPI_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${POSAPI_TOKEN}`,
-  },
-});
 
 // Response Types
 export interface SyncResult {
@@ -71,7 +60,7 @@ export const posApi = {
    * И-баримт хэвлэх
    * Print E-Receipt via PosAPI 3.0
    */
-  printEReceipt: async (request: EReceiptRequest): Promise<EReceiptResponse> => {
+  printEReceipt: async (): Promise<EReceiptResponse> => {
     try {
       // Бодит PosAPI дуудах
       // const response = await posApiClient.post('/receipts/print', request);
@@ -79,15 +68,18 @@ export const posApi = {
 
       // MOCK Implementation - Бодит API холбогдохоос өмнө
       await delay(1500);
-      
+
       const receiptNumber = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
       const mockResponse: EReceiptResponse = {
         success: true,
         receiptId: `RCP${Date.now()}`,
         receiptNumber: receiptNumber,
-        qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        qrCode:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
         receiptUrl: `https://receipt.posapi.mn/${receiptNumber}`,
-        lottery: `LT${Math.floor(Math.random() * 1000000).toString().padStart(8, '0')}`,
+        lottery: `LT${Math.floor(Math.random() * 1000000)
+          .toString()
+          .padStart(8, '0')}`,
         message: 'И-баримт амжилттай хэвлэгдлээ',
         timestamp: new Date().toISOString(),
       };
@@ -116,13 +108,13 @@ export const posApi = {
    * И-баримт буцаах
    * Refund E-Receipt
    */
-  refundEReceipt: async (receiptId: string, amount: number): Promise<EReceiptResponse> => {
+  refundEReceipt: async (receiptId: string): Promise<EReceiptResponse> => {
     try {
       // const response = await posApiClient.post('/receipts/refund', { receiptId, amount });
       // return response.data;
 
       await delay(1200);
-      
+
       return {
         success: true,
         receiptId: `REF${Date.now()}`,
@@ -143,13 +135,13 @@ export const posApi = {
    * И-баримт шалгах
    * Check E-Receipt Status
    */
-  checkEReceipt: async (receiptId: string): Promise<{ status: string; verified: boolean }> => {
+  checkEReceipt: async (): Promise<{ status: string; verified: boolean }> => {
     try {
       // const response = await posApiClient.get(`/receipts/${receiptId}/status`);
       // return response.data;
 
       await delay(500);
-      
+
       return {
         status: 'verified',
         verified: true,

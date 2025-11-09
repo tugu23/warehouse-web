@@ -146,13 +146,13 @@ export default function LoginPage() {
                   Туршилтын нэвтрэх мэдээлэл:
                 </Typography>
                 <Typography variant="caption" display="block">
-                  Admin: admin@warehouse.com / admin123
+                  Admin: admin@oasis.mn / admin123
                 </Typography>
                 <Typography variant="caption" display="block">
-                  Manager: manager@warehouse.com / manager123
+                  Manager: manager@oasis.mn / manager123
                 </Typography>
                 <Typography variant="caption" display="block">
-                  Agent: agent@warehouse.com / agent123
+                  Agent: agent@oasis.mn / agent123
                 </Typography>
               </Box>
             </Box>

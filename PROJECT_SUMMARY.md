@@ -1,8 +1,8 @@
 # 🎉 Project Completion Summary
 
-## Warehouse Management System - React Frontend
+## Oasis - Агуулахын удирдлагын систем - React Frontend
 
-### ✅ All Features Implemented Successfully!
+### ✅ Бүх функцууд амжилттай хэрэгжлээ!
 
 ---
 

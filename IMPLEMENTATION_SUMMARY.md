@@ -1,6 +1,6 @@
-# Sales and Order Management System - Implementation Summary
+# Oasis - Sales and Order Management System - Implementation Summary
 
-## ✅ Completed Features
+## ✅ Хэрэгжсэн функцууд
 
 ### 1. Payment Methods & Credit Management ✅
 - **Type Definitions**: Added `PaymentMethod`, `PaymentStatus`, `PaymentRecord` types

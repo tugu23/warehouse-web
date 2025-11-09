@@ -54,35 +54,56 @@ export interface UpdateEmployeeRequest {
 export interface Product {
   id: number;
   nameMongolian: string;
+  nameKorean?: string;
   nameEnglish: string;
   productCode: string;
+  barcode?: string;
+  category?: string;
   supplierId: number;
   supplier?: Supplier;
   stockQuantity: number;
+  unitsPerBox?: number; // Нэг хайрцагт байх тоо ширхэг
+  netWeight?: number; // Цэвэр жин (kg)
+  grossWeight?: number; // Бохир жин (kg)
   priceWholesale: string | number;
   priceRetail: string | number;
+  pricePerBox?: number; // Хайрцагны үнэ
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface CreateProductRequest {
   nameMongolian: string;
+  nameKorean?: string;
   nameEnglish: string;
   productCode: string;
+  barcode?: string;
+  category?: string;
   supplierId: number;
   stockQuantity: number;
+  unitsPerBox?: number;
+  netWeight?: number;
+  grossWeight?: number;
   priceWholesale: number;
   priceRetail: number;
+  pricePerBox?: number;
 }
 
 export interface UpdateProductRequest {
   nameMongolian?: string;
+  nameKorean?: string;
   nameEnglish?: string;
   productCode?: string;
+  barcode?: string;
+  category?: string;
   supplierId?: number;
   stockQuantity?: number;
+  unitsPerBox?: number;
+  netWeight?: number;
+  grossWeight?: number;
   priceWholesale?: number;
   priceRetail?: number;
+  pricePerBox?: number;
 }
 
 export interface InventoryAdjustmentRequest {
@@ -152,9 +173,14 @@ export interface Supplier {
 // Customer Types
 export interface Customer {
   id: number;
-  name: string;
+  name: string; // Байгууллагын нэр
+  organizationType?: string; // Дэлгүүр, Сүлжээ, Ресторан
+  contactPerson?: string; // Үндсэн нэр (хариуцсан хүний нэр)
+  registrationNumber?: string; // Регистрийн дугаар
   address: string;
+  district?: string; // Дүүрэг
   phoneNumber: string;
+  isVatPayer?: boolean; // НӨАТ төлөгч эсэх
   locationLatitude: number;
   locationLongitude: number;
   customerType: CustomerType;
@@ -169,8 +195,13 @@ export interface CustomerType {
 
 export interface CreateCustomerRequest {
   name: string;
+  organizationType?: string;
+  contactPerson?: string;
+  registrationNumber?: string;
   address: string;
+  district?: string;
   phoneNumber: string;
+  isVatPayer?: boolean;
   locationLatitude: number;
   locationLongitude: number;
   customerTypeId: number;
@@ -179,8 +210,13 @@ export interface CreateCustomerRequest {
 
 export interface UpdateCustomerRequest {
   name?: string;
+  organizationType?: string;
+  contactPerson?: string;
+  registrationNumber?: string;
   address?: string;
+  district?: string;
   phoneNumber?: string;
+  isVatPayer?: boolean;
   locationLatitude?: number;
   locationLongitude?: number;
   customerTypeId?: number;
@@ -207,6 +243,8 @@ export interface Order {
   id: number;
   customerId: number;
   customer?: Customer;
+  distributorId?: number; // Түгээгч
+  distributor?: User;
   totalAmount: string | number;
   status: 'Pending' | 'Fulfilled' | 'Cancelled';
   paymentMethod: PaymentMethod;
@@ -217,10 +255,16 @@ export interface Order {
   creditTermDays?: number;
   paymentRecords?: PaymentRecord[];
   createdById: number;
-  createdBy?: User;
+  createdBy?: User; // Борлуулагч
   orderItems?: OrderItem[];
   createdAt: string;
   updatedAt?: string;
+  // И-баримтын мэдээлэл
+  eReceiptId?: string; // PosAPI-аас ирсэн И-баримтын ID
+  eReceiptNumber?: string; // И-баримтын дугаар
+  eReceiptStatus?: 'pending' | 'printed' | 'failed'; // И-баримтын төлөв
+  eReceiptUrl?: string; // И-баримт татах линк
+  eReceiptPrintedAt?: string; // Хэвлэсэн огноо
 }
 
 export interface OrderItem {
@@ -235,6 +279,7 @@ export interface OrderItem {
 
 export interface CreateOrderRequest {
   customerId: number;
+  distributorId?: number;
   paymentMethod: PaymentMethod;
   paidAmount?: number;
   creditTermDays?: number;

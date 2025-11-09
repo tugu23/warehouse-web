@@ -130,7 +130,7 @@ export default function DashboardPage() {
         Welcome back, {user?.name}!
       </Typography>
       <Typography variant="body1" color="text.secondary" paragraph>
-        Here's what's happening in your warehouse today.
+        Таны агуулахын өнөөдрийн үйл ажиллагаа
       </Typography>
 
       <Grid container spacing={3} sx={{ mt: 2 }}>

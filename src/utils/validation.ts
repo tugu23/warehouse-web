@@ -15,18 +15,30 @@ export const employeeSchema = z.object({
 
 export const productSchema = z.object({
   nameMongolian: z.string().min(1, 'Mongolian name is required'),
+  nameKorean: z.string().optional(),
   nameEnglish: z.string().min(1, 'English name is required'),
   productCode: z.string().min(1, 'Product code is required'),
+  barcode: z.string().optional(),
+  category: z.string().optional(),
   supplierId: z.number().min(1, 'Supplier is required'),
   stockQuantity: z.number().min(0, 'Stock quantity must be non-negative'),
+  unitsPerBox: z.number().min(1, 'Units per box must be at least 1').optional(),
+  netWeight: z.number().min(0, 'Net weight must be non-negative').optional(),
+  grossWeight: z.number().min(0, 'Gross weight must be non-negative').optional(),
   priceWholesale: z.number().min(0, 'Wholesale price must be non-negative'),
   priceRetail: z.number().min(0, 'Retail price must be non-negative'),
+  pricePerBox: z.number().min(0, 'Box price must be non-negative').optional(),
 });
 
 export const customerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
+  name: z.string().min(2, 'Organization name must be at least 2 characters'),
+  organizationType: z.string().optional(),
+  contactPerson: z.string().optional(),
+  registrationNumber: z.string().optional(),
   address: z.string().min(5, 'Address must be at least 5 characters'),
+  district: z.string().optional(),
   phoneNumber: z.string().min(8, 'Phone number must be at least 8 characters'),
+  isVatPayer: z.boolean().optional(),
   locationLatitude: z.number().min(-90).max(90, 'Invalid latitude'),
   locationLongitude: z.number().min(-180).max(180, 'Invalid longitude'),
   customerTypeId: z.number().min(1, 'Customer type is required'),
@@ -41,6 +53,7 @@ export const orderItemSchema = z.object({
 export const orderSchema = z
   .object({
     customerId: z.number().min(1, 'Customer is required'),
+    distributorId: z.number().optional(),
     paymentMethod: z.enum(['Бэлэн', 'Данс', 'Борлуулалт', 'Падаан'], {
       errorMap: () => ({ message: 'Payment method is required' }),
     }),

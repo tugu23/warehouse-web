@@ -1,24 +1,24 @@
-# Warehouse Management System - Frontend
+# Oasis - Агуулахын удирдлагын систем
 
-A modern, production-ready React application for managing warehouse operations including products, customers, orders, returns, employees, and real-time agent tracking.
+Орчин үеийн React апп - Бараа, захиалга, харилцагч, ажилтнуудын удирдлага болон агентын байршлыг цаг хугацаанд нь хянах.
 
 ![React](https://img.shields.io/badge/React-19-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 ![Material-UI](https://img.shields.io/badge/Material--UI-7-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## 🚀 Features
+## 🚀 Онцлогууд
 
 ### Core Functionality
 
-- 🔐 **Authentication & Authorization** - JWT-based auth with role-based access control
-- 📊 **Role-Based Dashboard** - Dynamic dashboards for Admin, Manager, and Sales Agent roles
-- 📦 **Product Management** - Full CRUD operations with inventory tracking
-- 👥 **Customer Management** - Customer profiles with location mapping
-- 🛒 **Order Management** - Create and manage orders with real-time pricing
-- 🔄 **Returns Management** - Process product returns and restocking
-- 👨‍💼 **Employee Management** - Admin-only employee and role management
-- 🗺️ **Agent Tracking** - Real-time GPS location tracking with route history
+- 🔐 **Нэвтрэх ба эрх** - JWT-д суурилсан нэвтрэх, эрхийн удирдлага
+- 📊 **Үүрэг дээр суурилсан Dashboard** - Admin, Manager, Sales Agent үүрэгт тохирсон дэлгэц
+- 📦 **Барааны удирдлага** - CRUD үйлдлүүд, үлдэгдэл хянах
+- 👥 **Харилцагчийн удирдлага** - Харилцагчийн мэдээлэл, байршлын зураглал
+- 🛒 **Захиалгын удирдлага** - Захиалга үүсгэх, үнийн автомат тооцоо
+- 🔄 **Буцаалтын удирдлага** - Барааны буцаалт, үлдэгдэл сэргээх
+- 👨‍💼 **Ажилтны удирдлага** - Admin эрх шаардлагатай
+- 🗺️ **Агентын байршил** - GPS байршил, замын түүх
 
 ### Technical Features
 
@@ -73,7 +73,7 @@ Create a `.env` file in the root directory:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000
-VITE_APP_NAME="Warehouse Management System"
+VITE_APP_NAME="Oasis"
 ```
 
 ### 3. Run Development Server
@@ -102,21 +102,21 @@ npm run preview
 
 ### Admin
 
-- **Email:** admin@warehouse.com
+- **Email:** admin@oasis.mn
 - **Password:** admin123
-- **Access:** Full system access
+- **Access:** Бүх системд хандах эрхтэй
 
 ### Manager
 
-- **Email:** manager@warehouse.com
+- **Email:** manager@oasis.mn
 - **Password:** manager123
-- **Access:** Product, customer, order, return, and agent management
+- **Access:** Бараа, харилцагч, захиалга, буцаалт, агентын удирдлага
 
 ### Sales Agent
 
-- **Email:** agent@warehouse.com
+- **Email:** agent@oasis.mn
 - **Password:** agent123
-- **Access:** View products, customers, create orders
+- **Access:** Бараа үзэх, харилцагч үзэх, захиалга үүсгэх
 
 ## 📁 Project Structure
 
@@ -333,8 +333,8 @@ This project is licensed under the MIT License.
 
 ## 📞 Support
 
-For support, email support@warehouse.com or open an issue in the repository.
+For support, email support@oasis.mn or open an issue in the repository.
 
 ---
 
-**Built with ❤️ using React, TypeScript, and Material-UI**
+**Built with ❤️ by Oasis Team using React, TypeScript, and Material-UI**

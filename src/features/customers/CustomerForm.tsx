@@ -34,8 +34,13 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
     resolver: zodResolver(customerSchema),
     defaultValues: {
       name: '',
+      organizationType: '',
+      contactPerson: '',
+      registrationNumber: '',
       address: '',
+      district: '',
       phoneNumber: '',
+      isVatPayer: false,
       locationLatitude: 47.9186,
       locationLongitude: 106.9177,
       customerTypeId: 1,
@@ -47,8 +52,13 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
     if (customer) {
       reset({
         name: customer.name,
+        organizationType: customer.organizationType || '',
+        contactPerson: customer.contactPerson || '',
+        registrationNumber: customer.registrationNumber || '',
         address: customer.address,
+        district: customer.district || '',
         phoneNumber: customer.phoneNumber,
+        isVatPayer: customer.isVatPayer || false,
         locationLatitude: customer.locationLatitude,
         locationLongitude: customer.locationLongitude,
         customerTypeId: customer.customerType.id,
@@ -60,17 +70,74 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={2}>
-        <Grid item xs={12}>
+        <Grid item xs={12} sm={6}>
           <Controller
             name="name"
             control={control}
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Customer Name"
+                label="Байгууллагын нэр *"
                 fullWidth
                 error={!!errors.name}
                 helperText={errors.name?.message}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="organizationType"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth error={!!errors.organizationType}>
+                <InputLabel>Байгууллагын төрөл</InputLabel>
+                <Select
+                  {...field}
+                  label="Байгууллагын төрөл"
+                >
+                  <MenuItem value="">Сонгох</MenuItem>
+                  <MenuItem value="Дэлгүүр">Дэлгүүр</MenuItem>
+                  <MenuItem value="Сүлжээ">Сүлжээ</MenuItem>
+                  <MenuItem value="Ресторан">Ресторан</MenuItem>
+                  <MenuItem value="Бусад">Бусад</MenuItem>
+                </Select>
+                {errors.organizationType && (
+                  <FormHelperText>{errors.organizationType.message}</FormHelperText>
+                )}
+              </FormControl>
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="contactPerson"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Үндсэн нэр (Хариуцсан хүн)"
+                fullWidth
+                error={!!errors.contactPerson}
+                helperText={errors.contactPerson?.message}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="registrationNumber"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Байгууллагын регистр"
+                fullWidth
+                error={!!errors.registrationNumber}
+                helperText={errors.registrationNumber?.message}
               />
             )}
           />
@@ -83,7 +150,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Phone Number"
+                label="Утас *"
                 fullWidth
                 error={!!errors.phoneNumber}
                 helperText={errors.phoneNumber?.message}
@@ -98,18 +165,69 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
             control={control}
             render={({ field }) => (
               <FormControl fullWidth error={!!errors.customerTypeId}>
-                <InputLabel>Customer Type</InputLabel>
+                <InputLabel>Харилцагчийн төрөл *</InputLabel>
                 <Select
                   {...field}
-                  label="Customer Type"
+                  label="Харилцагчийн төрөл *"
                   onChange={(e) => field.onChange(Number(e.target.value))}
                 >
-                  <MenuItem value={1}>Retail</MenuItem>
-                  <MenuItem value={2}>Wholesale</MenuItem>
+                  <MenuItem value={1}>Жижиглэнгийн (Retail)</MenuItem>
+                  <MenuItem value={2}>Бөөний (Wholesale)</MenuItem>
                 </Select>
                 {errors.customerTypeId && (
                   <FormHelperText>{errors.customerTypeId.message}</FormHelperText>
                 )}
+              </FormControl>
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="district"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth error={!!errors.district}>
+                <InputLabel>Дүүрэг</InputLabel>
+                <Select
+                  {...field}
+                  label="Дүүрэг"
+                >
+                  <MenuItem value="">Сонгох</MenuItem>
+                  <MenuItem value="Баянзүрх">Баянзүрх</MenuItem>
+                  <MenuItem value="Баянгол">Баянгол</MenuItem>
+                  <MenuItem value="Сүхбаатар">Сүхбаатар</MenuItem>
+                  <MenuItem value="Хан-Уул">Хан-Уул</MenuItem>
+                  <MenuItem value="Чингэлтэй">Чингэлтэй</MenuItem>
+                  <MenuItem value="Сонгинохайрхан">Сонгинохайрхан</MenuItem>
+                  <MenuItem value="Налайх">Налайх</MenuItem>
+                  <MenuItem value="Багануур">Багануур</MenuItem>
+                  <MenuItem value="Багахангай">Багахангай</MenuItem>
+                </Select>
+                {errors.district && (
+                  <FormHelperText>{errors.district.message}</FormHelperText>
+                )}
+              </FormControl>
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="isVatPayer"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth>
+                <InputLabel>НӨАТ төлөгч эсэх</InputLabel>
+                <Select
+                  {...field}
+                  label="НӨАТ төлөгч эсэх"
+                  value={field.value ? 'true' : 'false'}
+                  onChange={(e) => field.onChange(e.target.value === 'true')}
+                >
+                  <MenuItem value="false">Үгүй</MenuItem>
+                  <MenuItem value="true">Тийм</MenuItem>
+                </Select>
               </FormControl>
             )}
           />
@@ -122,7 +240,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Address"
+                label="Дэлгэрэнгүй хаяг *"
                 fullWidth
                 multiline
                 rows={2}
@@ -140,11 +258,11 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Latitude"
+                label="Байршил (Өрөг)"
                 type="number"
                 fullWidth
                 error={!!errors.locationLatitude}
-                helperText={errors.locationLatitude?.message}
+                helperText={errors.locationLatitude?.message || 'X координат (Latitude)'}
                 inputProps={{ step: '0.000001' }}
                 onChange={(e) => field.onChange(parseFloat(e.target.value))}
               />
@@ -159,11 +277,11 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Longitude"
+                label="Байршил (Уртраг)"
                 type="number"
                 fullWidth
                 error={!!errors.locationLongitude}
-                helperText={errors.locationLongitude?.message}
+                helperText={errors.locationLongitude?.message || 'Y координат (Longitude)'}
                 inputProps={{ step: '0.000001' }}
                 onChange={(e) => field.onChange(parseFloat(e.target.value))}
               />
@@ -178,11 +296,11 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Assigned Agent ID (Optional)"
+                label="Хариуцсан борлуулагч (Agent ID)"
                 type="number"
                 fullWidth
                 error={!!errors.assignedAgentId}
-                helperText={errors.assignedAgentId?.message || 'Leave empty to not assign'}
+                helperText={errors.assignedAgentId?.message || 'Борлуулагч томилохгүй бол хоосон үлдээнэ'}
                 onChange={(e) =>
                   field.onChange(e.target.value ? parseInt(e.target.value) : undefined)
                 }
@@ -194,10 +312,10 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
 
       <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
         <Button onClick={onCancel} disabled={isSubmitting}>
-          Cancel
+          Болих
         </Button>
         <Button type="submit" variant="contained" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : customer ? 'Update' : 'Create'}
+          {isSubmitting ? 'Хадгалж байна...' : customer ? 'Засах' : 'Үүсгэх'}
         </Button>
       </Box>
     </Box>

@@ -21,8 +21,8 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { addDays, format } from 'date-fns';
 import { orderSchema } from '../../utils/validation';
-import { CreateOrderRequest, Customer, Product, PaymentMethod } from '../../types';
-import { customersApi, productsApi } from '../../api';
+import { CreateOrderRequest, Customer, Product, PaymentMethod, Employee } from '../../types';
+import { customersApi, productsApi, employeesApi } from '../../api';
 import { z } from 'zod';
 
 type OrderFormData = z.infer<typeof orderSchema>;
@@ -35,6 +35,7 @@ interface OrderFormProps {
 export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const {
     control,
@@ -46,6 +47,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     resolver: zodResolver(orderSchema),
     defaultValues: {
       customerId: 0,
+      distributorId: undefined,
       paymentMethod: 'Бэлэн',
       isCredit: false,
       paidAmount: 0,
@@ -70,12 +72,14 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
 
   const fetchData = async () => {
     try {
-      const [customersRes, productsRes] = await Promise.all([
+      const [customersRes, productsRes, employeesRes] = await Promise.all([
         customersApi.getAll(),
         productsApi.getAll(),
+        employeesApi.getAll(),
       ]);
       setCustomers(customersRes.data.data?.customers || []);
       setProducts(productsRes.data.data?.products || []);
+      setEmployees(employeesRes.data.data?.employees || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -105,6 +109,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const handleFormSubmit = async (data: OrderFormData) => {
     const submitData: CreateOrderRequest = {
       customerId: data.customerId,
+      distributorId: data.distributorId,
       paymentMethod: data.paymentMethod,
       items: data.items,
     };
@@ -120,19 +125,19 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   return (
     <Box component="form" onSubmit={handleSubmit(handleFormSubmit)}>
       <Grid container spacing={2}>
-        <Grid item xs={12}>
+        <Grid item xs={12} sm={6}>
           <Controller
             name="customerId"
             control={control}
             render={({ field }) => (
               <FormControl fullWidth error={!!errors.customerId}>
-                <InputLabel>Customer *</InputLabel>
+                <InputLabel>Байгууллага *</InputLabel>
                 <Select
                   {...field}
-                  label="Customer *"
+                  label="Байгууллага *"
                   onChange={(e) => field.onChange(Number(e.target.value))}
                 >
-                  <MenuItem value={0}>Select a customer</MenuItem>
+                  <MenuItem value={0}>Байгууллага сонгох</MenuItem>
                   {customers.map((customer) => (
                     <MenuItem key={customer.id} value={customer.id}>
                       {customer.name} ({customer.customerType.name})
@@ -140,6 +145,34 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                   ))}
                 </Select>
                 {errors.customerId && <FormHelperText>{errors.customerId.message}</FormHelperText>}
+              </FormControl>
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="distributorId"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth error={!!errors.distributorId}>
+                <InputLabel>Түгээгч</InputLabel>
+                <Select
+                  {...field}
+                  label="Түгээгч"
+                  value={field.value || ''}
+                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                >
+                  <MenuItem value="">Түгээгч сонгохгүй байх</MenuItem>
+                  {employees.map((employee) => (
+                    <MenuItem key={employee.id} value={employee.id}>
+                      {employee.name} ({employee.role.name})
+                    </MenuItem>
+                  ))}
+                </Select>
+                {errors.distributorId && (
+                  <FormHelperText>{errors.distributorId.message}</FormHelperText>
+                )}
               </FormControl>
             )}
           />
@@ -253,7 +286,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
       <Divider sx={{ my: 3 }} />
 
       <Typography variant="h6" gutterBottom>
-        Order Items
+        Барааны жагсаалт
       </Typography>
 
       {fields.map((field, index) => (
@@ -263,26 +296,36 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
               <Controller
                 name={`items.${index}.productId`}
                 control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.items?.[index]?.productId}>
-                    <InputLabel>Product *</InputLabel>
-                    <Select
-                      {...field}
-                      label="Product *"
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                    >
-                      <MenuItem value={0}>Select a product</MenuItem>
-                      {products.map((product) => (
-                        <MenuItem key={product.id} value={product.id}>
-                          {product.nameEnglish} (Stock: {product.stockQuantity})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.items?.[index]?.productId && (
-                      <FormHelperText>{errors.items[index]?.productId?.message}</FormHelperText>
-                    )}
-                  </FormControl>
-                )}
+                render={({ field }) => {
+                  const selectedProduct = products.find((p) => p.id === field.value);
+                  return (
+                    <FormControl fullWidth error={!!errors.items?.[index]?.productId}>
+                      <InputLabel>Бараа *</InputLabel>
+                      <Select
+                        {...field}
+                        label="Бараа *"
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      >
+                        <MenuItem value={0}>Бараа сонгох</MenuItem>
+                        {products.map((product) => (
+                          <MenuItem key={product.id} value={product.id}>
+                            {product.nameEnglish} - Үлдэгдэл: {product.stockQuantity}
+                            {product.unitsPerBox && ` (${product.unitsPerBox} ш/хайрцаг)`}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {errors.items?.[index]?.productId && (
+                        <FormHelperText>{errors.items[index]?.productId?.message}</FormHelperText>
+                      )}
+                      {selectedProduct && (
+                        <FormHelperText>
+                          Үнэ: ₮{Number(selectedProduct.priceRetail).toLocaleString()} | 
+                          Бөөний: ₮{Number(selectedProduct.priceWholesale).toLocaleString()}
+                        </FormHelperText>
+                      )}
+                    </FormControl>
+                  );
+                }}
               />
             </Grid>
 
@@ -293,7 +336,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    label="Quantity *"
+                    label="Тоо ширхэг *"
                     type="number"
                     fullWidth
                     error={!!errors.items?.[index]?.quantity}
@@ -320,21 +363,21 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
         onClick={() => append({ productId: 0, quantity: 1 })}
         sx={{ mb: 3 }}
       >
-        Add Item
+        Бараа нэмэх
       </Button>
 
       <Divider sx={{ my: 2 }} />
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-        <Typography variant="h6">Total: ₮{totalAmount.toLocaleString()}</Typography>
+        <Typography variant="h6">Нийт дүн: ₮{totalAmount.toLocaleString()}</Typography>
       </Box>
 
       <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
         <Button onClick={onCancel} disabled={isSubmitting}>
-          Cancel
+          Болих
         </Button>
         <Button type="submit" variant="contained" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating...' : 'Create Order'}
+          {isSubmitting ? 'Үүсгэж байна...' : 'Захиалга үүсгэх'}
         </Button>
       </Box>
     </Box>

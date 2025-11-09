@@ -24,12 +24,19 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     resolver: zodResolver(productSchema),
     defaultValues: {
       nameMongolian: '',
+      nameKorean: '',
       nameEnglish: '',
       productCode: '',
+      barcode: '',
+      category: '',
       supplierId: 1,
       stockQuantity: 0,
+      unitsPerBox: 1,
+      netWeight: 0,
+      grossWeight: 0,
       priceWholesale: 0,
       priceRetail: 0,
+      pricePerBox: 0,
     },
   });
 
@@ -37,12 +44,19 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     if (product) {
       reset({
         nameMongolian: product.nameMongolian,
+        nameKorean: product.nameKorean || '',
         nameEnglish: product.nameEnglish,
         productCode: product.productCode,
+        barcode: product.barcode || '',
+        category: product.category || '',
         supplierId: product.supplierId,
         stockQuantity: product.stockQuantity,
+        unitsPerBox: product.unitsPerBox || 1,
+        netWeight: product.netWeight || 0,
+        grossWeight: product.grossWeight || 0,
         priceWholesale: Number(product.priceWholesale),
         priceRetail: Number(product.priceRetail),
+        pricePerBox: product.pricePerBox || 0,
       });
     }
   }, [product, reset]);
@@ -57,7 +71,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Name (English)"
+                label="Нэр (Англи) *"
                 fullWidth
                 error={!!errors.nameEnglish}
                 helperText={errors.nameEnglish?.message}
@@ -73,10 +87,26 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Name (Mongolian)"
+                label="Нэр (Монгол) *"
                 fullWidth
                 error={!!errors.nameMongolian}
                 helperText={errors.nameMongolian?.message}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="nameKorean"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Нэр (Солонгос)"
+                fullWidth
+                error={!!errors.nameKorean}
+                helperText={errors.nameKorean?.message}
               />
             )}
           />
@@ -89,10 +119,42 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Product Code"
+                label="Барааны код *"
                 fullWidth
                 error={!!errors.productCode}
                 helperText={errors.productCode?.message}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="barcode"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Бар код"
+                fullWidth
+                error={!!errors.barcode}
+                helperText={errors.barcode?.message}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="category"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Төрөл/Ангилал"
+                fullWidth
+                error={!!errors.category}
+                helperText={errors.category?.message}
               />
             )}
           />
@@ -105,7 +167,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Supplier ID"
+                label="Нийлүүлэгч ID *"
                 type="number"
                 fullWidth
                 error={!!errors.supplierId}
@@ -116,19 +178,75 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={6}>
           <Controller
             name="stockQuantity"
             control={control}
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Stock Quantity"
+                label="Үлдэгдэл тоо ширхэг *"
                 type="number"
                 fullWidth
                 error={!!errors.stockQuantity}
                 helperText={errors.stockQuantity?.message}
                 onChange={(e) => field.onChange(parseInt(e.target.value))}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="unitsPerBox"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Нэг хайрцагт байх тоо ширхэг"
+                type="number"
+                fullWidth
+                error={!!errors.unitsPerBox}
+                helperText={errors.unitsPerBox?.message}
+                onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="netWeight"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Цэвэр жин (kg)"
+                type="number"
+                fullWidth
+                error={!!errors.netWeight}
+                helperText={errors.netWeight?.message}
+                inputProps={{ step: '0.01' }}
+                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="grossWeight"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Бохир жин (kg)"
+                type="number"
+                fullWidth
+                error={!!errors.grossWeight}
+                helperText={errors.grossWeight?.message}
+                inputProps={{ step: '0.01' }}
+                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
               />
             )}
           />
@@ -141,7 +259,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Wholesale Price (₮)"
+                label="Бөөний үнэ (₮) *"
                 type="number"
                 fullWidth
                 error={!!errors.priceWholesale}
@@ -159,7 +277,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Retail Price (₮)"
+                label="Жижиглэн үнэ (₮) *"
                 type="number"
                 fullWidth
                 error={!!errors.priceRetail}
@@ -169,14 +287,32 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             )}
           />
         </Grid>
+
+        <Grid item xs={12} sm={4}>
+          <Controller
+            name="pricePerBox"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Хайрцагны үнэ (₮)"
+                type="number"
+                fullWidth
+                error={!!errors.pricePerBox}
+                helperText={errors.pricePerBox?.message}
+                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+              />
+            )}
+          />
+        </Grid>
       </Grid>
 
       <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
         <Button onClick={onCancel} disabled={isSubmitting}>
-          Cancel
+          Болих
         </Button>
         <Button type="submit" variant="contained" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : product ? 'Update' : 'Create'}
+          {isSubmitting ? 'Хадгалж байна...' : product ? 'Засах' : 'Үүсгэх'}
         </Button>
       </Box>
     </Box>

@@ -73,10 +73,10 @@ export default function LoginPage() {
           <CardContent sx={{ p: 4 }}>
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-                Warehouse Management
+                OASIS
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Sign in to your account
+                Агуулахын удирдлагын систем
               </Typography>
             </Box>
 
@@ -143,7 +143,7 @@ export default function LoginPage() {
 
               <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                 <Typography variant="caption" display="block" gutterBottom fontWeight="bold">
-                  Test Credentials:
+                  Туршилтын нэвтрэх мэдээлэл:
                 </Typography>
                 <Typography variant="caption" display="block">
                   Admin: admin@warehouse.com / admin123

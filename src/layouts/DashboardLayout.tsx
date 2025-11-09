@@ -95,7 +95,7 @@ export default function DashboardLayout() {
     <Box>
       <Toolbar sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
         <Typography variant="h6" fontWeight="bold" color="primary">
-          WMS
+          OASIS
         </Typography>
       </Toolbar>
       <Divider />
@@ -143,7 +143,7 @@ export default function DashboardLayout() {
           </IconButton>
 
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Warehouse Management System
+            Oasis - Агуулахын удирдлагын систем
           </Typography>
 
           <IconButton color="inherit" onClick={toggleTheme} sx={{ mr: 1 }}>

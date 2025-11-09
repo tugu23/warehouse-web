@@ -17,22 +17,29 @@ import {
   Paper,
   Chip,
   Stack,
+  TextField,
+  Divider,
 } from '@mui/material';
 import {
   Sync as SyncIcon,
   Check as CheckIcon,
   Error as ErrorIcon,
   Delete as DeleteIcon,
+  Receipt as ReceiptIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
-import { posApi, SyncHistory } from '../../api/posApi';
+import { posApi, SyncHistory, EReceiptRequest } from '../../api/posApi';
 import { format } from 'date-fns';
 
 export default function PosIntegrationPage() {
   const [loading, setLoading] = useState(false);
-  const [syncType, setSyncType] = useState<'products' | 'orders' | 'sales' | null>(null);
+  const [syncType, setSyncType] = useState<'products' | 'orders' | 'sales' | 'ereceipt' | null>(null);
   const [syncHistory, setSyncHistory] = useState<SyncHistory[]>([]);
   const [lastSync, setLastSync] = useState<Record<string, { timestamp: string | null }>>({});
+  
+  // И-баримт тестлэх хэсэг
+  const [testAmount, setTestAmount] = useState('10000');
+  const [testCustomerName, setTestCustomerName] = useState('Test Customer');
 
   useEffect(() => {
     fetchSyncHistory();
@@ -50,15 +57,17 @@ export default function PosIntegrationPage() {
 
   const fetchLastSyncTimes = async () => {
     try {
-      const [products, orders, sales] = await Promise.all([
+      const [products, orders, sales, ereceipt] = await Promise.all([
         posApi.getLastSync('products'),
         posApi.getLastSync('orders'),
         posApi.getLastSync('sales'),
+        posApi.getLastSync('ereceipt'),
       ]);
       setLastSync({
         products: { timestamp: products.timestamp },
         orders: { timestamp: orders.timestamp },
         sales: { timestamp: sales.timestamp },
+        ereceipt: { timestamp: ereceipt.timestamp },
       });
     } catch (error) {
       console.error('Error fetching last sync times:', error);
@@ -100,6 +109,66 @@ export default function PosIntegrationPage() {
     }
   };
 
+  const handleTestEReceipt = async () => {
+    setLoading(true);
+    setSyncType('ereceipt');
+
+    try {
+      const testRequest: EReceiptRequest = {
+        orderId: 999,
+        amount: parseFloat(testAmount),
+        customerName: testCustomerName,
+        items: [
+          {
+            name: 'Тест бараа 1',
+            quantity: 2,
+            unitPrice: parseFloat(testAmount) / 3,
+            totalPrice: (parseFloat(testAmount) / 3) * 2,
+            barCode: '1234567890',
+          },
+          {
+            name: 'Тест бараа 2',
+            quantity: 1,
+            unitPrice: parseFloat(testAmount) / 3,
+            totalPrice: parseFloat(testAmount) / 3,
+          },
+        ],
+        paymentMethod: 'Бэлэн',
+        cashierId: 1,
+        cashierName: 'Test Cashier',
+      };
+
+      const result = await posApi.printEReceipt(testRequest);
+
+      if (result.success) {
+        toast.success(
+          <Box>
+            <Typography variant="body2" fontWeight="bold">
+              И-баримт амжилттай хэвлэгдлээ!
+            </Typography>
+            <Typography variant="caption">Дугаар: {result.receiptNumber}</Typography>
+            <Typography variant="caption" display="block">
+              Сугалааны дугаар: {result.lottery}
+            </Typography>
+            <Typography variant="caption" display="block">
+              URL: {result.receiptUrl}
+            </Typography>
+          </Box>,
+          { duration: 8000 }
+        );
+      }
+
+      fetchSyncHistory();
+      fetchLastSyncTimes();
+    } catch (error) {
+      console.error('E-Receipt error:', error);
+      toast.error('И-баримт хэвлэхэд алдаа гарлаа');
+    } finally {
+      setLoading(false);
+      setSyncType(null);
+    }
+  };
+
   const handleClearHistory = async () => {
     try {
       await posApi.clearSyncHistory();
@@ -121,6 +190,7 @@ export default function PosIntegrationPage() {
       products: 'Бараа',
       orders: 'Захиалга',
       sales: 'Борлуулалт',
+      ereceipt: 'И-баримт',
     };
     return labels[type as keyof typeof labels] || type;
   };
@@ -128,16 +198,16 @@ export default function PosIntegrationPage() {
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        PosAPI Холболт
+        PosAPI 3.0 Холболт
       </Typography>
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        Энэ хуудас нь PosAPI системтэй холбогдож мэдээлэл солилцоход ашиглагдана. Одоогоор энэ нь
-        mock горимд ажиллаж байна. Бодит API холболт дараа нь нэмэгдэнэ.
+        Энэ хуудас нь PosAPI 3.0 системтэй холбогдож мэдээлэл солилцоход ашиглагдана. Одоогоор энэ нь
+        mock горимд ажиллаж байна. Бодит API холболтыг .env файлд VITE_POSAPI_URL болон VITE_POSAPI_TOKEN тохируулснаар идэвхжүүлнэ.
       </Alert>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -147,7 +217,7 @@ export default function PosIntegrationPage() {
                 PosAPI-с барааны мэдээллийг татаж синхрончлоно
               </Typography>
               <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-                Сүүлд синхрончлосон: {formatTimestamp(lastSync.products?.timestamp || null)}
+                Сүүлд: {formatTimestamp(lastSync.products?.timestamp || null)}
               </Typography>
               <Button
                 variant="contained"
@@ -164,7 +234,7 @@ export default function PosIntegrationPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -174,7 +244,7 @@ export default function PosIntegrationPage() {
                 Захиалгын мэдээллийг PosAPI руу илгээнэ
               </Typography>
               <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-                Сүүлд синхрончлосон: {formatTimestamp(lastSync.orders?.timestamp || null)}
+                Сүүлд: {formatTimestamp(lastSync.orders?.timestamp || null)}
               </Typography>
               <Button
                 variant="contained"
@@ -191,7 +261,7 @@ export default function PosIntegrationPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -201,7 +271,7 @@ export default function PosIntegrationPage() {
                 Борлуулалтын мэдээллийг PosAPI руу илгээнэ
               </Typography>
               <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-                Сүүлд синхрончлосон: {formatTimestamp(lastSync.sales?.timestamp || null)}
+                Сүүлд: {formatTimestamp(lastSync.sales?.timestamp || null)}
               </Typography>
               <Button
                 variant="contained"
@@ -217,7 +287,73 @@ export default function PosIntegrationPage() {
             </CardContent>
           </Card>
         </Grid>
+
+        <Grid item xs={12} md={3}>
+          <Card sx={{ bgcolor: 'primary.light' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                И-баримт
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                PosAPI 3.0 И-баримт хэвлэх систем
+              </Typography>
+              <Typography variant="caption" display="block" sx={{ mb: 2 }}>
+                Сүүлд: {formatTimestamp(lastSync.ereceipt?.timestamp || null)}
+              </Typography>
+              <Chip label="ШИНЭ" color="error" size="small" sx={{ mb: 2 }} />
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
+
+      {/* И-баримт тестлэх хэсэг */}
+      <Card sx={{ mb: 4, borderColor: 'primary.main', borderWidth: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ReceiptIcon />
+            И-баримт Тестлэх
+          </Typography>
+          <Divider sx={{ my: 2 }} />
+          
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Дүн (₮)"
+                type="number"
+                value={testAmount}
+                onChange={(e) => setTestAmount(e.target.value)}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Харилцагчийн нэр"
+                value={testCustomerName}
+                onChange={(e) => setTestCustomerName(e.target.value)}
+                fullWidth
+              />
+            </Grid>
+          </Grid>
+
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Энэ нь тестийн и-баримт юм. Бодит борлуулалтын и-баримт хэвлэхийн тулд захиалгын дэлгэрэнгүй хэсэгт орж "И-баримт хэвлэх" товчийг дарна уу.
+          </Alert>
+
+          <Button
+            variant="contained"
+            size="large"
+            fullWidth
+            startIcon={
+              loading && syncType === 'ereceipt' ? <CircularProgress size={20} /> : <ReceiptIcon />
+            }
+            onClick={handleTestEReceipt}
+            disabled={loading}
+            color="primary"
+          >
+            {loading && syncType === 'ereceipt' ? 'И-баримт хэвлэж байна...' : 'Тест И-баримт Хэвлэх'}
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent>
@@ -251,7 +387,11 @@ export default function PosIntegrationPage() {
                   {syncHistory.map((history) => (
                     <TableRow key={history.id}>
                       <TableCell>
-                        <Chip label={getSyncTypeLabel(history.type)} size="small" />
+                        <Chip 
+                          label={getSyncTypeLabel(history.type)} 
+                          size="small"
+                          color={history.type === 'ereceipt' ? 'primary' : 'default'}
+                        />
                       </TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={1} alignItems="center">
@@ -280,4 +420,3 @@ export default function PosIntegrationPage() {
     </Box>
   );
 }
-

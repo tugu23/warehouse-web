@@ -10,10 +10,16 @@ const DashboardPage = lazy(() => import('../features/dashboard/DashboardPage'));
 const ProductsPage = lazy(() => import('../features/products/ProductsPage'));
 const ProductBatchesPage = lazy(() => import('../features/products/ProductBatchesPage'));
 const MonthlyInventoryPage = lazy(() => import('../features/products/MonthlyInventoryPage'));
+const ProductSalesAnalyticsPage = lazy(
+  () => import('../features/products/ProductSalesAnalyticsPage')
+);
 const CustomersPage = lazy(() => import('../features/customers/CustomersPage'));
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'));
 const ReturnsPage = lazy(() => import('../features/returns/ReturnsPage'));
 const EmployeesPage = lazy(() => import('../features/employees/EmployeesPage'));
+const EmployeeLocationTrackingPage = lazy(
+  () => import('../features/employees/EmployeeLocationTrackingPage')
+);
 const AgentsPage = lazy(() => import('../features/agents/AgentsPage'));
 const VisitPlansPage = lazy(() => import('../features/workplan/VisitPlansPage'));
 const WorkTasksPage = lazy(() => import('../features/workplan/WorkTasksPage'));
@@ -57,6 +63,7 @@ export default function AppRoutes() {
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/products/batches" element={<ProductBatchesPage />} />
               <Route path="/products/inventory/monthly" element={<MonthlyInventoryPage />} />
+              <Route path="/products/analytics" element={<ProductSalesAnalyticsPage />} />
 
               {/* Categories */}
               <Route path="/categories" element={<CategoriesPage />} />
@@ -84,6 +91,10 @@ export default function AppRoutes() {
               <Route element={<ProtectedRoute allowedRoles={['Admin', 'Manager']} />}>
                 <Route path="/returns" element={<ReturnsPage />} />
                 <Route path="/agents" element={<AgentsPage />} />
+                <Route
+                  path="/employees/location-tracking"
+                  element={<EmployeeLocationTrackingPage />}
+                />
               </Route>
 
               {/* Admin only */}

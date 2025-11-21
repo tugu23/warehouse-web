@@ -49,6 +49,10 @@ import {
   InventoryReportData,
   DeliveryScheduleReport,
   ApiResponse,
+  ProductSalesAnalytics,
+  SalesReportGrouped,
+  SalesGroupBy,
+  EmployeeLocationFiltered,
 } from '../types';
 
 // Authentication API
@@ -91,6 +95,21 @@ export const productsApi = {
   getMonthlyInventory: (month: string) =>
     api.get<ApiResponse<{ inventory: MonthlyInventory[] }>>('/api/products/inventory/monthly', {
       params: { month },
+    }),
+  // Sales Analytics
+  getSalesAnalytics: (productId?: number, params?: { months?: number }) =>
+    productId
+      ? api.get<ApiResponse<{ analytics: ProductSalesAnalytics }>>(
+          `/api/products/${productId}/sales-analytics`,
+          { params }
+        )
+      : api.get<ApiResponse<{ analytics: ProductSalesAnalytics[] }>>(
+          '/api/products/sales-analytics',
+          { params }
+        ),
+  getAllSalesAnalytics: (params?: { months?: number }) =>
+    api.get<ApiResponse<{ analytics: ProductSalesAnalytics[] }>>('/api/products/sales-analytics', {
+      params,
     }),
 };
 
@@ -144,6 +163,14 @@ export const agentsApi = {
     api.get<ApiResponse<AgentRoute>>(`/api/agents/${agentId}/route`, { params }),
   getAllLocations: (params?: { date?: string }) =>
     api.get<ApiResponse<AllAgentLocations>>('/api/agents/locations/all', { params }),
+  // Location tracking filtered by store address
+  getLocationsByStore: (
+    agentId: number,
+    params: { storeAddress?: string; startDate: string; endDate: string }
+  ) =>
+    api.get<ApiResponse<EmployeeLocationFiltered>>(`/api/agents/${agentId}/locations/filtered`, {
+      params,
+    }),
 };
 
 // Visit Plans API
@@ -230,6 +257,14 @@ export const reportsApi = {
     agentId?: number;
     customerId?: number;
   }) => api.get<ApiResponse<SalesReportData>>('/api/reports/sales', { params }),
+  // Grouped sales report
+  getSalesGrouped: (params: {
+    startDate: string;
+    endDate: string;
+    groupBy: SalesGroupBy;
+    agentId?: number;
+    orderType?: 'Market' | 'Store';
+  }) => api.get<ApiResponse<SalesReportGrouped>>('/api/reports/sales/grouped', { params }),
   getCreditStatus: (params?: { customerId?: number; agentId?: number }) =>
     api.get<ApiResponse<CreditStatusReport>>('/api/reports/credit-status', { params }),
   getInventoryReport: (params?: { categoryId?: number; supplierId?: number; lowStock?: boolean }) =>

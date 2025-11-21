@@ -98,14 +98,16 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
                 <InputLabel>Байгууллагын төрөл</InputLabel>
                 <Select {...field} label="Байгууллагын төрөл">
                   <MenuItem value="">Сонгох</MenuItem>
-                  <MenuItem value="Дэлгүүр">Дэлгүүр</MenuItem>
-                  <MenuItem value="Сүлжээ">Сүлжээ</MenuItem>
-                  <MenuItem value="Ресторан">Ресторан</MenuItem>
-                  <MenuItem value="Бусад">Бусад</MenuItem>
+                  <MenuItem value="Market Warehouse">Захын лангуу (Market Warehouse)</MenuItem>
+                  <MenuItem value="Store">Дэлгүүр (Store)</MenuItem>
+                  <MenuItem value="Restaurant">Ресторан (Restaurant)</MenuItem>
+                  <MenuItem value="Chain">Сүлжээ (Chain)</MenuItem>
+                  <MenuItem value="Other">Бусад (Other)</MenuItem>
                 </Select>
-                {errors.organizationType && (
-                  <FormHelperText>{errors.organizationType.message}</FormHelperText>
-                )}
+                <FormHelperText>
+                  {errors.organizationType?.message ||
+                    'Захын лангуу: Өмнөх өдөр захиалга, дараа өдөр хүргэлт. Дэлгүүр: Шууд захиалга ба НӨАТ.'}
+                </FormHelperText>
               </FormControl>
             )}
           />

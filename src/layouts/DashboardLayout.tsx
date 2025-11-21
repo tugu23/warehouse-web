@@ -35,6 +35,8 @@ import {
   Category as CategoryIcon,
   Event as EventIcon,
   Assessment as ReportIcon,
+  Analytics as AnalyticsIcon,
+  Place as PlaceIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../config/ThemeProvider';
@@ -52,6 +54,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Products', icon: <InventoryIcon />, path: '/products' },
+  { text: 'Sales Analytics', icon: <AnalyticsIcon />, path: '/products/analytics' },
   { text: 'Categories', icon: <CategoryIcon />, path: '/categories' },
   { text: 'Customers', icon: <PeopleIcon />, path: '/customers' },
   { text: 'Orders', icon: <ShoppingCartIcon />, path: '/orders' },
@@ -60,6 +63,12 @@ const menuItems: MenuItem[] = [
   { text: 'Reports', icon: <ReportIcon />, path: '/reports/sales' },
   { text: 'Employees', icon: <GroupIcon />, path: '/employees', roles: ['Admin'] },
   { text: 'Agent Tracking', icon: <LocationIcon />, path: '/agents', roles: ['Admin', 'Manager'] },
+  {
+    text: 'Location Tracking',
+    icon: <PlaceIcon />,
+    path: '/employees/location-tracking',
+    roles: ['Admin', 'Manager'],
+  },
 ];
 
 export default function DashboardLayout() {

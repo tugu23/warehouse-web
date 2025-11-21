@@ -24,6 +24,7 @@ export interface SyncHistory {
 export interface EReceiptRequest {
   orderId: number;
   amount: number;
+  vatAmount: number; // НӨАТ дүн
   customerTin?: string; // Харилцагчийн регистр (НӨАТ төлөгч бол)
   customerName: string;
   items: Array<{
@@ -48,6 +49,11 @@ export interface EReceiptResponse {
   message: string;
   timestamp: string;
 }
+
+// Helper function to calculate VAT
+export const calculateVAT = (amount: number, rate: number = 0.1): number => {
+  return amount * rate;
+};
 
 // Mock sync history storage (development only)
 let syncHistoryStorage: SyncHistory[] = [];

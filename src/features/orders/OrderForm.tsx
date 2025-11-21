@@ -19,10 +19,15 @@ import {
   FormControlLabel,
   Alert,
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Store as StoreIcon,
+  Warehouse as WarehouseIcon,
+} from '@mui/icons-material';
 import { addDays, format } from 'date-fns';
 import { orderSchema } from '../../utils/validation';
-import { CreateOrderRequest, Customer, Product, Employee } from '../../types';
+import { CreateOrderRequest, Customer, Product, Employee, OrderType } from '../../types';
 import { customersApi, productsApi, employeesApi } from '../../api';
 import { z } from 'zod';
 import BarcodeInput from '../../components/BarcodeInput';
@@ -41,6 +46,8 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [barcodeValue, setBarcodeValue] = useState('');
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
+  const [orderType, setOrderType] = useState<OrderType>('Market');
+  const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
 
   const {
     control,
@@ -70,10 +77,33 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const isCredit = watch('isCredit');
   const creditTermDays = watch('creditTermDays');
   const paidAmount = watch('paidAmount');
+  const selectedCustomerId = watch('customerId');
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Detect order type based on customer organization type
+  useEffect(() => {
+    const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
+    if (selectedCustomer) {
+      const orgType = selectedCustomer.organizationType;
+      if (orgType === 'Market Warehouse') {
+        setOrderType('Market');
+        // Set delivery date to next day for market orders
+        const tomorrow = addDays(new Date(), 1);
+        setDeliveryDate(format(tomorrow, 'yyyy-MM-dd'));
+      } else if (orgType === 'Store') {
+        setOrderType('Store');
+        setDeliveryDate(null); // Store orders are immediate
+      } else {
+        // Default to Market for other types
+        setOrderType('Market');
+        const tomorrow = addDays(new Date(), 1);
+        setDeliveryDate(format(tomorrow, 'yyyy-MM-dd'));
+      }
+    }
+  }, [selectedCustomerId, customers]);
 
   const fetchData = async () => {
     try {
@@ -151,7 +181,10 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   };
 
   const totalAmount = calculateTotal();
-  const remainingAmount = isCredit ? totalAmount - (paidAmount || 0) : 0;
+  const vatRate = 0.1; // 10% VAT
+  const vatAmount = orderType === 'Store' ? totalAmount * vatRate : 0;
+  const totalWithVat = orderType === 'Store' ? totalAmount + vatAmount : totalAmount;
+  const remainingAmount = isCredit ? totalWithVat - (paidAmount || 0) : 0;
   const creditDueDate =
     isCredit && creditTermDays ? format(addDays(new Date(), creditTermDays), 'yyyy-MM-dd') : null;
 
@@ -160,8 +193,14 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
       customerId: data.customerId,
       distributorId: data.distributorId,
       paymentMethod: data.paymentMethod,
+      orderType: orderType,
       items: data.items,
     };
+
+    // Add delivery date for market orders
+    if (orderType === 'Market' && deliveryDate) {
+      submitData.deliveryDate = deliveryDate;
+    }
 
     if (data.isCredit && data.creditTermDays) {
       submitData.paidAmount = data.paidAmount || 0;
@@ -190,6 +229,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                   {customers.map((customer) => (
                     <MenuItem key={customer.id} value={customer.id}>
                       {customer.name} ({customer.customerType.name})
+                      {customer.organizationType && ` - ${customer.organizationType}`}
                     </MenuItem>
                   ))}
                 </Select>
@@ -198,6 +238,27 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
             )}
           />
         </Grid>
+
+        {selectedCustomerId > 0 && (
+          <Grid item xs={12}>
+            <Alert
+              severity={orderType === 'Store' ? 'success' : 'info'}
+              icon={orderType === 'Store' ? <StoreIcon /> : <WarehouseIcon />}
+              sx={{ display: 'flex', alignItems: 'center' }}
+            >
+              <Box>
+                <Typography variant="subtitle2" fontWeight="bold">
+                  {orderType === 'Market' ? 'Захын лангуу захиалга' : 'Дэлгүүрийн захиалга'}
+                </Typography>
+                <Typography variant="body2">
+                  {orderType === 'Market'
+                    ? `Хүргэх огноо: ${deliveryDate ? format(new Date(deliveryDate), 'yyyy-MM-dd') : 'Дараа өдөр'} (Өмнөх өдөр захиалга, дараа өдөр хүргэлт)`
+                    : 'Шууд захиалга үүсгэж, шууд бараа өгөх. НӨАТ баримт хэвлэгдэнэ.'}
+                </Typography>
+              </Box>
+            </Alert>
+          </Grid>
+        )}
 
         <Grid item xs={12} sm={6}>
           <Controller
@@ -320,6 +381,16 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                   <strong>Зээлийн мэдээлэл:</strong>
                 </Typography>
                 <Typography variant="body2">Нийт дүн: ₮{totalAmount.toLocaleString()}</Typography>
+                {orderType === 'Store' && (
+                  <>
+                    <Typography variant="body2" color="primary">
+                      НӨАТ (10%): ₮{vatAmount.toLocaleString()}
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      Нийт (НӨАТ орсон): ₮{totalWithVat.toLocaleString()}
+                    </Typography>
+                  </>
+                )}
                 <Typography variant="body2">
                   Урьдчилгаа: ₮{(paidAmount || 0).toLocaleString()}
                 </Typography>
@@ -476,7 +547,22 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
       <Divider sx={{ my: 2 }} />
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-        <Typography variant="h6">Нийт дүн: ₮{totalAmount.toLocaleString()}</Typography>
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography variant="body1">Нийт дүн: ₮{totalAmount.toLocaleString()}</Typography>
+          {orderType === 'Store' && (
+            <>
+              <Typography variant="body2" color="primary">
+                НӨАТ (10%): ₮{vatAmount.toLocaleString()}
+              </Typography>
+              <Typography variant="h6" fontWeight="bold">
+                Нийт төлөх: ₮{totalWithVat.toLocaleString()}
+              </Typography>
+            </>
+          )}
+          {orderType === 'Market' && (
+            <Typography variant="h6">Нийт: ₮{totalAmount.toLocaleString()}</Typography>
+          )}
+        </Box>
       </Box>
 
       <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>

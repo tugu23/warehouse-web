@@ -279,13 +279,17 @@ export interface PaymentRecord {
 }
 
 // Order Types
+export type OrderType = 'Market' | 'Store';
+
 export interface Order {
   id: number;
   customerId: number;
   customer?: Customer;
   distributorId?: number; // Түгээгч
   distributor?: User;
+  orderType?: OrderType; // Захын лангуу эсвэл дэлгүүр
   totalAmount: string | number;
+  vatAmount?: number; // НӨАТ дүн (зөвхөн дэлгүүрийн захиалгад)
   status: 'Pending' | 'Fulfilled' | 'Cancelled';
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
@@ -293,6 +297,7 @@ export interface Order {
   remainingAmount: number;
   creditDueDate?: string;
   creditTermDays?: number;
+  deliveryDate?: string; // Хүргэх огноо (захын лангуу захиалгад)
   paymentRecords?: PaymentRecord[];
   createdById: number;
   createdBy?: User; // Борлуулагч
@@ -304,6 +309,8 @@ export interface Order {
   eReceiptNumber?: string; // И-баримтын дугаар
   eReceiptStatus?: 'pending' | 'printed' | 'failed'; // И-баримтын төлөв
   eReceiptUrl?: string; // И-баримт татах линк
+  eReceiptQrCode?: string; // QR код
+  eReceiptLottery?: string; // Сугалааны дугаар
   eReceiptPrintedAt?: string; // Хэвлэсэн огноо
 }
 
@@ -320,9 +327,11 @@ export interface OrderItem {
 export interface CreateOrderRequest {
   customerId: number;
   distributorId?: number;
+  orderType?: OrderType;
   paymentMethod: PaymentMethod;
   paidAmount?: number;
   creditTermDays?: number;
+  deliveryDate?: string;
   items: {
     productId: number;
     quantity: number;
@@ -648,4 +657,86 @@ export interface DeliveryScheduleReport {
     cancelled: number;
     totalOrders: number;
   };
+}
+
+// Product Sales Analytics Types
+export interface ProductSalesAnalytics {
+  productId: number;
+  product?: Product;
+  currentStock: number;
+  salesAverage1Month: number;
+  salesAverage3Month: number;
+  salesAverage6Month: number;
+  trend: 'up' | 'down' | 'stable';
+  trendPercentage: number;
+  stockStatus: 'ok' | 'low' | 'critical' | 'out';
+  monthlySales?: MonthlySalesData[];
+  recommendedOrderQuantity?: number;
+}
+
+export interface MonthlySalesData {
+  month: string; // 'YYYY-MM'
+  sales: number;
+  isOutlier?: boolean; // Дундаж тооцоололд хамаарахгүй эсэх
+  outlierReason?: string;
+}
+
+// Grouped Sales Report Types
+export type SalesGroupBy = 'month' | 'week' | 'year';
+
+export interface SalesReportGrouped {
+  dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+  groupBy: SalesGroupBy;
+  groups: SalesGroupData[];
+  summary: {
+    totalOrders: number;
+    totalRevenue: number;
+    totalPaid: number;
+    totalUnpaid: number;
+    byOrderType?: {
+      market: number;
+      store: number;
+    };
+  };
+}
+
+export interface SalesGroupData {
+  period: string; // e.g., '2024-01', '2024-W01', '2024'
+  periodLabel: string; // Human-readable label
+  orders: Order[];
+  totalOrders: number;
+  totalRevenue: number;
+  ordersByType?: {
+    market: number;
+    store: number;
+  };
+}
+
+// Employee Location Filtering Types
+export interface EmployeeLocationFiltered {
+  employee: Employee;
+  storeVisits: StoreVisit[];
+  dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+  summary: {
+    totalVisits: number;
+    uniqueStores: number;
+    totalDuration: number; // minutes
+  };
+}
+
+export interface StoreVisit {
+  location: AgentLocation;
+  customer?: Customer;
+  storeName: string;
+  storeAddress: string;
+  arrivalTime: string;
+  departureTime?: string;
+  duration?: number; // minutes
+  orderId?: number;
 }

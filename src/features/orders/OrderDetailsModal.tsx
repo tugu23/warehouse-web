@@ -16,11 +16,16 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
-import { Receipt as ReceiptIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
+import {
+  Receipt as ReceiptIcon,
+  CheckCircle as CheckCircleIcon,
+  Store as StoreIcon,
+  Warehouse as WarehouseIcon,
+} from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { Order } from '../../types';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import { posApi, EReceiptRequest } from '../../api/posApi';
+import { posApi, EReceiptRequest, calculateVAT } from '../../api/posApi';
 
 interface OrderDetailsModalProps {
   order: Order | null;
@@ -67,9 +72,13 @@ export default function OrderDetailsModal({
     setPrintingEReceipt(true);
 
     try {
+      const totalAmount = Number(order.totalAmount);
+      const vatAmount = order.orderType === 'Store' ? calculateVAT(totalAmount) : 0;
+
       const eReceiptRequest: EReceiptRequest = {
         orderId: order.id,
-        amount: Number(order.totalAmount),
+        amount: totalAmount,
+        vatAmount: vatAmount,
         customerTin: order.customer?.registrationNumber,
         customerName: order.customer?.name || 'Customer',
         items: order.orderItems.map((item) => ({
@@ -106,6 +115,8 @@ export default function OrderDetailsModal({
         //   eReceiptNumber: response.receiptNumber,
         //   eReceiptStatus: 'printed',
         //   eReceiptUrl: response.receiptUrl,
+        //   eReceiptQrCode: response.qrCode,
+        //   eReceiptLottery: response.lottery,
         //   eReceiptPrintedAt: response.timestamp,
         // });
       }
@@ -146,6 +157,24 @@ export default function OrderDetailsModal({
             Төлөв
           </Typography>
           <Chip label={order.status} color={getStatusColor(order.status)} />
+        </Grid>
+        <Grid item xs={6}>
+          <Typography variant="body2" color="text.secondary">
+            Захиалгын төрөл
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {order.orderType === 'Store' ? (
+              <>
+                <StoreIcon color="success" fontSize="small" />
+                <Chip label="Дэлгүүр" color="success" size="small" />
+              </>
+            ) : (
+              <>
+                <WarehouseIcon color="primary" fontSize="small" />
+                <Chip label="Захын лангуу" color="primary" size="small" />
+              </>
+            )}
+          </Box>
         </Grid>
         <Grid item xs={6}>
           <Typography variant="body2" color="text.secondary">
@@ -216,12 +245,47 @@ export default function OrderDetailsModal({
                 <TableCell align="right">₮{Number(item.subtotal).toLocaleString()}</TableCell>
               </TableRow>
             ))}
+            {order.orderType === 'Store' && (
+              <>
+                <TableRow>
+                  <TableCell colSpan={3} align="right">
+                    <Typography variant="body1">Дэд дүн:</Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography variant="body1">
+                      ₮{Number(order.totalAmount).toLocaleString()}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={3} align="right">
+                    <Typography variant="body1" color="primary">
+                      НӨАТ (10%):
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography variant="body1" color="primary">
+                      ₮{calculateVAT(Number(order.totalAmount)).toLocaleString()}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              </>
+            )}
             <TableRow>
               <TableCell colSpan={3} align="right">
-                <Typography variant="h6">Нийт дүн:</Typography>
+                <Typography variant="h6">
+                  {order.orderType === 'Store' ? 'Нийт төлөх дүн:' : 'Нийт дүн:'}
+                </Typography>
               </TableCell>
               <TableCell align="right">
-                <Typography variant="h6">₮{Number(order.totalAmount).toLocaleString()}</Typography>
+                <Typography variant="h6">
+                  ₮
+                  {order.orderType === 'Store'
+                    ? (
+                        Number(order.totalAmount) + calculateVAT(Number(order.totalAmount))
+                      ).toLocaleString()
+                    : Number(order.totalAmount).toLocaleString()}
+                </Typography>
               </TableCell>
             </TableRow>
           </TableBody>
@@ -229,16 +293,31 @@ export default function OrderDetailsModal({
       </TableContainer>
 
       <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-        {/* И-баримт хэвлэх товч */}
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={printingEReceipt ? <CircularProgress size={20} /> : <ReceiptIcon />}
-          onClick={handlePrintEReceipt}
-          disabled={printingEReceipt || order.status === 'Cancelled'}
-        >
-          {printingEReceipt ? 'Хэвлэж байна...' : 'И-баримт хэвлэх'}
-        </Button>
+        {/* И-баримт хэвлэх товч - зөвхөн дэлгүүрийн захиалгад */}
+        {order.orderType === 'Store' && (
+          <>
+            {!order.eReceiptNumber && (
+              <Alert severity="info" sx={{ flex: 1, mr: 'auto' }}>
+                <Typography variant="body2">
+                  Дэлгүүрийн захиалга - И-баримт хэвлэх шаардлагатай
+                </Typography>
+              </Alert>
+            )}
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={printingEReceipt ? <CircularProgress size={20} /> : <ReceiptIcon />}
+              onClick={handlePrintEReceipt}
+              disabled={printingEReceipt || order.status === 'Cancelled'}
+            >
+              {printingEReceipt
+                ? 'Хэвлэж байна...'
+                : order.eReceiptNumber
+                  ? 'Дахин хэвлэх'
+                  : 'И-баримт хэвлэх'}
+            </Button>
+          </>
+        )}
 
         {/* Төлөв өөрчлөх товчнууд */}
         {canManage && order.status === 'Pending' && (

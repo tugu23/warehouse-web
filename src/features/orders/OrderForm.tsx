@@ -213,7 +213,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   return (
     <Box component="form" onSubmit={handleSubmit(handleFormSubmit)}>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12} sm={6} component="div">
           <Controller
             name="customerId"
             control={control}

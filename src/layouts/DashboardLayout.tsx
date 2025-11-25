@@ -55,6 +55,8 @@ const menuItems: MenuItem[] = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Products', icon: <InventoryIcon />, path: '/products' },
   { text: 'Sales Analytics', icon: <AnalyticsIcon />, path: '/products/analytics' },
+  { text: 'Inventory Forecast', icon: <AnalyticsIcon />, path: '/analytics/forecast' },
+  { text: 'Sales by Period', icon: <AnalyticsIcon />, path: '/analytics/sales-period' },
   { text: 'Categories', icon: <CategoryIcon />, path: '/categories' },
   { text: 'Customers', icon: <PeopleIcon />, path: '/customers' },
   { text: 'Orders', icon: <ShoppingCartIcon />, path: '/orders' },

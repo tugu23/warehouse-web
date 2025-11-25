@@ -53,6 +53,13 @@ import {
   SalesReportGrouped,
   SalesGroupBy,
   EmployeeLocationFiltered,
+  InventoryForecast,
+  CalculateAnalyticsRequest,
+  CalculateAllAnalyticsRequest,
+  GenerateForecastRequest,
+  GenerateAllForecastsRequest,
+  SalesByPeriodParams,
+  SalesByPeriodResponse,
 } from '../types';
 
 // Authentication API
@@ -95,21 +102,6 @@ export const productsApi = {
   getMonthlyInventory: (month: string) =>
     api.get<ApiResponse<{ inventory: MonthlyInventory[] }>>('/api/products/inventory/monthly', {
       params: { month },
-    }),
-  // Sales Analytics
-  getSalesAnalytics: (productId?: number, params?: { months?: number }) =>
-    productId
-      ? api.get<ApiResponse<{ analytics: ProductSalesAnalytics }>>(
-          `/api/products/${productId}/sales-analytics`,
-          { params }
-        )
-      : api.get<ApiResponse<{ analytics: ProductSalesAnalytics[] }>>(
-          '/api/products/sales-analytics',
-          { params }
-        ),
-  getAllSalesAnalytics: (params?: { months?: number }) =>
-    api.get<ApiResponse<{ analytics: ProductSalesAnalytics[] }>>('/api/products/sales-analytics', {
-      params,
     }),
 };
 
@@ -249,6 +241,46 @@ export const deliveryPlansApi = {
   delete: (id: number) => api.delete<ApiResponse<void>>(`/api/delivery-plans/${id}`),
 };
 
+// Analytics API
+export const analyticsApi = {
+  // Product Sales Analytics
+  getProductAnalytics: (productId: number, params?: { months?: number }) =>
+    api.get<ApiResponse<{ analytics: ProductSalesAnalytics }>>(
+      `/api/analytics/products/${productId}`,
+      { params }
+    ),
+  getAllProductAnalytics: (params?: { months?: number }) =>
+    api.get<ApiResponse<{ analytics: ProductSalesAnalytics[] }>>('/api/analytics/products/all', {
+      params,
+    }),
+  // Calculate Analytics
+  calculateAnalytics: (data: CalculateAnalyticsRequest) =>
+    api.post<ApiResponse<void>>('/api/analytics/calculate', data),
+  calculateAllAnalytics: (data?: CalculateAllAnalyticsRequest) =>
+    api.post<ApiResponse<void>>('/api/analytics/calculate/all', data || {}),
+  // Forecasting
+  getForecast: (params?: {
+    page?: number;
+    limit?: number;
+    productId?: number;
+    month?: number;
+    year?: number;
+  }) =>
+    api.get<
+      ApiResponse<{
+        forecasts: InventoryForecast[];
+        pagination: { page: number; limit: number; total: number; totalPages: number };
+      }>
+    >('/api/analytics/forecast', { params }),
+  generateForecast: (data: GenerateForecastRequest) =>
+    api.post<ApiResponse<void>>('/api/analytics/forecast', data),
+  generateAllForecasts: (data?: GenerateAllForecastsRequest) =>
+    api.post<ApiResponse<void>>('/api/analytics/forecast/all', data || {}),
+  // Sales by Period
+  getSalesByPeriod: (params: SalesByPeriodParams) =>
+    api.get<ApiResponse<SalesByPeriodResponse>>('/api/analytics/sales-by-period', { params }),
+};
+
 // Reports API
 export const reportsApi = {
   getSalesReport: (params: {
@@ -313,4 +345,5 @@ export default {
   suppliers: suppliersApi,
   deliveryPlans: deliveryPlansApi,
   reports: reportsApi,
+  analytics: analyticsApi,
 };

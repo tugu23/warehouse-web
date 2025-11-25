@@ -13,6 +13,8 @@ const MonthlyInventoryPage = lazy(() => import('../features/products/MonthlyInve
 const ProductSalesAnalyticsPage = lazy(
   () => import('../features/products/ProductSalesAnalyticsPage')
 );
+const InventoryForecastPage = lazy(() => import('../features/analytics/InventoryForecastPage'));
+const SalesByPeriodPage = lazy(() => import('../features/analytics/SalesByPeriodPage'));
 const CustomersPage = lazy(() => import('../features/customers/CustomersPage'));
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'));
 const ReturnsPage = lazy(() => import('../features/returns/ReturnsPage'));
@@ -64,6 +66,10 @@ export default function AppRoutes() {
               <Route path="/products/batches" element={<ProductBatchesPage />} />
               <Route path="/products/inventory/monthly" element={<MonthlyInventoryPage />} />
               <Route path="/products/analytics" element={<ProductSalesAnalyticsPage />} />
+
+              {/* Analytics */}
+              <Route path="/analytics/forecast" element={<InventoryForecastPage />} />
+              <Route path="/analytics/sales-period" element={<SalesByPeriodPage />} />
 
               {/* Categories */}
               <Route path="/categories" element={<CategoriesPage />} />

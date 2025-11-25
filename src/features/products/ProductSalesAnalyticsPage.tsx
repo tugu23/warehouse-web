@@ -6,10 +6,12 @@ import {
   TrendingDown as TrendingDownIcon,
   TrendingFlat as TrendingFlatIcon,
   Info as InfoIcon,
+  Calculate as CalculateIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
-import { productsApi } from '../../api';
+import { analyticsApi } from '../../api';
 import { ProductSalesAnalytics } from '../../types';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 import ProductSalesDetailModal from './ProductSalesDetailModal';
@@ -17,6 +19,7 @@ import ProductSalesDetailModal from './ProductSalesDetailModal';
 export default function ProductSalesAnalyticsPage() {
   const [analytics, setAnalytics] = useState<ProductSalesAnalytics[]>([]);
   const [loading, setLoading] = useState(false);
+  const [calculating, setCalculating] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductSalesAnalytics | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -28,13 +31,28 @@ export default function ProductSalesAnalyticsPage() {
   const fetchAnalytics = async () => {
     setLoading(true);
     try {
-      const response = await productsApi.getAllSalesAnalytics();
+      const response = await analyticsApi.getAllProductAnalytics();
       setAnalytics(response.data.data?.analytics || []);
     } catch (error) {
       console.error('Error fetching analytics:', error);
       toast.error('Мэдээлэл татахад алдаа гарлаа');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCalculateAll = async () => {
+    setCalculating(true);
+    try {
+      await analyticsApi.calculateAllAnalytics();
+      toast.success('Шинжилгээ амжилттай тооцоолов');
+      // Refresh analytics after calculation
+      await fetchAnalytics();
+    } catch (error) {
+      console.error('Error calculating analytics:', error);
+      toast.error('Шинжилгээ тооцоолоход алдаа гарлаа');
+    } finally {
+      setCalculating(false);
     }
   };
 
@@ -152,14 +170,24 @@ export default function ProductSalesAnalyticsPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Барааны борлуулалтын шинжилгээ</Typography>
-        <Button
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={handleExport}
-          disabled={exporting || analytics.length === 0}
-        >
-          {exporting ? 'Экспорт хийж байна...' : 'Excel татах'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="contained"
+            startIcon={calculating ? <RefreshIcon /> : <CalculateIcon />}
+            onClick={handleCalculateAll}
+            disabled={calculating || loading}
+          >
+            {calculating ? 'Тооцоолж байна...' : 'Шинжилгээ тооцоолох'}
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExport}
+            disabled={exporting || analytics.length === 0}
+          >
+            {exporting ? 'Экспорт хийж байна...' : 'Excel татах'}
+          </Button>
+        </Box>
       </Box>
 
       <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>

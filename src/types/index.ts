@@ -681,6 +681,75 @@ export interface MonthlySalesData {
   outlierReason?: string;
 }
 
+// Inventory Forecast Types
+export interface InventoryForecast {
+  id: number;
+  productId: number;
+  product?: Product;
+  month: number;
+  year: number;
+  predictedDemand: number;
+  recommendedOrderQuantity: number;
+  confidence?: number;
+  baselineStock?: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CalculateAnalyticsRequest {
+  productId: number;
+  month?: number;
+  year?: number;
+}
+
+export interface CalculateAllAnalyticsRequest {
+  month?: number;
+  year?: number;
+}
+
+export interface GenerateForecastRequest {
+  productId: number;
+  month?: number;
+  year?: number;
+}
+
+export interface GenerateAllForecastsRequest {
+  month?: number;
+  year?: number;
+}
+
+// Sales by Period Types
+export type SalesPeriod = 'week' | 'month' | 'year';
+
+export interface SalesByPeriodParams {
+  startDate: string;
+  endDate: string;
+  period: SalesPeriod;
+}
+
+export interface SalesByPeriodData {
+  period: string; // Date string based on period (e.g., '2025-11', 'Week 45', '2025')
+  totalSales: number;
+  totalOrders: number;
+  averageOrderValue: number;
+  periodStart: string;
+  periodEnd: string;
+}
+
+export interface SalesByPeriodResponse {
+  dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+  period: SalesPeriod;
+  data: SalesByPeriodData[];
+  summary: {
+    totalSales: number;
+    totalOrders: number;
+    averageOrderValue: number;
+  };
+}
+
 // Grouped Sales Report Types
 export type SalesGroupBy = 'month' | 'week' | 'year';
 

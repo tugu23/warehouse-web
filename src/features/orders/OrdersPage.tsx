@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, IconButton, Typography, Chip } from '@mui/material';
-import { Add as AddIcon, Visibility as ViewIcon, Download as DownloadIcon } from '@mui/icons-material';
+import { Box, Button, IconButton, Chip, Tooltip } from '@mui/material';
+import {
+  Add as AddIcon,
+  Visibility as ViewIcon,
+  Download as DownloadIcon,
+  PictureAsPdf as PdfIcon,
+} from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -10,13 +15,11 @@ import { Order, CreateOrderRequest } from '../../types';
 import OrderForm from './OrderForm';
 import OrderDetailsModal from './OrderDetailsModal';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
-import { exportOrdersToExcel } from '../../utils/excelExport';
 
 export default function OrdersPage() {
   const { canManage } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -28,7 +31,7 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const response = await ordersApi.getAll();
+      const response = await ordersApi.getAll({ limit: 0 });
       setOrders(response.data.data?.orders || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -67,6 +70,25 @@ export default function OrdersPage() {
       setDetailsModalOpen(true);
     } catch (error) {
       console.error('Error fetching order details:', error);
+    }
+  };
+
+  const handleViewReceiptPDF = async (orderId: number) => {
+    try {
+      await ordersApi.viewReceiptPDF(orderId);
+    } catch (error) {
+      console.error('Error viewing PDF:', error);
+      toast.error('Failed to open PDF receipt');
+    }
+  };
+
+  const handleDownloadReceiptPDF = async (orderId: number) => {
+    try {
+      await ordersApi.downloadReceiptPDF(orderId);
+      toast.success('PDF receipt downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast.error('Failed to download PDF receipt');
     }
   };
 
@@ -121,16 +143,42 @@ export default function OrdersPage() {
       align: 'center' as const,
       format: (row: Order) => (
         <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-          <IconButton
-            size="small"
-            color="info"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleViewDetails(row);
-            }}
-          >
-            <ViewIcon fontSize="small" />
-          </IconButton>
+          <Tooltip title="View Details">
+            <IconButton
+              size="small"
+              color="info"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewDetails(row);
+              }}
+            >
+              <ViewIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="View Receipt PDF">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewReceiptPDF(row.id);
+              }}
+            >
+              <PdfIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Download Receipt PDF">
+            <IconButton
+              size="small"
+              color="success"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadReceiptPDF(row.id);
+              }}
+            >
+              <DownloadIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
       ),
     },

@@ -60,6 +60,7 @@ import {
   GenerateAllForecastsRequest,
   SalesByPeriodParams,
   SalesByPeriodResponse,
+  PaginationInfo,
 } from '../types';
 
 // Authentication API
@@ -69,7 +70,8 @@ export const authApi = {
 
 // Employees API
 export const employeesApi = {
-  getAll: () => api.get<ApiResponse<{ employees: Employee[] }>>('/api/employees'),
+  getAll: (params?: { limit?: number; page?: number }) =>
+    api.get<ApiResponse<{ employees: Employee[] }>>('/api/employees', { params }),
   getById: (id: number) => api.get<ApiResponse<{ employee: Employee }>>(`/api/employees/${id}`),
   create: (data: CreateEmployeeRequest) =>
     api.post<ApiResponse<{ employee: Employee }>>('/api/employees', data),
@@ -80,8 +82,16 @@ export const employeesApi = {
 
 // Products API
 export const productsApi = {
-  getAll: (params?: { search?: string; supplierId?: number; categoryId?: number }) =>
-    api.get<ApiResponse<{ products: Product[] }>>('/api/products', { params }),
+  getAll: (params?: {
+    search?: string;
+    supplierId?: number;
+    categoryId?: number;
+    limit?: number;
+    page?: number;
+  }) =>
+    api.get<ApiResponse<{ products: Product[]; pagination?: PaginationInfo }>>('/api/products', {
+      params,
+    }),
   getById: (id: number) => api.get<ApiResponse<{ product: Product }>>(`/api/products/${id}`),
   getByBarcode: (barcode: string) =>
     api.get<ApiResponse<{ product: Product }>>(`/api/products/barcode/${barcode}`),
@@ -107,7 +117,10 @@ export const productsApi = {
 
 // Customers API
 export const customersApi = {
-  getAll: () => api.get<ApiResponse<{ customers: Customer[] }>>('/api/customers'),
+  getAll: (params?: { search?: string; limit?: number; page?: number; district?: string }) =>
+    api.get<ApiResponse<{ customers: Customer[]; pagination?: PaginationInfo }>>('/api/customers', {
+      params,
+    }),
   getById: (id: number) => api.get<ApiResponse<{ customer: Customer }>>(`/api/customers/${id}`),
   create: (data: CreateCustomerRequest) =>
     api.post<ApiResponse<{ customer: Customer }>>('/api/customers', data),
@@ -117,8 +130,16 @@ export const customersApi = {
 
 // Orders API
 export const ordersApi = {
-  getAll: (params?: { status?: string; customerId?: number; paymentStatus?: string }) =>
-    api.get<ApiResponse<{ orders: Order[] }>>('/api/orders', { params }),
+  getAll: (params?: {
+    status?: string;
+    customerId?: number;
+    paymentStatus?: string;
+    limit?: number;
+    page?: number;
+  }) =>
+    api.get<ApiResponse<{ orders: Order[]; pagination?: PaginationInfo }>>('/api/orders', {
+      params,
+    }),
   getById: (id: number) => api.get<ApiResponse<{ order: Order }>>(`/api/orders/${id}`),
   create: (data: CreateOrderRequest) =>
     api.post<ApiResponse<{ order: Order }>>('/api/orders', data),
@@ -134,11 +155,63 @@ export const ordersApi = {
   getReceipt: (id: number) => api.get(`/api/orders/${id}/receipt`),
   getDocument: (id: number) => api.get(`/api/orders/${id}/document`),
   exportToExcel: (id: number) => api.get(`/api/orders/${id}/export`, { responseType: 'blob' }),
+  // PDF Receipt API
+  viewReceiptPDF: async (id: number) => {
+    try {
+      const response = await api.get(`/api/orders/${id}/receipt/pdf`, {
+        responseType: 'blob',
+      });
+
+      // Create blob from response
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+
+      // Create blob URL and open in new tab
+      const pdfUrl = window.URL.createObjectURL(blob);
+      const newWindow = window.open(pdfUrl, '_blank');
+
+      // Clean up blob URL after window opens
+      if (newWindow) {
+        newWindow.onload = () => {
+          window.URL.revokeObjectURL(pdfUrl);
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error viewing PDF:', error);
+      throw error;
+    }
+  },
+  downloadReceiptPDF: async (id: number) => {
+    try {
+      const response = await api.get(`/api/orders/${id}/receipt/pdf?download=true`, {
+        responseType: 'blob',
+      });
+
+      // Create blob from response
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+
+      // Create download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `receipt-order-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      throw error;
+    }
+  },
 };
 
 // Returns API
 export const returnsApi = {
-  getAll: (params?: { orderId?: number; productId?: number }) =>
+  getAll: (params?: { orderId?: number; productId?: number; limit?: number; page?: number }) =>
     api.get<ApiResponse<{ returns: Return[] }>>('/api/returns', { params }),
   getById: (id: number) => api.get<ApiResponse<{ return: Return }>>(`/api/returns/${id}`),
   create: (data: CreateReturnRequest) =>
@@ -204,7 +277,8 @@ export const salesTargetsApi = {
 
 // Categories API
 export const categoriesApi = {
-  getAll: () => api.get<ApiResponse<{ categories: Category[] }>>('/api/categories'),
+  getAll: (params?: { search?: string; limit?: number; page?: number }) =>
+    api.get<ApiResponse<{ categories: Category[] }>>('/api/categories', { params }),
   getById: (id: number) => api.get<ApiResponse<{ category: Category }>>(`/api/categories/${id}`),
   create: (data: CreateCategoryRequest) =>
     api.post<ApiResponse<{ category: Category }>>('/api/categories', data),
@@ -215,7 +289,8 @@ export const categoriesApi = {
 
 // Suppliers API
 export const suppliersApi = {
-  getAll: () => api.get<ApiResponse<{ suppliers: Supplier[] }>>('/api/suppliers'),
+  getAll: (params?: { limit?: number; page?: number }) =>
+    api.get<ApiResponse<{ suppliers: Supplier[] }>>('/api/suppliers', { params }),
   getById: (id: number) => api.get<ApiResponse<{ supplier: Supplier }>>(`/api/suppliers/${id}`),
   create: (data: CreateSupplierRequest) =>
     api.post<ApiResponse<{ supplier: Supplier }>>('/api/suppliers', data),

@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Chip, IconButton, Typography } from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Inventory2 as InventoryIcon,
-} from '@mui/icons-material';
+import { Box, Button, Chip, IconButton } from '@mui/material';
+import { Add as AddIcon, Edit as EditIcon, Inventory2 as InventoryIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
-import ConfirmDialog from '../../components/ConfirmDialog';
 import { useAuth } from '../../hooks/useAuth';
 import { productsApi } from '../../api';
 import { Product, CreateProductRequest, UpdateProductRequest } from '../../types';
@@ -18,12 +12,11 @@ import InventoryAdjustmentForm from './InventoryAdjustmentForm';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 
 export default function ProductsPage() {
-  const { canManage } = useAuth();
+  const { canManage, canCreate } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -33,7 +26,7 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await productsApi.getAll();
+      const response = await productsApi.getAll({ limit: 1000 });
       setProducts(response.data.data?.products || []);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -175,7 +168,7 @@ export default function ProductsPage() {
         searchable
         searchPlaceholder="Search products..."
         actions={
-          canManage() && (
+          canCreate() && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setModalOpen(true)}>
               Add Product
             </Button>

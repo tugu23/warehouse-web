@@ -65,11 +65,13 @@ export default function AppRoutes() {
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/products/batches" element={<ProductBatchesPage />} />
               <Route path="/products/inventory/monthly" element={<MonthlyInventoryPage />} />
-              <Route path="/products/analytics" element={<ProductSalesAnalyticsPage />} />
 
-              {/* Analytics */}
-              <Route path="/analytics/forecast" element={<InventoryForecastPage />} />
-              <Route path="/analytics/sales-period" element={<SalesByPeriodPage />} />
+              {/* Analytics - Admin/Manager only */}
+              <Route element={<ProtectedRoute allowedRoles={['Admin', 'Manager']} />}>
+                <Route path="/products/analytics" element={<ProductSalesAnalyticsPage />} />
+                <Route path="/analytics/forecast" element={<InventoryForecastPage />} />
+                <Route path="/analytics/sales-period" element={<SalesByPeriodPage />} />
+              </Route>
 
               {/* Categories */}
               <Route path="/categories" element={<CategoriesPage />} />

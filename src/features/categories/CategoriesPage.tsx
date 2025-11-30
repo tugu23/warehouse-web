@@ -23,8 +23,10 @@ import { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../../ty
 import { categoriesApi } from '../../api';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function CategoriesPage() {
+  const { canManage, canCreate } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
@@ -46,7 +48,7 @@ export default function CategoriesPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await categoriesApi.getAll();
+      const response = await categoriesApi.getAll({ limit: 1000 });
       setCategories(response.data.data?.categories || []);
     } catch (error) {
       toast.error('Failed to load categories');
@@ -116,9 +118,11 @@ export default function CategoriesPage() {
         <Typography variant="h4" component="h1">
           Categories
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>
-          Add Category
-        </Button>
+        {canCreate() && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>
+            Add Category
+          </Button>
+        )}
       </Box>
 
       <TableContainer component={Paper}>
@@ -153,12 +157,20 @@ export default function CategoriesPage() {
                   <TableCell>{category.nameEnglish || '-'}</TableCell>
                   <TableCell>{category.description || '-'}</TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => handleEdit(category)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => handleDelete(category)}>
-                      <DeleteIcon />
-                    </IconButton>
+                    {canManage() && (
+                      <>
+                        <IconButton size="small" onClick={() => handleEdit(category)}>
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDelete(category)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

@@ -12,6 +12,7 @@ export const useAuth = () => {
   const isManager = () => hasRole(['Manager']);
   const isSalesAgent = () => hasRole(['SalesAgent']);
   const canManage = () => hasRole(['Admin', 'Manager']);
+  const canCreate = () => hasRole(['Admin', 'Manager', 'SalesAgent']);
 
   return {
     user,
@@ -22,5 +23,6 @@ export const useAuth = () => {
     isManager,
     isSalesAgent,
     canManage,
+    canCreate,
   };
 };

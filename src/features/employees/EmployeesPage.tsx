@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, IconButton, Typography, Chip } from '@mui/material';
+import { Box, Button, IconButton, Chip } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
@@ -24,7 +24,7 @@ export default function EmployeesPage() {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      const response = await employeesApi.getAll();
+      const response = await employeesApi.getAll({ limit: 0 });
       setEmployees(response.data.data?.employees || []);
     } catch (error) {
       console.error('Error fetching employees:', error);

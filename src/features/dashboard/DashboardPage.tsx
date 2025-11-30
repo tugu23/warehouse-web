@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Box, Grid, Card, CardContent, Typography, Paper } from '@mui/material';
+import { useEffect, useState, useCallback } from 'react';
+import { Box, Grid, Card, CardContent, Typography } from '@mui/material';
 import {
   People as PeopleIcon,
   Inventory as InventoryIcon,
   ShoppingCart as ShoppingCartIcon,
-  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { productsApi, customersApi, ordersApi, employeesApi } from '../../api';
-import { Product, Order, Customer } from '../../types';
+import { Product, Order } from '../../types';
 import { CardSkeleton } from '../../components/LoadingSkeletons';
 import DataTable from '../../components/DataTable';
 
@@ -61,11 +60,10 @@ export default function DashboardPage() {
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  // Compute isAdmin result to avoid function reference in dependencies
+  const userIsAdmin = isAdmin();
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
       const [productsRes, customersRes, ordersRes] = await Promise.all([
@@ -75,7 +73,7 @@ export default function DashboardPage() {
       ]);
 
       let employeesCount = 0;
-      if (isAdmin()) {
+      if (userIsAdmin) {
         const employeesRes = await employeesApi.getAll();
         employeesCount = employeesRes.data.data?.employees?.length || 0;
       }
@@ -84,11 +82,16 @@ export default function DashboardPage() {
       const customers = customersRes.data.data?.customers || [];
       const orders = ordersRes.data.data?.orders || [];
 
+      // Use pagination total if available, otherwise fallback to array length
+      const productsTotal = productsRes.data.data?.pagination?.total || products.length;
+      const customersTotal = customersRes.data.data?.pagination?.total || customers.length;
+      const ordersTotal = ordersRes.data.data?.pagination?.total || orders.length;
+
       setStats({
         employees: employeesCount,
-        products: products.length,
-        customers: customers.length,
-        orders: orders.length,
+        products: productsTotal,
+        customers: customersTotal,
+        orders: ordersTotal,
       });
 
       // Get low stock products (stock < 20)
@@ -105,7 +108,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userIsAdmin]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   if (loading) {
     return (
@@ -115,7 +122,7 @@ export default function DashboardPage() {
         </Typography>
         <Grid container spacing={3} sx={{ mt: 2 }}>
           {[...Array(4)].map((_, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
               <CardSkeleton />
             </Grid>
           ))}
@@ -134,8 +141,8 @@ export default function DashboardPage() {
       </Typography>
 
       <Grid container spacing={3} sx={{ mt: 2 }}>
-        {isAdmin() && (
-          <Grid item xs={12} sm={6} md={3}>
+        {userIsAdmin && (
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               title="Total Employees"
               value={stats.employees}
@@ -144,7 +151,7 @@ export default function DashboardPage() {
             />
           </Grid>
         )}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Total Products"
             value={stats.products}
@@ -152,7 +159,7 @@ export default function DashboardPage() {
             color="secondary"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Total Customers"
             value={stats.customers}
@@ -160,7 +167,7 @@ export default function DashboardPage() {
             color="success"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Total Orders"
             value={stats.orders}
@@ -189,12 +196,14 @@ export default function DashboardPage() {
                 id: 'stockQuantity',
                 label: 'Stock',
                 align: 'center',
-                format: (row: Product) => (
+                format: (row: Record<string, unknown>) => (
                   <Typography
-                    color={row.stockQuantity < 10 ? 'error' : 'warning.main'}
+                    color={
+                      (row as unknown as Product).stockQuantity < 10 ? 'error' : 'warning.main'
+                    }
                     fontWeight="bold"
                   >
-                    {row.stockQuantity}
+                    {(row as unknown as Product).stockQuantity}
                   </Typography>
                 ),
               },
@@ -202,10 +211,16 @@ export default function DashboardPage() {
                 id: 'priceRetail',
                 label: 'Retail Price',
                 align: 'right',
-                format: (row: Product) => `₮${Number(row.priceRetail).toLocaleString()}`,
+                format: (row: Record<string, unknown>) =>
+                  `₮${Number((row as unknown as Product).priceRetail).toLocaleString()}`,
               },
             ]}
-            data={lowStockProducts}
+            data={lowStockProducts.map((p) => ({
+              productCode: p.productCode,
+              nameEnglish: p.nameEnglish,
+              stockQuantity: p.stockQuantity,
+              priceRetail: p.priceRetail,
+            }))}
           />
         </Box>
       )}
@@ -218,33 +233,35 @@ export default function DashboardPage() {
               id: 'id',
               label: 'Order ID',
               minWidth: 80,
-              format: (row: Order) => `#${row.id}`,
+              format: (row: Record<string, unknown>) => `#${(row as unknown as Order).id}`,
             },
             {
               id: 'customer',
               label: 'Customer',
               minWidth: 150,
-              format: (row: Order) => row.customer?.name || 'N/A',
+              format: (row: Record<string, unknown>) =>
+                (row as unknown as Order).customer?.name || 'N/A',
             },
             {
               id: 'totalAmount',
               label: 'Total Amount',
               align: 'right',
-              format: (row: Order) => `₮${Number(row.totalAmount).toLocaleString()}`,
+              format: (row: Record<string, unknown>) =>
+                `₮${Number((row as unknown as Order).totalAmount).toLocaleString()}`,
             },
             {
               id: 'status',
               label: 'Status',
               align: 'center',
-              format: (row: Order) => {
+              format: (row: Record<string, unknown>) => {
                 const colors: Record<string, string> = {
                   Pending: 'warning.main',
                   Fulfilled: 'success.main',
                   Cancelled: 'error.main',
                 };
                 return (
-                  <Typography color={colors[row.status]} fontWeight="600">
-                    {row.status}
+                  <Typography color={colors[(row as unknown as Order).status]} fontWeight="600">
+                    {(row as unknown as Order).status}
                   </Typography>
                 );
               },
@@ -253,10 +270,17 @@ export default function DashboardPage() {
               id: 'createdAt',
               label: 'Date',
               minWidth: 150,
-              format: (row: Order) => new Date(row.createdAt).toLocaleString(),
+              format: (row: Record<string, unknown>) =>
+                new Date((row as unknown as Order).createdAt).toLocaleString(),
             },
           ]}
-          data={recentOrders}
+          data={recentOrders.map((o) => ({
+            id: o.id,
+            customer: o.customer?.name,
+            totalAmount: o.totalAmount,
+            status: o.status,
+            createdAt: o.createdAt,
+          }))}
         />
       </Box>
     </Box>

@@ -424,6 +424,13 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 // Dashboard Types
 export interface DashboardStats {
   totalEmployees?: number;

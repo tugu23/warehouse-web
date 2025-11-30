@@ -32,10 +32,33 @@ export default function ProductSalesAnalyticsPage() {
     setLoading(true);
     try {
       const response = await analyticsApi.getAllProductAnalytics();
-      setAnalytics(response.data.data?.analytics || []);
+      console.log('Analytics API Response:', response);
+      console.log('Analytics data:', response.data);
+      console.log('Analytics array:', response.data.data?.analytics);
+
+      const analyticsData = response.data.data?.analytics || [];
+      console.log('Setting analytics with length:', analyticsData.length);
+      setAnalytics(analyticsData);
+
+      if (analyticsData.length === 0) {
+        console.warn('No analytics data received from backend. Possible causes:');
+        console.warn('1. No products in database');
+        console.warn('2. No orders/sales data to analyze');
+        console.warn('3. Analytics have not been calculated yet');
+        console.warn('4. Backend calculation or retrieval issue');
+      }
     } catch (error) {
       console.error('Error fetching analytics:', error);
-      toast.error('Мэдээлэл татахад алдаа гарлаа');
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string }; status?: number } };
+        console.error('Response status:', axiosError.response?.status);
+        console.error('Response data:', axiosError.response?.data);
+        toast.error(
+          `Мэдээлэл татахад алдаа гарлаа: ${axiosError.response?.data?.message || 'Unknown error'}`
+        );
+      } else {
+        toast.error('Мэдээлэл татахад алдаа гарлаа');
+      }
     } finally {
       setLoading(false);
     }
@@ -44,9 +67,16 @@ export default function ProductSalesAnalyticsPage() {
   const handleCalculateAll = async () => {
     setCalculating(true);
     try {
-      await analyticsApi.calculateAllAnalytics();
+      console.log('Starting analytics calculation...');
+      const calculateResponse = await analyticsApi.calculateAllAnalytics();
+      console.log('Calculate response:', calculateResponse);
       toast.success('Шинжилгээ амжилттай тооцоолов');
+
+      // Wait a bit for the backend to finish processing
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Refresh analytics after calculation
+      console.log('Fetching analytics after calculation...');
       await fetchAnalytics();
     } catch (error) {
       console.error('Error calculating analytics:', error);
@@ -198,14 +228,43 @@ export default function ProductSalesAnalyticsPage() {
 
       {loading ? (
         <TableSkeleton />
+      ) : analytics.length === 0 ? (
+        <Box
+          sx={{
+            p: 8,
+            textAlign: 'center',
+            bgcolor: 'background.paper',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <InfoIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" gutterBottom>
+            Шинжилгээний мэдээлэл олдсонгүй
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Барааны борлуулалтын шинжилгээ тооцоогдоогүй байна. "Шинжилгээ тооцоолох" товчийг дарж
+            шинжилгээ хийнэ үү.
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<CalculateIcon />}
+            onClick={handleCalculateAll}
+            disabled={calculating}
+            sx={{ mt: 2 }}
+          >
+            {calculating ? 'Тооцоолж байна...' : 'Одоо тооцоолох'}
+          </Button>
+        </Box>
       ) : (
         <DataTable
           title="Барааны жагсаалт"
-          columns={columns}
-          data={analytics}
+          columns={columns as unknown as { id: string; label: string }[]}
+          data={analytics as unknown as Record<string, unknown>[]}
           searchable
           searchPlaceholder="Бараа хайх..."
-          onRowClick={handleRowClick}
+          onRowClick={(row) => handleRowClick(row as unknown as ProductSalesAnalytics)}
         />
       )}
 

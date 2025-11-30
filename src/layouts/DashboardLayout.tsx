@@ -46,7 +46,7 @@ const drawerWidth = 260;
 
 interface MenuItem {
   text: string;
-  icon: JSX.Element;
+  icon: React.ReactNode;
   path: string;
   roles?: string[];
 }
@@ -54,9 +54,24 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Products', icon: <InventoryIcon />, path: '/products' },
-  { text: 'Sales Analytics', icon: <AnalyticsIcon />, path: '/products/analytics' },
-  { text: 'Inventory Forecast', icon: <AnalyticsIcon />, path: '/analytics/forecast' },
-  { text: 'Sales by Period', icon: <AnalyticsIcon />, path: '/analytics/sales-period' },
+  {
+    text: 'Sales Analytics',
+    icon: <AnalyticsIcon />,
+    path: '/products/analytics',
+    roles: ['Admin', 'Manager'],
+  },
+  {
+    text: 'Inventory Forecast',
+    icon: <AnalyticsIcon />,
+    path: '/analytics/forecast',
+    roles: ['Admin', 'Manager'],
+  },
+  {
+    text: 'Sales by Period',
+    icon: <AnalyticsIcon />,
+    path: '/analytics/sales-period',
+    roles: ['Admin', 'Manager'],
+  },
   { text: 'Categories', icon: <CategoryIcon />, path: '/categories' },
   { text: 'Customers', icon: <PeopleIcon />, path: '/customers' },
   { text: 'Orders', icon: <ShoppingCartIcon />, path: '/orders' },

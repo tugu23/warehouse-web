@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, IconButton, Typography, Chip } from '@mui/material';
+import { Box, Button, IconButton, Chip } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, LocationOn as LocationIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
@@ -11,7 +11,7 @@ import CustomerForm from './CustomerForm';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 
 export default function CustomersPage() {
-  const { canManage } = useAuth();
+  const { canManage, canCreate } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -24,7 +24,7 @@ export default function CustomersPage() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const response = await customersApi.getAll();
+      const response = await customersApi.getAll({ limit: 1000 });
       setCustomers(response.data.data?.customers || []);
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -153,7 +153,7 @@ export default function CustomersPage() {
         searchable
         searchPlaceholder="Search customers..."
         actions={
-          canManage() && (
+          canCreate() && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setModalOpen(true)}>
               Add Customer
             </Button>

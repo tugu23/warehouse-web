@@ -1,4 +1,15 @@
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow, Divider, Button } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Divider,
+  Button,
+} from '@mui/material';
 import { Print as PrintIcon } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { Order } from '../../types';
@@ -13,82 +24,214 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
   };
 
   const totalAmount = Number(order.totalAmount);
-  const paidAmount = order.paidAmount || 0;
-  const remainingAmount = order.remainingAmount || 0;
+  // Calculate VAT (10%) if not provided
+  const vatAmount = order.vatAmount || totalAmount / 11;
+  const cityTax = 0; // Assuming 0 for now as per example, or could be part of calculation
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, '@media print': { display: 'none' } }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          mb: 2,
+          '@media print': { display: 'none' },
+        }}
+      >
         <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrint}>
           Хэвлэх
         </Button>
       </Box>
 
-      <Paper sx={{ p: 4, '@media print': { boxShadow: 'none', p: 2 } }}>
-        {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 3 }}>
-          <Typography variant="h4" gutterBottom>
-            ЗАХИАЛГЫН БАРИМТ
-          </Typography>
-          <Typography variant="h6" color="text.secondary">
-            Oasis Sales Management
+      <Paper
+        id="printable-receipt"
+        sx={{
+          p: 3,
+          width: '100%',
+          maxWidth: '148mm', // A5 width (210mm x 148mm)
+          margin: '0 auto',
+          fontFamily: 'Arial, sans-serif',
+          '@media print': {
+            boxShadow: 'none',
+            p: 0,
+            width: '148mm',
+            maxWidth: '148mm',
+            margin: 0,
+          },
+        }}
+      >
+        {/* Header with Top Border */}
+        <Box
+          sx={{
+            borderTop: '2px solid #333',
+            pt: 2,
+            mb: 3,
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Агуулахын бараа бүртгэлийн систем
           </Typography>
         </Box>
 
-        <Divider sx={{ my: 2 }} />
-
-        {/* Order Info */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Захиалгын мэдээлэл
+        {/* Receipt Number Header */}
+        <Box sx={{ textAlign: 'center', mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Зарлагын падаан № {order.eReceiptNumber || order.id}
           </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-            <Typography>
-              <strong>Захиалгын дугаар:</strong> #{order.id}
-            </Typography>
-            <Typography>
-              <strong>Огноо:</strong> {format(new Date(order.createdAt), 'yyyy-MM-dd HH:mm')}
-            </Typography>
-            <Typography>
-              <strong>Харилцагч:</strong> {order.customer?.name || 'N/A'}
-            </Typography>
-            <Typography>
-              <strong>Агент:</strong> {order.createdBy?.name || 'N/A'}
-            </Typography>
-            <Typography>
-              <strong>Төлөв:</strong> {order.status}
-            </Typography>
-            <Typography>
-              <strong>Төлбөрийн хэлбэр:</strong> {order.paymentMethod || 'N/A'}
-            </Typography>
+        </Box>
+
+        {/* 1. General Receipt Info */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            1. Баримтын ерөнхий мэдээлэл
+          </Typography>
+          <Box sx={{ pl: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• Баримтын дугаар:</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                № {order.eReceiptNumber || order.id}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• ДДТД:</Typography>
+              <Typography variant="body2" sx={{ fontSize: '11px' }}>
+                {order.eReceiptId || '-'}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• ТТД:</Typography>
+              <Typography variant="body2">5317878</Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• Баримт бүртгэгдсэн огноо:</Typography>
+              <Typography variant="body2">
+                {format(new Date(order.createdAt), 'yyyy-MM-dd')}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• Бараа олгосон огноо:</Typography>
+              <Typography variant="body2">
+                {order.deliveryDate
+                  ? format(new Date(order.deliveryDate), 'yyyy-MM-dd')
+                  : format(new Date(order.createdAt), 'yyyy-MM-dd')}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5 }}>
+              <Typography variant="body2">• Төлбөрийн хэлбэр:</Typography>
+              <Typography variant="body2">{order.paymentMethod}</Typography>
+            </Box>
           </Box>
         </Box>
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Items Table */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Барааны жагсаалт
+        {/* 2. Seller Info */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            2. Борлуулагчийн мэдээлэл
           </Typography>
-          <Table>
+          <Box sx={{ pl: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• Нэр:</Typography>
+              <Typography variant="body2">{order.createdBy?.name || 'Мөнгөншагай'}</Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5 }}>
+              <Typography variant="body2">• Утас:</Typography>
+              <Typography variant="body2">{order.createdBy?.phoneNumber || '89741277'}</Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* 3. Buyer Info */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            3. Худалдан авагчийн мэдээлэл
+          </Typography>
+          <Box sx={{ pl: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• Нэр:</Typography>
+              <Typography variant="body2">{order.customer?.name || '-'}</Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5 }}>
+              <Typography variant="body2">• Утас:</Typography>
+              <Typography variant="body2">{order.customer?.phoneNumber || '-'}</Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* 4. Store/Company Info */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            4. Дэлгүүр / Байгууллагын мэдээлэл
+          </Typography>
+          <Box sx={{ pl: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• Нэр:</Typography>
+              <Typography variant="body2">GLF LLC OASIS Бөөний төв</Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• Хаяг:</Typography>
+              <Typography variant="body2">
+                Монгол, Улаанбаатар, Сүхбаатар дүүрэг, 6-р хороо, 27-49
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5 }}>
+              <Typography variant="body2">• Утас:</Typography>
+              <Typography variant="body2">70121128, 88048350, 89741277</Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* 5. Items List */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            5. Худалдан авсан барааны жагсаалт
+          </Typography>
+          <Table
+            size="small"
+            sx={{
+              '& .MuiTableCell-root': {
+                px: 1,
+                py: 0.75,
+                fontSize: '11px',
+                border: '1px solid #ddd',
+              },
+              '& .MuiTableCell-head': {
+                fontWeight: 'bold',
+                backgroundColor: '#f5f5f5',
+              },
+            }}
+          >
             <TableHead>
               <TableRow>
-                <TableCell><strong>№</strong></TableCell>
-                <TableCell><strong>Бараа</strong></TableCell>
-                <TableCell align="right"><strong>Тоо ширхэг</strong></TableCell>
-                <TableCell align="right"><strong>Нэгж үнэ</strong></TableCell>
-                <TableCell align="right"><strong>Дүн</strong></TableCell>
+                <TableCell align="center" sx={{ width: '30px' }}>
+                  №
+                </TableCell>
+                <TableCell>Барааны нэр</TableCell>
+                <TableCell>Баркод</TableCell>
+                <TableCell align="center">Тоо ширхэг</TableCell>
+                <TableCell align="right">Нэгж үнэ</TableCell>
+                <TableCell align="right">Нийт үнэ</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {order.orderItems?.map((item, index) => (
                 <TableRow key={item.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{item.product?.nameEnglish || 'N/A'}</TableCell>
-                  <TableCell align="right">{item.quantity}</TableCell>
-                  <TableCell align="right">₮{Number(item.unitPrice).toLocaleString()}</TableCell>
-                  <TableCell align="right">₮{Number(item.subtotal).toLocaleString()}</TableCell>
+                  <TableCell align="center">{index + 1}</TableCell>
+                  <TableCell>
+                    {item.product?.nameMongolian || item.product?.nameEnglish || 'N/A'}
+                  </TableCell>
+                  <TableCell sx={{ fontSize: '10px' }}>{item.product?.barcode || '-'}</TableCell>
+                  <TableCell align="center">{item.quantity}</TableCell>
+                  <TableCell align="right">{Number(item.unitPrice).toLocaleString()}</TableCell>
+                  <TableCell align="right">{Number(item.subtotal).toLocaleString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -97,49 +240,99 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Totals */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-          <Box sx={{ minWidth: 300 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography><strong>Нийт дүн:</strong></Typography>
-              <Typography><strong>₮{totalAmount.toLocaleString()}</strong></Typography>
+        {/* 6. VAT Info */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            6. НӨАТ мэдээлэл
+          </Typography>
+          <Box sx={{ pl: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• НӨАТ-тэй дүн:</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                {totalAmount.toLocaleString()}₮
+              </Typography>
             </Box>
-            {order.paymentStatus && order.paymentStatus !== 'Paid' && (
-              <>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography>Төлсөн дүн:</Typography>
-                  <Typography>₮{paidAmount.toLocaleString()}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography color="error"><strong>Үлдэгдэл:</strong></Typography>
-                  <Typography color="error"><strong>₮{remainingAmount.toLocaleString()}</strong></Typography>
-                </Box>
-                {order.creditDueDate && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography>Төлөх огноо:</Typography>
-                    <Typography>{format(new Date(order.creditDueDate), 'yyyy-MM-dd')}</Typography>
-                  </Box>
-                )}
-              </>
-            )}
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• НӨАТ:</Typography>
+              <Typography variant="body2">{vatAmount.toFixed(2).toLocaleString()}₮</Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5 }}>
+              <Typography variant="body2">• НХАТ:</Typography>
+              <Typography variant="body2">{cityTax}₮</Typography>
+            </Box>
           </Box>
         </Box>
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Footer */}
-        <Box sx={{ textAlign: 'center', mt: 4 }}>
-          <Typography variant="body2" color="text.secondary">
-            Баярлалаа! / Thank you!
+        {/* 7. QR Code */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 2, mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            7. QR код
           </Typography>
+          {order.eReceiptQrCode ? (
+            <img
+              src={order.eReceiptQrCode}
+              alt="E-Receipt QR"
+              style={{ width: 120, height: 120 }}
+            />
+          ) : (
+            <Box
+              sx={{
+                width: 120,
+                height: 120,
+                border: '1px solid #ddd',
+                bgcolor: '#f9f9f9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Typography variant="caption" color="text.secondary">
+                QR КОД
+              </Typography>
+            </Box>
+          )}
+          {order.eReceiptLottery && (
+            <Typography variant="caption" sx={{ mt: 1 }}>
+              Сугалааны дугаар: {order.eReceiptLottery}
+            </Typography>
+          )}
+          {order.eReceiptId && (
+            <Typography variant="caption" sx={{ fontSize: '9px', mt: 0.5 }}>
+              YF: {order.eReceiptId}
+            </Typography>
+          )}
+          <Typography variant="body2" sx={{ mt: 2, textAlign: 'center', fontStyle: 'italic' }}>
+            Баярлалаа / Thank you
+          </Typography>
+        </Box>
+
+        {/* Footer */}
+        <Box
+          sx={{
+            textAlign: 'center',
+            mt: 3,
+            pt: 2,
+            borderTop: '1px solid #ddd',
+          }}
+        >
           <Typography variant="caption" color="text.secondary">
-            Утас: +976 1234-5678 | И-мэйл: info@oasis.mn
+            Зураг 2.3.3.13. Төлбөрийн баримт хэвлэгсэн байдал (Сугалаатай)
           </Typography>
         </Box>
       </Paper>
 
       <style>{`
         @media print {
+          @page {
+            size: A5 portrait;
+            margin: 10mm;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+          }
           body * {
             visibility: hidden;
           }
@@ -150,11 +343,11 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
             position: absolute;
             left: 0;
             top: 0;
-            width: 100%;
+            width: 148mm;
+            padding: 5mm;
           }
         }
       `}</style>
     </Box>
   );
 }
-

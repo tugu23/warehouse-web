@@ -80,11 +80,29 @@ export default function DataTable<T extends Record<string, unknown>>({
   };
 
   const filteredData = searchable
-    ? data.filter((row) =>
-        Object.values(row).some((value) =>
-          String(value).toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      )
+    ? data.filter((row) => {
+        const searchLower = searchQuery.toLowerCase();
+
+        // Helper function to recursively search through nested objects
+        const searchInValue = (value: unknown): boolean => {
+          if (value === null || value === undefined) return false;
+
+          // If it's an object, search through its values
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            return Object.values(value).some(searchInValue);
+          }
+
+          // If it's an array, search through items
+          if (Array.isArray(value)) {
+            return value.some(searchInValue);
+          }
+
+          // Convert to string and search
+          return String(value).toLowerCase().includes(searchLower);
+        };
+
+        return Object.values(row).some(searchInValue);
+      })
     : data;
 
   const sortedData = orderBy ? [...filteredData].sort(getComparator(order, orderBy)) : filteredData;

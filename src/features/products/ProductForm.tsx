@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, TextField, Grid } from '@mui/material';
+import { Box, Button, TextField, Grid, FormControlLabel, Checkbox } from '@mui/material';
 import { productSchema } from '../../utils/validation';
 import { Product, CreateProductRequest, UpdateProductRequest } from '../../types';
 import { z } from 'zod';
@@ -37,6 +37,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
       priceWholesale: 0,
       priceRetail: 0,
       pricePerBox: 0,
+      isActive: true,
     },
   });
 
@@ -57,6 +58,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
         priceWholesale: Number(product.priceWholesale),
         priceRetail: Number(product.priceRetail),
         pricePerBox: product.pricePerBox || 0,
+        isActive: product.isActive ?? true,
       });
     }
   }, [product, reset]);
@@ -301,6 +303,25 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
                 error={!!errors.pricePerBox}
                 helperText={errors.pricePerBox?.message}
                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="isActive"
+            control={control}
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    {...field}
+                    checked={field.value ?? true}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                  />
+                }
+                label="Идэвхтэй (Active)"
               />
             )}
           />

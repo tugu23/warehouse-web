@@ -15,9 +15,10 @@ import { Order, CreateOrderRequest } from '../../types';
 import OrderForm from './OrderForm';
 import OrderDetailsModal from './OrderDetailsModal';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
+import { formatDateTimeMN } from '../../utils/dateFormatter';
 
 export default function OrdersPage() {
-  const { canManage } = useAuth();
+  const { canManage, user, isSalesAgent } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -26,13 +27,23 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const response = await ordersApi.getAll({ limit: 0 });
-      setOrders(response.data.data?.orders || []);
+      const response = await ordersApi.getAll({ limit: 1000 }); // Get all orders
+
+      // Backend returns: { data: { data: { orders: [...], pagination: {...} } } }
+      let allOrders = response.data.data?.orders || [];
+
+      // Filter orders for sales agents - they should only see their own orders
+      if (isSalesAgent() && user) {
+        allOrders = allOrders.filter((order) => order.createdById === user.id);
+      }
+
+      setOrders(allOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
@@ -135,7 +146,7 @@ export default function OrdersPage() {
       id: 'createdAt',
       label: 'Created At',
       minWidth: 170,
-      format: (row: Order) => new Date(row.createdAt).toLocaleString(),
+      format: (row: Order) => formatDateTimeMN(row.createdAt),
     },
     {
       id: 'actions',
@@ -211,7 +222,7 @@ export default function OrdersPage() {
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         title="Create New Order"
-        maxWidth="md"
+        maxWidth="lg"
       >
         <OrderForm onSubmit={handleCreate} onCancel={() => setCreateModalOpen(false)} />
       </Modal>
@@ -226,6 +237,7 @@ export default function OrdersPage() {
           order={selectedOrder}
           onUpdateStatus={handleUpdateStatus}
           canManage={canManage()}
+          currentUserId={user?.id}
         />
       </Modal>
     </Box>

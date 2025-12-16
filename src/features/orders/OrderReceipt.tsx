@@ -9,10 +9,13 @@ import {
   TableRow,
   Divider,
   Button,
+  Stack,
 } from '@mui/material';
-import { Print as PrintIcon } from '@mui/icons-material';
+import { Print as PrintIcon, PictureAsPdf as PdfIcon } from '@mui/icons-material';
 import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 import { Order } from '../../types';
+import { generateOrderReceiptPDF } from '../../utils/pdfGenerator';
 
 interface OrderReceiptProps {
   order: Order;
@@ -23,6 +26,19 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
     window.print();
   };
 
+  const handleDownloadPDF = async () => {
+    try {
+      await generateOrderReceiptPDF(order, {
+        download: true,
+        filename: `receipt-${order.eReceiptNumber || order.id}.pdf`,
+      });
+      toast.success('PDF татагдлаа');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('PDF үүсгэхэд алдаа гарлаа');
+    }
+  };
+
   const totalAmount = Number(order.totalAmount);
   // Calculate VAT (10%) if not provided
   const vatAmount = order.vatAmount || totalAmount / 11;
@@ -30,18 +46,27 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
 
   return (
     <Box>
-      <Box
+      <Stack
+        direction="row"
+        spacing={2}
         sx={{
-          display: 'flex',
           justifyContent: 'flex-end',
           mb: 2,
           '@media print': { display: 'none' },
         }}
       >
-        <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrint}>
+        <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
           Хэвлэх
         </Button>
-      </Box>
+        <Button
+          variant="contained"
+          startIcon={<PdfIcon />}
+          onClick={handleDownloadPDF}
+          color="primary"
+        >
+          PDF татах
+        </Button>
+      </Stack>
 
       <Paper
         id="printable-receipt"

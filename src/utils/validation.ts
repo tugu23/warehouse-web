@@ -28,6 +28,7 @@ export const productSchema = z.object({
   priceWholesale: z.number().min(0, 'Wholesale price must be non-negative'),
   priceRetail: z.number().min(0, 'Retail price must be non-negative'),
   pricePerBox: z.number().min(0, 'Box price must be non-negative').optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const customerSchema = z.object({

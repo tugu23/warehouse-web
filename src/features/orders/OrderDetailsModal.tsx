@@ -22,27 +22,32 @@ import {
   Store as StoreIcon,
   Warehouse as WarehouseIcon,
   PictureAsPdf as PdfIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { Order } from '../../types';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import ReceiptActions from '../../components/ReceiptActions';
 import { posApi, EReceiptRequest, calculateVAT } from '../../api/posApi';
+import { ordersApi } from '../../api';
+import { formatDateMN } from '../../utils/dateFormatter';
 
 interface OrderDetailsModalProps {
   order: Order | null;
   onUpdateStatus: (orderId: number, status: string) => void;
   canManage: boolean;
+  currentUserId?: number; // Add current user ID to check ownership
 }
 
 export default function OrderDetailsModal({
   order,
   onUpdateStatus,
   canManage,
+  currentUserId,
 }: OrderDetailsModalProps) {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<string>('');
   const [printingEReceipt, setPrintingEReceipt] = useState(false);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
 
   if (!order) return null;
 
@@ -143,6 +148,28 @@ export default function OrderDetailsModal({
     return <Chip label={config.label} color={config.color} size="small" />;
   };
 
+  const handleViewReceiptPDF = async () => {
+    try {
+      await ordersApi.viewReceiptPDF(order.id);
+    } catch (error) {
+      console.error('Error viewing PDF:', error);
+      toast.error('Failed to open PDF receipt');
+    }
+  };
+
+  const handleDownloadReceiptPDF = async () => {
+    setDownloadingPDF(true);
+    try {
+      await ordersApi.downloadReceiptPDF(order.id);
+      toast.success('PDF receipt downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast.error('Failed to download PDF receipt');
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
+
   return (
     <Box>
       <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -188,7 +215,7 @@ export default function OrderDetailsModal({
           <Typography variant="body2" color="text.secondary">
             Огноо
           </Typography>
-          <Typography variant="body1">{new Date(order.createdAt).toLocaleString()}</Typography>
+          <Typography variant="body1">{formatDateMN(order.createdAt)}</Typography>
         </Grid>
 
         {order.eReceiptNumber && (
@@ -294,73 +321,74 @@ export default function OrderDetailsModal({
         </Table>
       </TableContainer>
 
-      <Divider sx={{ my: 3 }} />
-
-      {/* Receipt Actions Section */}
-      <Box sx={{ mb: 3 }}>
-        <Typography
-          variant="h6"
-          gutterBottom
-          sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        {/* PDF Receipt Buttons - Available for all orders */}
+        <Button
+          variant="outlined"
+          color="primary"
+          startIcon={<PdfIcon />}
+          onClick={handleViewReceiptPDF}
         >
-          <PdfIcon color="primary" />
-          Баримт үйлдлүүд
-        </Typography>
-        <ReceiptActions orderId={order.id} order={order} showEBarimtInfo={true} />
-      </Box>
+          View Receipt (PDF)
+        </Button>
+        <Button
+          variant="outlined"
+          color="success"
+          startIcon={downloadingPDF ? <CircularProgress size={20} /> : <DownloadIcon />}
+          onClick={handleDownloadReceiptPDF}
+          disabled={downloadingPDF}
+        >
+          {downloadingPDF ? 'Downloading...' : 'Download Receipt'}
+        </Button>
 
-      <Divider sx={{ my: 3 }} />
+        {/* И-баримт хэвлэх товч - зөвхөн дэлгүүрийн захиалгад */}
+        {order.orderType === 'Store' && (
+          <>
+            {!order.eReceiptNumber && (
+              <Alert severity="info" sx={{ flex: 1, mr: 'auto' }}>
+                <Typography variant="body2">
+                  Дэлгүүрийн захиалга - И-баримт хэвлэх шаардлагатай
+                </Typography>
+              </Alert>
+            )}
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={printingEReceipt ? <CircularProgress size={20} /> : <ReceiptIcon />}
+              onClick={handlePrintEReceipt}
+              disabled={printingEReceipt || order.status === 'Cancelled'}
+            >
+              {printingEReceipt
+                ? 'Хэвлэж байна...'
+                : order.eReceiptNumber
+                  ? 'Дахин хэвлэх'
+                  : 'И-баримт хэвлэх'}
+            </Button>
+          </>
+        )}
 
-      {/* И-баримт хэвлэх товч - зөвхөн дэлгүүрийн захиалгад */}
-      {order.orderType === 'Store' && (
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            variant="h6"
-            gutterBottom
-            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-          >
-            <ReceiptIcon color="primary" />
-            И-баримт (E-Barimt)
-          </Typography>
-          {!order.eReceiptNumber && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              <Typography variant="body2">
-                Дэлгүүрийн захиалга - И-баримт хэвлэх шаардлагатай
-              </Typography>
-            </Alert>
+        {/* Төлөв өөрчлөх товчнууд */}
+        {/* Allow admins/managers OR agents to update their own orders */}
+        {(canManage || (currentUserId && order.createdById === currentUserId)) &&
+          order.status === 'Pending' && (
+            <>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => handleStatusChange('Cancelled')}
+              >
+                Цуцлах
+              </Button>
+              <Button
+                variant="contained"
+                color="success"
+                onClick={() => handleStatusChange('Fulfilled')}
+              >
+                Гүйцэтгэсэн
+              </Button>
+            </>
           )}
-          <Button
-            variant="contained"
-            color="primary"
-            size="large"
-            startIcon={printingEReceipt ? <CircularProgress size={20} /> : <ReceiptIcon />}
-            onClick={handlePrintEReceipt}
-            disabled={printingEReceipt || order.status === 'Cancelled'}
-          >
-            {printingEReceipt
-              ? 'Хэвлэж байна...'
-              : order.eReceiptNumber
-                ? 'И-баримт дахин хэвлэх'
-                : 'И-баримт хэвлэх'}
-          </Button>
-        </Box>
-      )}
-
-      {/* Төлөв өөрчлөх товчнууд */}
-      {canManage && order.status === 'Pending' && (
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-          <Button variant="outlined" color="error" onClick={() => handleStatusChange('Cancelled')}>
-            Цуцлах
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            onClick={() => handleStatusChange('Fulfilled')}
-          >
-            Гүйцэтгэсэн
-          </Button>
-        </Box>
-      )}
+      </Box>
 
       <ConfirmDialog
         open={confirmDialogOpen}

@@ -68,6 +68,7 @@ export interface Product {
   priceWholesale: string | number;
   priceRetail: string | number;
   pricePerBox?: number; // Хайрцагны үнэ
+  isActive?: boolean; // Идэвхтэй эсэх
   createdAt?: string;
   updatedAt?: string;
 }
@@ -87,6 +88,7 @@ export interface CreateProductRequest {
   priceWholesale: number;
   priceRetail: number;
   pricePerBox?: number;
+  isActive?: boolean;
 }
 
 export interface UpdateProductRequest {
@@ -104,6 +106,7 @@ export interface UpdateProductRequest {
   priceWholesale?: number;
   priceRetail?: number;
   pricePerBox?: number;
+  isActive?: boolean;
 }
 
 export interface InventoryAdjustmentRequest {

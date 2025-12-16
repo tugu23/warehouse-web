@@ -66,7 +66,8 @@ export const posApi = {
    * И-баримт хэвлэх
    * Print E-Receipt via PosAPI 3.0
    */
-  printEReceipt: async (): Promise<EReceiptResponse> => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  printEReceipt: async (_eReceiptRequest: EReceiptRequest): Promise<EReceiptResponse> => {
     try {
       // Бодит PosAPI дуудах
       // const response = await posApiClient.post('/receipts/print', request);

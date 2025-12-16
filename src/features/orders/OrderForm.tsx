@@ -18,6 +18,7 @@ import {
   Checkbox,
   FormControlLabel,
   Alert,
+  Autocomplete,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -30,8 +31,6 @@ import { orderSchema } from '../../utils/validation';
 import { CreateOrderRequest, Customer, Product, Employee, OrderType } from '../../types';
 import { customersApi, productsApi, employeesApi } from '../../api';
 import { z } from 'zod';
-import BarcodeInput from '../../components/BarcodeInput';
-import toast from 'react-hot-toast';
 
 type OrderFormData = z.infer<typeof orderSchema>;
 
@@ -44,8 +43,6 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [barcodeValue, setBarcodeValue] = useState('');
-  const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [orderType, setOrderType] = useState<OrderType>('Market');
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
 
@@ -108,9 +105,9 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const fetchData = async () => {
     try {
       const [customersRes, productsRes, employeesRes] = await Promise.all([
-        customersApi.getAll(),
-        productsApi.getAll(),
-        employeesApi.getAll(),
+        customersApi.getAll({ limit: 1000 }),
+        productsApi.getAll({ limit: 1000 }),
+        employeesApi.getAll({ limit: 1000 }),
       ]);
       setCustomers(customersRes.data.data?.customers || []);
       setProducts(productsRes.data.data?.products || []);
@@ -118,51 +115,6 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     } catch (error) {
       console.error('Error fetching data:', error);
     }
-  };
-
-  const handleBarcodeChange = async (barcode: string) => {
-    setBarcodeValue(barcode);
-    if (!barcode) {
-      setScannedProduct(null);
-      return;
-    }
-
-    try {
-      const response = await productsApi.getByBarcode(barcode);
-      const product = response.data.data?.product;
-      if (product) {
-        setScannedProduct(product);
-        toast.success(`Product found: ${product.nameMongolian}`);
-      } else {
-        setScannedProduct(null);
-        toast.error('Product not found');
-      }
-    } catch (error) {
-      setScannedProduct(null);
-      toast.error('Product not found');
-      console.error('Error searching barcode:', error);
-    }
-  };
-
-  const handleAddScannedProduct = () => {
-    if (!scannedProduct) return;
-
-    // Check if product already exists in items
-    const existingIndex = fields.findIndex((field) => field.productId === scannedProduct.id);
-    if (existingIndex >= 0) {
-      // Increment quantity
-      const currentQty = watch(`items.${existingIndex}.quantity`);
-      setValue(`items.${existingIndex}.quantity`, currentQty + 1);
-      toast.success('Product quantity increased');
-    } else {
-      // Add new item
-      append({ productId: scannedProduct.id, quantity: 1 });
-      toast.success('Product added to cart');
-    }
-
-    // Reset barcode scanner
-    setBarcodeValue('');
-    setScannedProduct(null);
   };
 
   const calculateTotal = () => {
@@ -212,35 +164,44 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
 
   return (
     <Box component="form" onSubmit={handleSubmit(handleFormSubmit)}>
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} component="div">
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12 }}>
           <Controller
             name="customerId"
             control={control}
-            render={({ field }) => (
-              <FormControl fullWidth error={!!errors.customerId}>
-                <InputLabel>Байгууллага *</InputLabel>
-                <Select
-                  {...field}
-                  label="Байгууллага *"
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                >
-                  <MenuItem value={0}>Байгууллага сонгох</MenuItem>
-                  {customers.map((customer) => (
-                    <MenuItem key={customer.id} value={customer.id}>
-                      {customer.name} ({customer.customerType.name})
-                      {customer.organizationType && ` - ${customer.organizationType}`}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {errors.customerId && <FormHelperText>{errors.customerId.message}</FormHelperText>}
-              </FormControl>
-            )}
+            render={({ field }) => {
+              const selectedCustomer = customers.find((c) => c.id === field.value) || null;
+              return (
+                <Autocomplete
+                  value={selectedCustomer}
+                  onChange={(_, newValue) => {
+                    field.onChange(newValue ? newValue.id : 0);
+                  }}
+                  options={customers}
+                  getOptionLabel={(customer) =>
+                    `${customer.name} (${customer.customerType.name})${customer.organizationType ? ` - ${customer.organizationType}` : ''}`
+                  }
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  ListboxProps={{
+                    style: { maxHeight: '250px' },
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Байгууллага *"
+                      error={!!errors.customerId}
+                      helperText={errors.customerId?.message}
+                    />
+                  )}
+                  noOptionsText="Байгууллага олдсонгүй"
+                />
+              );
+            }}
           />
         </Grid>
 
         {selectedCustomerId > 0 && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Alert
               severity={orderType === 'Store' ? 'success' : 'info'}
               icon={orderType === 'Store' ? <StoreIcon /> : <WarehouseIcon />}
@@ -260,7 +221,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
           </Grid>
         )}
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Controller
             name="distributorId"
             control={control}
@@ -290,7 +251,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Controller
             name="paymentMethod"
             control={control}
@@ -312,7 +273,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Controller
             name="isCredit"
             control={control}
@@ -332,6 +293,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                   />
                 }
                 label="Зээлээр олгох (эргэн төлөх нөхцөл)"
+                sx={{ mt: 1 }}
               />
             )}
           />
@@ -339,7 +301,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
 
         {isCredit && (
           <>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Controller
                 name="paidAmount"
                 control={control}
@@ -357,7 +319,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Controller
                 name="creditTermDays"
                 control={control}
@@ -375,7 +337,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
               />
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <Paper sx={{ p: 2, bgcolor: 'info.light' }}>
                 <Typography variant="body2">
                   <strong>Зээлийн мэдээлэл:</strong>
@@ -406,143 +368,113 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
 
       <Divider sx={{ my: 3 }} />
 
-      {/* Barcode Scanner Section */}
-      <Paper sx={{ p: 2, mb: 3, bgcolor: 'background.default' }}>
-        <Typography variant="h6" gutterBottom>
-          Баркодоор бараа хайх
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+          Барааны жагсаалт
         </Typography>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={8}>
-            <BarcodeInput
-              value={barcodeValue}
-              onChange={handleBarcodeChange}
-              label="Barcode"
-              placeholder="Scan or enter barcode..."
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleAddScannedProduct}
-              disabled={!scannedProduct}
-              sx={{ height: '56px' }}
-            >
-              Add to Cart
-            </Button>
-          </Grid>
-          {scannedProduct && (
-            <Grid item xs={12}>
-              <Alert severity="success" sx={{ display: 'flex', alignItems: 'center' }}>
-                <Box>
-                  <Typography variant="subtitle1">
-                    {scannedProduct.nameMongolian} ({scannedProduct.nameEnglish})
-                  </Typography>
-                  <Typography variant="body2">
-                    Stock: {scannedProduct.stockQuantity} | Price: ₮
-                    {Number(scannedProduct.priceRetail).toLocaleString()}
-                    {scannedProduct.unitsPerBox && ` | ${scannedProduct.unitsPerBox} units/box`}
-                  </Typography>
-                </Box>
-              </Alert>
-            </Grid>
-          )}
-        </Grid>
-      </Paper>
 
-      <Typography variant="h6" gutterBottom>
-        Барааны жагсаалт
-      </Typography>
+        {fields.map((field, index) => (
+          <Paper key={field.id} sx={{ p: 2, mb: 2 }}>
+            <Grid container spacing={2} alignItems="flex-start">
+              <Grid size={{ xs: 12, sm: 8 }}>
+                <Controller
+                  name={`items.${index}.productId`}
+                  control={control}
+                  render={({ field }) => {
+                    const selectedProduct = products.find((p) => p.id === field.value) || null;
+                    return (
+                      <Box>
+                        <Autocomplete
+                          value={selectedProduct}
+                          onChange={(_, newValue) => {
+                            field.onChange(newValue ? newValue.id : 0);
+                          }}
+                          options={products}
+                          getOptionLabel={(product) =>
+                            `${product.nameEnglish} - Үлдэгдэл: ${product.stockQuantity}${product.unitsPerBox ? ` (${product.unitsPerBox} ш/хайрцаг)` : ''}`
+                          }
+                          isOptionEqualToValue={(option, value) => option.id === value.id}
+                          ListboxProps={{
+                            style: { maxHeight: '250px' },
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Бараа *"
+                              error={!!errors.items?.[index]?.productId}
+                              helperText={errors.items?.[index]?.productId?.message}
+                            />
+                          )}
+                          noOptionsText="Бараа олдсонгүй"
+                        />
+                        {selectedProduct && (
+                          <FormHelperText>
+                            Үнэ: ₮{Number(selectedProduct.priceRetail).toLocaleString()} | Бөөний: ₮
+                            {Number(selectedProduct.priceWholesale).toLocaleString()}
+                          </FormHelperText>
+                        )}
+                      </Box>
+                    );
+                  }}
+                />
+              </Grid>
 
-      {fields.map((field, index) => (
-        <Paper key={field.id} sx={{ p: 2, mb: 2 }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={7}>
-              <Controller
-                name={`items.${index}.productId`}
-                control={control}
-                render={({ field }) => {
-                  const selectedProduct = products.find((p) => p.id === field.value);
-                  return (
-                    <FormControl fullWidth error={!!errors.items?.[index]?.productId}>
-                      <InputLabel>Бараа *</InputLabel>
-                      <Select
+              <Grid size={{ xs: 10, sm: 3 }}>
+                <Controller
+                  name={`items.${index}.quantity`}
+                  control={control}
+                  render={({ field }) => {
+                    const selectedProduct = products.find(
+                      (p) => p.id === watch(`items.${index}.productId`)
+                    );
+                    const boxQuantity = selectedProduct?.unitsPerBox
+                      ? (field.value / selectedProduct.unitsPerBox).toFixed(2)
+                      : null;
+
+                    return (
+                      <TextField
                         {...field}
-                        label="Бараа *"
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      >
-                        <MenuItem value={0}>Бараа сонгох</MenuItem>
-                        {products.map((product) => (
-                          <MenuItem key={product.id} value={product.id}>
-                            {product.nameEnglish} - Үлдэгдэл: {product.stockQuantity}
-                            {product.unitsPerBox && ` (${product.unitsPerBox} ш/хайрцаг)`}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      {errors.items?.[index]?.productId && (
-                        <FormHelperText>{errors.items[index]?.productId?.message}</FormHelperText>
-                      )}
-                      {selectedProduct && (
-                        <FormHelperText>
-                          Үнэ: ₮{Number(selectedProduct.priceRetail).toLocaleString()} | Бөөний: ₮
-                          {Number(selectedProduct.priceWholesale).toLocaleString()}
-                        </FormHelperText>
-                      )}
-                    </FormControl>
-                  );
-                }}
-              />
+                        label="Тоо ширхэг *"
+                        type="number"
+                        fullWidth
+                        error={!!errors.items?.[index]?.quantity}
+                        helperText={
+                          boxQuantity
+                            ? `${boxQuantity} хайрцаг`
+                            : errors.items?.[index]?.quantity?.message
+                        }
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      />
+                    );
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 2, sm: 1 }}>
+                {fields.length > 1 && (
+                  <IconButton
+                    color="error"
+                    onClick={() => remove(index)}
+                    size="large"
+                    sx={{ mt: 1 }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                )}
+              </Grid>
             </Grid>
+          </Paper>
+        ))}
 
-            <Grid item xs={8} sm={3}>
-              <Controller
-                name={`items.${index}.quantity`}
-                control={control}
-                render={({ field }) => {
-                  const selectedProduct = products.find(
-                    (p) => p.id === watch(`items.${index}.productId`)
-                  );
-                  const boxQuantity = selectedProduct?.unitsPerBox
-                    ? (field.value / selectedProduct.unitsPerBox).toFixed(2)
-                    : null;
-
-                  return (
-                    <TextField
-                      {...field}
-                      label="Тоо ширхэг *"
-                      type="number"
-                      fullWidth
-                      error={!!errors.items?.[index]?.quantity}
-                      helperText={
-                        boxQuantity
-                          ? `${boxQuantity} хайрцаг`
-                          : errors.items?.[index]?.quantity?.message
-                      }
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                    />
-                  );
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={4} sm={2}>
-              {fields.length > 1 && (
-                <IconButton color="error" onClick={() => remove(index)} size="large">
-                  <DeleteIcon />
-                </IconButton>
-              )}
-            </Grid>
-          </Grid>
-        </Paper>
-      ))}
-
-      <Button
-        startIcon={<AddIcon />}
-        onClick={() => append({ productId: 0, quantity: 1 })}
-        sx={{ mb: 3 }}
-      >
-        Бараа нэмэх
-      </Button>
+        <Button
+          startIcon={<AddIcon />}
+          onClick={() => append({ productId: 0, quantity: 1 })}
+          variant="outlined"
+          sx={{ mb: 2 }}
+        >
+          Бараа нэмэх
+        </Button>
+      </Box>
 
       <Divider sx={{ my: 2 }} />
 

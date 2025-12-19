@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -11,11 +11,18 @@ import {
   InputLabel,
   Select,
   FormHelperText,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
+import { Search as SearchIcon } from '@mui/icons-material';
 import { customerSchema } from '../../utils/validation';
 import { Customer, CreateCustomerRequest, UpdateCustomerRequest } from '../../types';
 import { z } from 'zod';
 import MapPicker from '../../components/MapPicker';
+import { etaxApi } from '../../api';
+import { toast } from 'react-hot-toast';
 
 type CustomerFormData = z.infer<typeof customerSchema>;
 
@@ -26,6 +33,9 @@ interface CustomerFormProps {
 }
 
 export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerFormProps) {
+  const [searchingRegno, setSearchingRegno] = useState(false);
+  const [regnoSearchResult, setRegnoSearchResult] = useState<string | null>(null);
+  
   const {
     control,
     handleSubmit,
@@ -37,8 +47,8 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
     resolver: zodResolver(customerSchema),
     defaultValues: {
       name: '',
+      name2: '',
       organizationType: '',
-      contactPerson: '',
       registrationNumber: '',
       address: '',
       district: '',
@@ -51,12 +61,14 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
     },
   });
 
+  const registrationNumber = watch('registrationNumber');
+
   useEffect(() => {
     if (customer) {
       reset({
         name: customer.name,
+        name2: customer.name2 || '',
         organizationType: customer.organizationType || '',
-        contactPerson: customer.contactPerson || '',
         registrationNumber: customer.registrationNumber || '',
         address: customer.address,
         district: customer.district || '',
@@ -69,6 +81,46 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
       });
     }
   }, [customer, reset]);
+
+  const handleSearchByRegno = async () => {
+    if (!registrationNumber || registrationNumber.length !== 7) {
+      toast.error('7 оронтой регистрийн дугаар оруулна уу');
+      return;
+    }
+
+    setSearchingRegno(true);
+    setRegnoSearchResult(null);
+
+    try {
+      const response = await etaxApi.getOrganizationByRegno(registrationNumber);
+      const orgInfo = response.data.data?.organization;
+
+      if (orgInfo) {
+        // Auto-fill form with e-Tax data
+        setValue('name', orgInfo.name);
+        setValue('isVatPayer', orgInfo.vatPayer || false);
+        
+        if (orgInfo.address) {
+          setValue('address', orgInfo.address);
+        }
+
+        setRegnoSearchResult(`✅ Олдлоо: ${orgInfo.name}`);
+        toast.success(`Байгууллагын мэдээлэл амжилттай татагдлаа: ${orgInfo.name}`);
+      }
+    } catch (error: any) {
+      console.error('Error fetching organization info:', error);
+      
+      if (error.response?.status === 404) {
+        setRegnoSearchResult('❌ Татварын системд бүртгэлгүй регистр');
+        toast.error('Татварын системд байгууллага олдсонгүй');
+      } else {
+        setRegnoSearchResult('⚠️ Системд алдаа гарлаа');
+        toast.error('Алдаа гарлаа. Дахин оролдоно уу.');
+      }
+    } finally {
+      setSearchingRegno(false);
+    }
+  };
 
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
@@ -91,6 +143,61 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
 
         <Grid item xs={12} sm={6}>
           <Controller
+            name="name2"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Хоёр дахь нэр"
+                fullWidth
+                error={!!errors.name2}
+                helperText={errors.name2?.message || 'Нэмэлт нэр байвал оруулна уу'}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="registrationNumber"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="⭐ Байгууллагын регистр"
+                fullWidth
+                error={!!errors.registrationNumber}
+                helperText={errors.registrationNumber?.message || 'Байгууллагын регистрийн дугаар (7 орон)'}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={handleSearchByRegno}
+                        disabled={searchingRegno || !field.value || field.value.length !== 7}
+                        edge="end"
+                        color="primary"
+                        title="Татварын системээс хайх"
+                      >
+                        {searchingRegno ? <CircularProgress size={24} /> : <SearchIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
+          />
+          {regnoSearchResult && (
+            <Alert 
+              severity={regnoSearchResult.startsWith('✅') ? 'success' : regnoSearchResult.startsWith('❌') ? 'error' : 'warning'}
+              sx={{ mt: 1 }}
+            >
+              {regnoSearchResult}
+            </Alert>
+          )}
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <Controller
             name="organizationType"
             control={control}
             render={({ field }) => (
@@ -109,38 +216,6 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
                     'Захын лангуу: Өмнөх өдөр захиалга, дараа өдөр хүргэлт. Дэлгүүр: Шууд захиалга ба НӨАТ.'}
                 </FormHelperText>
               </FormControl>
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="contactPerson"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Үндсэн нэр (Хариуцсан хүн)"
-                fullWidth
-                error={!!errors.contactPerson}
-                helperText={errors.contactPerson?.message}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="registrationNumber"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Байгууллагын регистр"
-                fullWidth
-                error={!!errors.registrationNumber}
-                helperText={errors.registrationNumber?.message}
-              />
             )}
           />
         </Grid>

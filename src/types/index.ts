@@ -58,7 +58,8 @@ export interface Product {
   nameEnglish: string;
   productCode: string;
   barcode?: string;
-  category?: string;
+  categoryId?: number;
+  category?: Category;
   supplierId: number;
   supplier?: Supplier;
   stockQuantity: number;
@@ -69,6 +70,8 @@ export interface Product {
   priceRetail: string | number;
   pricePerBox?: number; // Хайрцагны үнэ
   isActive?: boolean; // Идэвхтэй эсэх
+  batches?: ProductBatch[]; // Багцуудын жагсаалт
+  prices?: ProductPrice[]; // Үнийн жагсаалт
   createdAt?: string;
   updatedAt?: string;
 }
@@ -79,7 +82,7 @@ export interface CreateProductRequest {
   nameEnglish: string;
   productCode: string;
   barcode?: string;
-  category?: string;
+  categoryId?: number;
   supplierId: number;
   stockQuantity: number;
   unitsPerBox?: number;
@@ -97,7 +100,7 @@ export interface UpdateProductRequest {
   nameEnglish?: string;
   productCode?: string;
   barcode?: string;
-  category?: string;
+  categoryId?: number;
   supplierId?: number;
   stockQuantity?: number;
   unitsPerBox?: number;
@@ -129,6 +132,16 @@ export interface ProductBatch {
   priceWholesale: number;
   priceRetail: number;
   createdAt?: string;
+}
+
+export type ExpiryStatus = 'expired' | 'critical' | 'warning' | 'good' | 'no-expiry';
+
+export interface ExpiryStats {
+  expired: number;
+  expiring30Days: number;
+  expiring90Days: number;
+  total: number;
+  healthy: number;
 }
 
 export interface CreateProductBatchRequest {
@@ -217,9 +230,9 @@ export interface UpdateCategoryRequest {
 export interface Customer {
   id: number;
   name: string; // Байгууллагын нэр
+  name2?: string; // Хоёр дахь нэр (нэмэлт нэр)
   organizationType?: string; // Дэлгүүр, Сүлжээ, Ресторан
-  contactPerson?: string; // Үндсэн нэр (хариуцсан хүний нэр)
-  registrationNumber?: string; // Регистрийн дугаар
+  registrationNumber?: string; // Регистрийн дугаар ⭐
   address: string;
   district?: string; // Дүүрэг
   phoneNumber: string;
@@ -234,12 +247,13 @@ export interface Customer {
 export interface CustomerType {
   id: number;
   name: 'Retail' | 'Wholesale';
+  typeName?: string; // Alternative field name used in some endpoints
 }
 
 export interface CreateCustomerRequest {
   name: string;
+  name2?: string;
   organizationType?: string;
-  contactPerson?: string;
   registrationNumber?: string;
   address: string;
   district?: string;
@@ -253,8 +267,8 @@ export interface CreateCustomerRequest {
 
 export interface UpdateCustomerRequest {
   name?: string;
+  name2?: string;
   organizationType?: string;
-  contactPerson?: string;
   registrationNumber?: string;
   address?: string;
   district?: string;
@@ -361,6 +375,11 @@ export interface Return {
   product?: Product;
   quantity: number;
   reason: string;
+  customerId?: number; // Optional: Which customer returned the product
+  customer?: Customer;
+  unitPrice?: number; // Optional: Unit price at time of return
+  expiryDate?: string; // Optional: Expiry date of returned product
+  notes?: string; // Optional: Additional notes
   createdById: number;
   createdBy?: User;
   createdAt: string;
@@ -371,6 +390,10 @@ export interface CreateReturnRequest {
   productId: number;
   quantity: number;
   reason: string;
+  customerId?: number; // Optional
+  unitPrice?: number; // Optional
+  expiryDate?: string; // Optional
+  notes?: string; // Optional
 }
 
 // Agent Location Types
@@ -818,4 +841,30 @@ export interface StoreVisit {
   departureTime?: string;
   duration?: number; // minutes
   orderId?: number;
+}
+
+// Product Price Types
+export interface ProductPrice {
+  id: number;
+  productId: number;
+  product?: Product;
+  customerTypeId: number;
+  customerType: {
+    id: number;
+    typeName: string; // 'Retail', 'Wholesale', etc.
+  };
+  price: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateProductPriceRequest {
+  productId: number;
+  customerTypeId: number;
+  price: number;
+}
+
+export interface UpdateProductPriceRequest {
+  price?: number;
+  customerTypeId?: number;
 }

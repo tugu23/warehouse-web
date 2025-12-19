@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, IconButton, Chip } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, LocationOn as LocationIcon } from '@mui/icons-material';
+import { Box, Button, Chip, Stack, Typography } from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -8,13 +8,15 @@ import { useAuth } from '../../hooks/useAuth';
 import { customersApi } from '../../api';
 import { Customer, CreateCustomerRequest, UpdateCustomerRequest } from '../../types';
 import CustomerForm from './CustomerForm';
+import CustomerDetailsModal from './CustomerDetailsModal';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 
 export default function CustomersPage() {
   const { canManage, canCreate } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function CustomersPage() {
     try {
       await customersApi.create(data);
       toast.success('Customer created successfully!');
-      setModalOpen(false);
+      setEditModalOpen(false);
       fetchCustomers();
     } catch (error) {
       console.error('Error creating customer:', error);
@@ -49,7 +51,7 @@ export default function CustomersPage() {
     try {
       await customersApi.update(selectedCustomer.id, data);
       toast.success('Customer updated successfully!');
-      setModalOpen(false);
+      setEditModalOpen(false);
       setSelectedCustomer(null);
       fetchCustomers();
     } catch (error) {
@@ -57,88 +59,140 @@ export default function CustomersPage() {
     }
   };
 
-  const handleOpenEdit = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setModalOpen(true);
+  const handleOpenEdit = () => {
+    setDetailsModalOpen(false);
+    setEditModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setSelectedCustomer(null);
-  };
-
-  const handleViewOnMap = (customer: Customer) => {
-    const url = `https://www.google.com/maps?q=${customer.locationLatitude},${customer.locationLongitude}`;
+  const handleViewOnMap = () => {
+    if (!selectedCustomer) return;
+    const url = `https://www.google.com/maps?q=${selectedCustomer.locationLatitude},${selectedCustomer.locationLongitude}`;
     window.open(url, '_blank');
   };
 
   const columns = [
     {
       id: 'name',
-      label: 'Customer Name',
+      label: 'Байгууллагын нэр',
       minWidth: 180,
-    },
-    {
-      id: 'phoneNumber',
-      label: 'Phone',
-      minWidth: 130,
-    },
-    {
-      id: 'address',
-      label: 'Address',
-      minWidth: 200,
-    },
-    {
-      id: 'customerType',
-      label: 'Type',
-      align: 'center' as const,
       format: (row: Customer) => (
-        <Chip
-          label={row.customerType.name}
-          color={row.customerType.name === 'Wholesale' ? 'primary' : 'secondary'}
-          size="small"
-        />
-      ),
-    },
-    {
-      id: 'assignedAgent',
-      label: 'Assigned Agent',
-      minWidth: 150,
-      format: (row: Customer) => row.assignedAgent?.name || 'Not assigned',
-    },
-    {
-      id: 'actions',
-      label: 'Actions',
-      align: 'center' as const,
-      format: (row: Customer) => (
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-          <IconButton
-            size="small"
-            color="info"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleViewOnMap(row);
-            }}
-            title="View on Map"
-          >
-            <LocationIcon fontSize="small" />
-          </IconButton>
-          {canManage() && (
-            <IconButton
-              size="small"
-              color="primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenEdit(row);
-              }}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
+        <Box>
+          <Typography variant="body2" fontWeight="bold">
+            {row.name}
+          </Typography>
+          {row.name2 && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              {row.name2}
+            </Typography>
           )}
         </Box>
       ),
     },
+    {
+      id: 'registrationNumber',
+      label: '⭐ Регистр',
+      minWidth: 130,
+      format: (row: Customer) =>
+        row.registrationNumber ? (
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip
+              label={row.registrationNumber}
+              color="primary"
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 'bold' }}
+            />
+            {row.isVatPayer && (
+              <Chip label="НӨАТ" color="success" size="small" variant="filled" />
+            )}
+          </Stack>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            -
+          </Typography>
+        ),
+    },
+    {
+      id: 'phoneNumber',
+      label: 'Утас',
+      minWidth: 120,
+    },
+    {
+      id: 'address',
+      label: 'Хаяг',
+      minWidth: 200,
+      format: (row: Customer) => (
+        <Box>
+          <Typography variant="body2">{row.address}</Typography>
+          {row.district && (
+            <Typography variant="caption" color="text.secondary">
+              {row.district}
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+    {
+      id: 'organizationType',
+      label: 'Төрөл',
+      align: 'center' as const,
+      minWidth: 130,
+      format: (row: Customer) => {
+        if (!row.organizationType) {
+          // Fallback to customerType if organizationType is not set
+          return row.customerType ? (
+            <Chip
+              label={row.customerType.typeName || row.customerType.name}
+              color={row.customerType.name === 'Wholesale' ? 'primary' : 'secondary'}
+              size="small"
+            />
+          ) : (
+            <Typography variant="body2" color="text.secondary">-</Typography>
+          );
+        }
+        
+        // Display organizationType with appropriate color
+        const typeColors: Record<string, 'default' | 'primary' | 'secondary' | 'success' | 'error' | 'info' | 'warning'> = {
+          'Зах': 'primary',
+          'Дэлгүүр': 'secondary',
+          'Ресторан': 'success',
+          'Зах2': 'info',
+          'Борлуулалт': 'warning',
+        };
+        
+        return (
+          <Chip
+            label={row.organizationType}
+            color={typeColors[row.organizationType] || 'default'}
+            size="small"
+          />
+        );
+      },
+    },
+    {
+      id: 'assignedAgent',
+      label: 'Борлуулагч',
+      minWidth: 130,
+      format: (row: Customer) => row.assignedAgent?.name || 'Томилоогүй',
+    },
   ];
+
+  const handleRowClick = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setDetailsModalOpen(true);
+  };
+
+  const handleCloseDetailsModal = () => {
+    setDetailsModalOpen(false);
+    setSelectedCustomer(null);
+  };
+
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    if (!detailsModalOpen) {
+      setSelectedCustomer(null);
+    }
+  };
 
   if (loading) {
     return <TableSkeleton />;
@@ -147,30 +201,54 @@ export default function CustomersPage() {
   return (
     <Box>
       <DataTable
-        title="Customers"
+        title="Харилцагчид"
         columns={columns}
         data={customers}
         searchable
-        searchPlaceholder="Search customers..."
+        searchPlaceholder="Нэр, регистр, утас, хаягаар хайх..."
+        onRowClick={handleRowClick}
         actions={
           canCreate() && (
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setModalOpen(true)}>
-              Add Customer
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setSelectedCustomer(null);
+                setEditModalOpen(true);
+              }}
+            >
+              Харилцагч нэмэх
             </Button>
           )
         }
       />
 
+      {/* Details Modal */}
       <Modal
-        open={modalOpen}
-        onClose={handleCloseModal}
-        title={selectedCustomer ? 'Edit Customer' : 'Add New Customer'}
+        open={detailsModalOpen}
+        onClose={handleCloseDetailsModal}
+        title={`Харилцагчийн дэлгэрэнгүй: ${selectedCustomer?.name}`}
+        maxWidth="md"
+      >
+        <CustomerDetailsModal
+          customer={selectedCustomer}
+          onEdit={handleOpenEdit}
+          onViewOnMap={handleViewOnMap}
+          canManage={canManage()}
+        />
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        open={editModalOpen}
+        onClose={handleCloseEditModal}
+        title={selectedCustomer ? 'Харилцагч засах' : 'Шинэ харилцагч нэмэх'}
         maxWidth="md"
       >
         <CustomerForm
           customer={selectedCustomer}
           onSubmit={selectedCustomer ? handleUpdate : handleCreate}
-          onCancel={handleCloseModal}
+          onCancel={handleCloseEditModal}
         />
       </Modal>
     </Box>

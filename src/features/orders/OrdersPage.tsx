@@ -1,11 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, IconButton, Chip, Tooltip } from '@mui/material';
-import {
-  Add as AddIcon,
-  Visibility as ViewIcon,
-  Download as DownloadIcon,
-  PictureAsPdf as PdfIcon,
-} from '@mui/icons-material';
+import { Box, Button, Chip } from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -84,23 +79,8 @@ export default function OrdersPage() {
     }
   };
 
-  const handleViewReceiptPDF = async (orderId: number) => {
-    try {
-      await ordersApi.viewReceiptPDF(orderId);
-    } catch (error) {
-      console.error('Error viewing PDF:', error);
-      toast.error('Failed to open PDF receipt');
-    }
-  };
-
-  const handleDownloadReceiptPDF = async (orderId: number) => {
-    try {
-      await ordersApi.downloadReceiptPDF(orderId);
-      toast.success('PDF receipt downloaded successfully');
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      toast.error('Failed to download PDF receipt');
-    }
+  const handleRowClick = (order: Order) => {
+    handleViewDetails(order);
   };
 
   const columns = [
@@ -148,51 +128,6 @@ export default function OrdersPage() {
       minWidth: 170,
       format: (row: Order) => formatDateTimeMN(row.createdAt),
     },
-    {
-      id: 'actions',
-      label: 'Actions',
-      align: 'center' as const,
-      format: (row: Order) => (
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-          <Tooltip title="View Details">
-            <IconButton
-              size="small"
-              color="info"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewDetails(row);
-              }}
-            >
-              <ViewIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="View Receipt PDF">
-            <IconButton
-              size="small"
-              color="primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewReceiptPDF(row.id);
-              }}
-            >
-              <PdfIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Download Receipt PDF">
-            <IconButton
-              size="small"
-              color="success"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownloadReceiptPDF(row.id);
-              }}
-            >
-              <DownloadIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
-    },
   ];
 
   if (loading) {
@@ -207,6 +142,7 @@ export default function OrdersPage() {
         data={orders}
         searchable
         searchPlaceholder="Search orders..."
+        onRowClick={handleRowClick}
         actions={
           <Button
             variant="contained"

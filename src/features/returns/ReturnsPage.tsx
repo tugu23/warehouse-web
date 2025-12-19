@@ -44,42 +44,54 @@ export default function ReturnsPage() {
   const columns = [
     {
       id: 'id',
-      label: 'Return ID',
+      label: 'Буцаалтын ID',
       minWidth: 80,
       format: (row: Return) => `#${row.id}`,
     },
     {
       id: 'order',
-      label: 'Order ID',
+      label: 'Захиалгын ID',
       format: (row: Return) => `#${row.orderId}`,
     },
     {
       id: 'product',
-      label: 'Product',
+      label: 'Бараа',
       minWidth: 150,
       format: (row: Return) => row.product?.nameEnglish || 'N/A',
     },
     {
       id: 'quantity',
-      label: 'Quantity',
+      label: 'Тоо ширхэг',
       align: 'center' as const,
     },
     {
+      id: 'unitPrice',
+      label: 'Нэгж үнэ',
+      align: 'right' as const,
+      format: (row: Return) => row.unitPrice ? `₮${row.unitPrice.toLocaleString()}` : '-',
+    },
+    {
+      id: 'customer',
+      label: 'Харилцагч',
+      minWidth: 130,
+      format: (row: Return) => row.customer?.name || '-',
+    },
+    {
       id: 'reason',
-      label: 'Reason',
-      minWidth: 200,
+      label: 'Шалтгаан',
+      minWidth: 150,
     },
     {
       id: 'createdBy',
-      label: 'Created By',
+      label: 'Үүсгэсэн',
       minWidth: 130,
       format: (row: Return) => row.createdBy?.name || 'N/A',
     },
     {
       id: 'createdAt',
-      label: 'Created At',
+      label: 'Огноо',
       minWidth: 170,
-      format: (row: Return) => new Date(row.createdAt).toLocaleString(),
+      format: (row: Return) => new Date(row.createdAt).toLocaleString('mn-MN'),
     },
   ];
 
@@ -90,14 +102,14 @@ export default function ReturnsPage() {
   return (
     <Box>
       <DataTable
-        title="Product Returns"
+        title="Барааны буцаалт"
         columns={columns}
         data={returns}
         searchable
-        searchPlaceholder="Search returns..."
+        searchPlaceholder="Буцаалт хайх..."
         actions={
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setModalOpen(true)}>
-            Create Return
+            Буцаалт үүсгэх
           </Button>
         }
       />
@@ -105,7 +117,7 @@ export default function ReturnsPage() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Create Product Return"
+        title="Барааны буцаалт үүсгэх"
         maxWidth="sm"
       >
         <ReturnForm onSubmit={handleCreate} onCancel={() => setModalOpen(false)} />

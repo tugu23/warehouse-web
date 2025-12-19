@@ -28,8 +28,15 @@ import {
 } from '@mui/icons-material';
 import { addDays, format } from 'date-fns';
 import { orderSchema } from '../../utils/validation';
-import { CreateOrderRequest, Customer, Product, Employee, OrderType } from '../../types';
-import { customersApi, productsApi, employeesApi } from '../../api';
+import {
+  CreateOrderRequest,
+  Customer,
+  Product,
+  Employee,
+  OrderType,
+  ProductPrice,
+} from '../../types';
+import { customersApi, productsApi, employeesApi, productPricesApi } from '../../api';
 import { z } from 'zod';
 
 type OrderFormData = z.infer<typeof orderSchema>;
@@ -45,6 +52,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('Market');
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
+  const [productPricesCache, setProductPricesCache] = useState<Record<number, ProductPrice[]>>({});
 
   const {
     control,
@@ -117,11 +125,69 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     }
   };
 
+  // Fetch product prices for a specific product (with caching)
+  const fetchProductPrices = async (productId: number): Promise<ProductPrice[]> => {
+    // Check cache first
+    if (productPricesCache[productId]) {
+      return productPricesCache[productId];
+    }
+
+    try {
+      const response = await productPricesApi.getByProductId(productId);
+      const prices = response.data.data?.productPrices || [];
+
+      // Cache the result
+      setProductPricesCache((prev) => ({
+        ...prev,
+        [productId]: prices,
+      }));
+
+      return prices;
+    } catch (error) {
+      console.warn(`Could not fetch prices for product ${productId}:`, error);
+      return [];
+    }
+  };
+
+  // Get price for a product based on customer type
+  const getProductPrice = async (productId: number, customerTypeId: number): Promise<number> => {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return 0;
+
+    // Try to get price from ProductPrice API
+    const prices = await fetchProductPrices(productId);
+    const priceEntry = prices.find((p) => p.customerTypeId === customerTypeId);
+
+    if (priceEntry) {
+      return priceEntry.price;
+    }
+
+    // Fallback to default product prices
+    const customer = customers.find((c) => c.id === watch('customerId'));
+    if (customer?.customerType.name === 'Wholesale') {
+      return Number(product.priceWholesale);
+    }
+    return Number(product.priceRetail);
+  };
+
   const calculateTotal = () => {
     return items.reduce((total, item) => {
       const product = products.find((p) => p.id === item.productId);
       if (product) {
         const customer = customers.find((c) => c.id === watch('customerId'));
+
+        // First try to use ProductPrice from cache
+        const cachedPrices = productPricesCache[item.productId];
+        if (cachedPrices && cachedPrices.length > 0 && customer) {
+          const priceEntry = cachedPrices.find(
+            (p) => p.customerTypeId === customer.customerType.id
+          );
+          if (priceEntry) {
+            return total + priceEntry.price * item.quantity;
+          }
+        }
+
+        // Fallback to default product prices
         const price =
           customer?.customerType.name === 'Wholesale'
             ? Number(product.priceWholesale)
@@ -178,9 +244,14 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                     field.onChange(newValue ? newValue.id : 0);
                   }}
                   options={customers}
-                  getOptionLabel={(customer) =>
-                    `${customer.name} (${customer.customerType.name})${customer.organizationType ? ` - ${customer.organizationType}` : ''}`
-                  }
+                  getOptionLabel={(customer) => {
+                    const baseLabel = `${customer.name} (${customer.customerType.name})`;
+                    // Only show organizationType if it exists and is not "undefined" string
+                    if (customer.organizationType && customer.organizationType !== 'undefined') {
+                      return `${baseLabel} - ${customer.organizationType}`;
+                    }
+                    return baseLabel;
+                  }}
                   isOptionEqualToValue={(option, value) => option.id === value.id}
                   ListboxProps={{
                     style: { maxHeight: '250px' },
@@ -382,12 +453,37 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                   control={control}
                   render={({ field }) => {
                     const selectedProduct = products.find((p) => p.id === field.value) || null;
+                    const customer = customers.find((c) => c.id === selectedCustomerId);
+
+                    // Get dynamic price from cache if available
+                    let displayPrice = selectedProduct ? Number(selectedProduct.priceRetail) : 0;
+                    let wholesalePrice = selectedProduct
+                      ? Number(selectedProduct.priceWholesale)
+                      : 0;
+
+                    if (selectedProduct && customer) {
+                      const cachedPrices = productPricesCache[selectedProduct.id];
+                      if (cachedPrices && cachedPrices.length > 0) {
+                        const priceEntry = cachedPrices.find(
+                          (p) => p.customerTypeId === customer.customerType.id
+                        );
+                        if (priceEntry) {
+                          displayPrice = priceEntry.price;
+                        }
+                      }
+                    }
+
                     return (
                       <Box>
                         <Autocomplete
                           value={selectedProduct}
-                          onChange={(_, newValue) => {
+                          onChange={async (_, newValue) => {
                             field.onChange(newValue ? newValue.id : 0);
+
+                            // Preload prices for the selected product
+                            if (newValue && customer) {
+                              await fetchProductPrices(newValue.id);
+                            }
                           }}
                           options={products}
                           getOptionLabel={(product) =>
@@ -409,8 +505,17 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                         />
                         {selectedProduct && (
                           <FormHelperText>
-                            Үнэ: ₮{Number(selectedProduct.priceRetail).toLocaleString()} | Бөөний: ₮
-                            {Number(selectedProduct.priceWholesale).toLocaleString()}
+                            {customer && productPricesCache[selectedProduct.id]?.length > 0 ? (
+                              <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>
+                                ✓ Тусгай үнэ ({customer.customerType.name}): ₮
+                                {displayPrice.toLocaleString()}
+                              </span>
+                            ) : (
+                              <>
+                                Үнэ: ₮{Number(selectedProduct.priceRetail).toLocaleString()} |
+                                Бөөний: ₮{Number(selectedProduct.priceWholesale).toLocaleString()}
+                              </>
+                            )}
                           </FormHelperText>
                         )}
                       </Box>

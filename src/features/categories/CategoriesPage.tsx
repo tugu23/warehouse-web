@@ -10,25 +10,27 @@ import {
   TableHead,
   TableRow,
   Typography,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../../types';
 import { categoriesApi } from '../../api';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import CategoryDetailsModal from './CategoryDetailsModal';
+import Modal from '../../components/Modal';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function CategoriesPage() {
   const { canManage, canCreate } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -64,14 +66,19 @@ export default function CategoriesPage() {
     setFormOpen(true);
   };
 
-  const handleEdit = (category: Category) => {
+  const handleEdit = () => {
+    setDetailsModalOpen(false);
+    setFormOpen(true);
+  };
+
+  const handleRowClick = (category: Category) => {
     setSelectedCategory(category);
     reset({
       nameMongolian: category.nameMongolian,
       nameEnglish: category.nameEnglish || '',
       description: category.description || '',
     });
-    setFormOpen(true);
+    setDetailsModalOpen(true);
   };
 
   const handleDelete = (category: Category) => {
@@ -133,51 +140,60 @@ export default function CategoriesPage() {
               <TableCell>Mongolian Name</TableCell>
               <TableCell>English Name</TableCell>
               <TableCell>Description</TableCell>
-              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={4} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : categories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={4} align="center">
                   No categories found
                 </TableCell>
               </TableRow>
             ) : (
               categories.map((category) => (
-                <TableRow key={category.id}>
+                <TableRow 
+                  key={category.id}
+                  onClick={() => handleRowClick(category)}
+                  sx={{ 
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    }
+                  }}
+                >
                   <TableCell>{category.id}</TableCell>
                   <TableCell>{category.nameMongolian}</TableCell>
                   <TableCell>{category.nameEnglish || '-'}</TableCell>
                   <TableCell>{category.description || '-'}</TableCell>
-                  <TableCell align="right">
-                    {canManage() && (
-                      <>
-                        <IconButton size="small" onClick={() => handleEdit(category)}>
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(category)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </>
-                    )}
-                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Details Modal */}
+      <Modal
+        open={detailsModalOpen}
+        onClose={() => {
+          setDetailsModalOpen(false);
+          setSelectedCategory(null);
+        }}
+        title={`Category Details: ${selectedCategory?.nameMongolian}`}
+        maxWidth="sm"
+      >
+        <CategoryDetailsModal
+          category={selectedCategory}
+          onEdit={handleEdit}
+          canManage={canManage()}
+        />
+      </Modal>
 
       {/* Category Form Dialog */}
       <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>

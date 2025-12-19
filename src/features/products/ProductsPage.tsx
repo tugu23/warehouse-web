@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Chip, IconButton } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Inventory2 as InventoryIcon } from '@mui/icons-material';
+import { Box, Button, Chip, Badge, Typography } from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -8,15 +8,21 @@ import { useAuth } from '../../hooks/useAuth';
 import { productsApi } from '../../api';
 import { Product, CreateProductRequest, UpdateProductRequest } from '../../types';
 import ProductForm from './ProductForm';
+import ProductDetailsModal from './ProductDetailsModal';
 import InventoryAdjustmentForm from './InventoryAdjustmentForm';
+import PriceManagement from './PriceManagement';
+import ExpiryBadge from '../../components/ExpiryBadge';
+import PriceBadge from '../../components/PriceBadge';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 
 export default function ProductsPage() {
   const { canManage, canCreate } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
+  const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -26,8 +32,23 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await productsApi.getAll({ limit: 1000 });
-      setProducts(response.data.data?.products || []);
+      const response = await productsApi.getAll({ 
+        limit: 1000,
+        include: 'supplier,category,batches,prices'
+      });
+      const products = response.data.data?.products || [];
+      console.log('📦 Fetched products:', products.length);
+      if (products.length > 0) {
+        console.log('📦 First product:', {
+          id: products[0].id,
+          name: products[0].nameMongolian,
+          priceWholesale: products[0].priceWholesale,
+          priceRetail: products[0].priceRetail,
+          priceWholesaleType: typeof products[0].priceWholesale,
+          priceRetailType: typeof products[0].priceRetail
+        });
+      }
+      setProducts(products);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -39,7 +60,7 @@ export default function ProductsPage() {
     try {
       await productsApi.create(data);
       toast.success('Product created successfully!');
-      setModalOpen(false);
+      setEditModalOpen(false);
       fetchProducts();
     } catch (error) {
       console.error('Error creating product:', error);
@@ -51,7 +72,7 @@ export default function ProductsPage() {
     try {
       await productsApi.update(selectedProduct.id, data);
       toast.success('Product updated successfully!');
-      setModalOpen(false);
+      setEditModalOpen(false);
       setSelectedProduct(null);
       fetchProducts();
     } catch (error) {
@@ -59,36 +80,60 @@ export default function ProductsPage() {
     }
   };
 
-  const handleOpenEdit = (product: Product) => {
-    setSelectedProduct(product);
-    setModalOpen(true);
+  const handleOpenEdit = () => {
+    setDetailsModalOpen(false);
+    setEditModalOpen(true);
   };
 
-  const handleOpenInventory = (product: Product) => {
-    setSelectedProduct(product);
+  const handleOpenInventory = () => {
+    setDetailsModalOpen(false);
     setInventoryModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
+  const handleOpenPrices = () => {
+    setDetailsModalOpen(false);
+    setPriceModalOpen(true);
+  };
+
+  const handleCloseDetailsModal = () => {
+    setDetailsModalOpen(false);
     setSelectedProduct(null);
+  };
+
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    if (!detailsModalOpen) {
+      setSelectedProduct(null);
+    }
   };
 
   const handleCloseInventoryModal = () => {
     setInventoryModalOpen(false);
-    setSelectedProduct(null);
+    setDetailsModalOpen(true);
+  };
+
+  const handleClosePriceModal = () => {
+    setPriceModalOpen(false);
+    setDetailsModalOpen(true);
   };
 
   const columns = [
     {
-      id: 'productCode',
-      label: 'Code',
-      minWidth: 100,
-    },
-    {
       id: 'nameEnglish',
       label: 'Name (EN)',
       minWidth: 150,
+      format: (row: Product) => (
+        <Box>
+          <Typography variant="body2" fontWeight="medium">
+            {row.nameEnglish}
+          </Typography>
+          {row.batches && row.batches.length > 0 && (
+            <Box sx={{ mt: 0.5 }}>
+              <ExpiryBadge batch={row.batches[0]} />
+            </Box>
+          )}
+        </Box>
+      ),
     },
     {
       id: 'nameMongolian',
@@ -96,16 +141,57 @@ export default function ProductsPage() {
       minWidth: 150,
     },
     {
+      id: 'category',
+      label: 'Category',
+      minWidth: 120,
+      format: (row: Product) => row.category?.nameMongolian || row.category?.nameEnglish || '-',
+    },
+    {
       id: 'stockQuantity',
       label: 'Stock',
       align: 'center' as const,
       format: (row: Product) => (
-        <Chip
-          label={row.stockQuantity}
-          color={row.stockQuantity < 10 ? 'error' : row.stockQuantity < 20 ? 'warning' : 'success'}
-          size="small"
-        />
+        <Box>
+          <Chip
+            label={row.stockQuantity}
+            color={row.stockQuantity < 10 ? 'error' : row.stockQuantity < 20 ? 'warning' : 'success'}
+            size="small"
+          />
+          {row.batches && row.batches.length > 0 && (
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+              {row.batches.length} багц
+            </Typography>
+          )}
+        </Box>
       ),
+    },
+    {
+      id: 'expiryStatus',
+      label: 'Хугацаа',
+      align: 'center' as const,
+      format: (row: Product) => {
+        if (!row.batches || row.batches.length === 0) {
+          return (
+            <Typography variant="caption" color="text.secondary">
+              Багц байхгүй
+            </Typography>
+          );
+        }
+        if (row.batches.length === 1) {
+          return <ExpiryBadge batch={row.batches[0]} showDate={false} />;
+        }
+        return (
+          <Badge badgeContent={row.batches.length} color="primary">
+            <ExpiryBadge batch={row.batches[0]} showDate={false} />
+          </Badge>
+        );
+      },
+    },
+    {
+      id: 'prices',
+      label: 'Үнэ',
+      align: 'center' as const,
+      format: (row: Product) => <PriceBadge prices={row.prices} />,
     },
     {
       id: 'priceWholesale',
@@ -119,41 +205,12 @@ export default function ProductsPage() {
       align: 'right' as const,
       format: (row: Product) => `₮${Number(row.priceRetail).toLocaleString()}`,
     },
-    ...(canManage()
-      ? [
-          {
-            id: 'actions',
-            label: 'Actions',
-            align: 'center' as const,
-            format: (row: Product) => (
-              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                <IconButton
-                  size="small"
-                  color="primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenInventory(row);
-                  }}
-                  title="Adjust Inventory"
-                >
-                  <InventoryIcon fontSize="small" />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  color="primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenEdit(row);
-                  }}
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            ),
-          },
-        ]
-      : []),
   ];
+
+  const handleRowClick = (product: Product) => {
+    setSelectedProduct(product);
+    setDetailsModalOpen(true);
+  };
 
   if (loading) {
     return <TableSkeleton />;
@@ -167,28 +224,54 @@ export default function ProductsPage() {
         data={products}
         searchable
         searchPlaceholder="Search products..."
+        onRowClick={handleRowClick}
         actions={
           canCreate() && (
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setModalOpen(true)}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setSelectedProduct(null);
+                setEditModalOpen(true);
+              }}
+            >
               Add Product
             </Button>
           )
         }
       />
 
+      {/* Details Modal */}
       <Modal
-        open={modalOpen}
-        onClose={handleCloseModal}
+        open={detailsModalOpen}
+        onClose={handleCloseDetailsModal}
+        title={`Product Details: ${selectedProduct?.nameEnglish}`}
+        maxWidth="md"
+      >
+        <ProductDetailsModal
+          product={selectedProduct}
+          onEdit={handleOpenEdit}
+          onManageInventory={handleOpenInventory}
+          onManagePrices={handleOpenPrices}
+          canManage={canManage()}
+        />
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        open={editModalOpen}
+        onClose={handleCloseEditModal}
         title={selectedProduct ? 'Edit Product' : 'Add New Product'}
         maxWidth="md"
       >
         <ProductForm
           product={selectedProduct}
           onSubmit={selectedProduct ? handleUpdate : handleCreate}
-          onCancel={handleCloseModal}
+          onCancel={handleCloseEditModal}
         />
       </Modal>
 
+      {/* Inventory Modal */}
       <Modal
         open={inventoryModalOpen}
         onClose={handleCloseInventoryModal}
@@ -203,6 +286,23 @@ export default function ProductsPage() {
           }}
           onCancel={handleCloseInventoryModal}
         />
+      </Modal>
+
+      {/* Price Modal */}
+      <Modal
+        open={priceModalOpen}
+        onClose={handleClosePriceModal}
+        title={`Үнэ удирдах: ${selectedProduct?.nameEnglish}`}
+        maxWidth="md"
+      >
+        {selectedProduct && (
+          <PriceManagement
+            productId={selectedProduct.id}
+            onUpdate={() => {
+              fetchProducts();
+            }}
+          />
+        )}
       </Modal>
     </Box>
   );

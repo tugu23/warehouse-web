@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, TextField, Grid, FormControlLabel, Checkbox } from '@mui/material';
+import { Box, Button, TextField, Grid, FormControlLabel, Checkbox, Divider, Alert, MenuItem } from '@mui/material';
 import { productSchema } from '../../utils/validation';
-import { Product, CreateProductRequest, UpdateProductRequest } from '../../types';
+import { Product, CreateProductRequest, UpdateProductRequest, Category } from '../../types';
 import { z } from 'zod';
+import ProductPrices from '../../components/ProductPrices';
+import { productsApi, categoriesApi } from '../../api';
 
 type ProductFormData = z.infer<typeof productSchema>;
 
@@ -15,11 +17,15 @@ interface ProductFormProps {
 }
 
 export default function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
+  const [barcodeWarning, setBarcodeWarning] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  
   const {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    watch,
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -28,7 +34,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
       nameEnglish: '',
       productCode: '',
       barcode: '',
-      category: '',
+      categoryId: undefined,
       supplierId: 1,
       stockQuantity: 0,
       unitsPerBox: 1,
@@ -41,6 +47,21 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     },
   });
 
+  const barcodeValue = watch('barcode');
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoriesApi.getAll({ limit: 1000 });
+        setCategories(response.data.data?.categories || []);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   useEffect(() => {
     if (product) {
       reset({
@@ -49,7 +70,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
         nameEnglish: product.nameEnglish,
         productCode: product.productCode,
         barcode: product.barcode || '',
-        category: product.category || '',
+        categoryId: product.categoryId || undefined,
         supplierId: product.supplierId,
         stockQuantity: product.stockQuantity,
         unitsPerBox: product.unitsPerBox || 1,
@@ -63,8 +84,45 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     }
   }, [product, reset]);
 
+  // Check for duplicate barcodes (just a warning, not blocking)
+  useEffect(() => {
+    const checkBarcode = async () => {
+      if (barcodeValue && barcodeValue.trim().length > 0) {
+        try {
+          const response = await productsApi.getByBarcode(barcodeValue);
+          const existingProduct = response.data.data?.product;
+          
+          // If found and it's not the current product being edited
+          if (existingProduct && existingProduct.id !== product?.id) {
+            setBarcodeWarning(
+              `⚠️ Энэ barcode "${existingProduct.nameEnglish}" барааны кодонд бүртгэлтэй байна. Давхардсан barcode зөвшөөрөгдөнө.`
+            );
+          } else {
+            setBarcodeWarning(null);
+          }
+        } catch (error) {
+          // No duplicate found or API error
+          setBarcodeWarning(null);
+        }
+      } else {
+        setBarcodeWarning(null);
+      }
+    };
+
+    const timeoutId = setTimeout(checkBarcode, 500); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [barcodeValue, product]);
+
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+      {/* Show ProductPrices when editing existing product */}
+      {product && (
+        <>
+          <ProductPrices productId={product.id} />
+          <Divider sx={{ my: 3 }} />
+        </>
+      )}
+
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6}>
           <Controller
@@ -116,22 +174,6 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 
         <Grid item xs={12} sm={6}>
           <Controller
-            name="productCode"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Барааны код *"
-                fullWidth
-                error={!!errors.productCode}
-                helperText={errors.productCode?.message}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
             name="barcode"
             control={control}
             render={({ field }) => (
@@ -144,20 +186,37 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               />
             )}
           />
+          {barcodeWarning && (
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              {barcodeWarning}
+            </Alert>
+          )}
         </Grid>
 
         <Grid item xs={12} sm={6}>
           <Controller
-            name="category"
+            name="categoryId"
             control={control}
             render={({ field }) => (
               <TextField
                 {...field}
+                select
                 label="Төрөл/Ангилал"
                 fullWidth
-                error={!!errors.category}
-                helperText={errors.category?.message}
-              />
+                value={field.value || ''}
+                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                error={!!errors.categoryId}
+                helperText={errors.categoryId?.message}
+              >
+                <MenuItem value="">
+                  <em>Сонгох...</em>
+                </MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.nameMongolian} {category.nameEnglish ? `(${category.nameEnglish})` : ''}
+                  </MenuItem>
+                ))}
+              </TextField>
             )}
           />
         </Grid>

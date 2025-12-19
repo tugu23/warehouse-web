@@ -19,7 +19,7 @@ export const productSchema = z.object({
   nameEnglish: z.string().min(1, 'English name is required'),
   productCode: z.string().min(1, 'Product code is required'),
   barcode: z.string().optional(),
-  category: z.string().optional(),
+  categoryId: z.number().optional(),
   supplierId: z.number().min(1, 'Supplier is required'),
   stockQuantity: z.number().min(0, 'Stock quantity must be non-negative'),
   unitsPerBox: z.number().min(1, 'Units per box must be at least 1').optional(),
@@ -33,8 +33,8 @@ export const productSchema = z.object({
 
 export const customerSchema = z.object({
   name: z.string().min(2, 'Organization name must be at least 2 characters'),
+  name2: z.string().optional(),
   organizationType: z.string().optional(),
-  contactPerson: z.string().optional(),
   registrationNumber: z.string().optional(),
   address: z.string().min(5, 'Address must be at least 5 characters'),
   district: z.string().optional(),
@@ -81,6 +81,10 @@ export const returnSchema = z.object({
   productId: z.number().min(1, 'Product is required'),
   quantity: z.number().min(1, 'Quantity must be at least 1'),
   reason: z.string().min(5, 'Reason must be at least 5 characters'),
+  customerId: z.number().optional(),
+  unitPrice: z.number().min(0, 'Unit price must be non-negative').optional(),
+  expiryDate: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export const inventoryAdjustmentSchema = z.object({

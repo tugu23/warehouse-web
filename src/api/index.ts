@@ -61,6 +61,9 @@ import {
   SalesByPeriodParams,
   SalesByPeriodResponse,
   PaginationInfo,
+  ProductPrice,
+  CreateProductPriceRequest,
+  UpdateProductPriceRequest,
 } from '../types';
 
 // Authentication API
@@ -88,6 +91,7 @@ export const productsApi = {
     categoryId?: number;
     limit?: number;
     page?: number;
+    include?: string;
   }) =>
     api.get<ApiResponse<{ products: Product[]; pagination?: PaginationInfo }>>('/api/products', {
       params,
@@ -113,6 +117,20 @@ export const productsApi = {
     api.get<ApiResponse<{ inventory: MonthlyInventory[] }>>('/api/products/inventory/monthly', {
       params: { month },
     }),
+};
+
+// Product Prices API
+export const productPricesApi = {
+  getAll: () => api.get<ApiResponse<{ productPrices: ProductPrice[] }>>('/api/product-prices'),
+  getById: (id: number) =>
+    api.get<ApiResponse<{ productPrice: ProductPrice }>>(`/api/product-prices/${id}`),
+  getByProductId: (productId: number) =>
+    api.get<ApiResponse<{ productPrices: ProductPrice[] }>>(`/api/product-prices/product/${productId}`),
+  create: (data: CreateProductPriceRequest) =>
+    api.post<ApiResponse<{ productPrice: ProductPrice }>>('/api/product-prices', data),
+  update: (id: number, data: UpdateProductPriceRequest) =>
+    api.put<ApiResponse<{ productPrice: ProductPrice }>>(`/api/product-prices/${id}`, data),
+  delete: (id: number) => api.delete<ApiResponse<void>>(`/api/product-prices/${id}`),
 };
 
 // Customers API
@@ -299,6 +317,18 @@ export const suppliersApi = {
   delete: (id: number) => api.delete<ApiResponse<void>>(`/api/suppliers/${id}`),
 };
 
+// e-Tax API
+export const etaxApi = {
+  getOrganizationByRegno: (regno: string) =>
+    api.get<ApiResponse<{ organization: {
+      regno: string;
+      name: string;
+      address?: string;
+      vatPayer?: boolean;
+      status?: string;
+    } }>>(`/api/etax/organization/${regno}`),
+};
+
 // Delivery Plans API
 export const deliveryPlansApi = {
   getAll: (params?: {
@@ -409,6 +439,7 @@ export default {
   auth: authApi,
   employees: employeesApi,
   products: productsApi,
+  productPrices: productPricesApi,
   customers: customersApi,
   orders: ordersApi,
   returns: returnsApi,
@@ -421,4 +452,5 @@ export default {
   deliveryPlans: deliveryPlansApi,
   reports: reportsApi,
   analytics: analyticsApi,
+  etax: etaxApi,
 };

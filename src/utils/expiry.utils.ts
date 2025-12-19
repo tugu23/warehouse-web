@@ -80,7 +80,7 @@ export function formatExpiryDate(date: string | null): string {
   if (!date) return 'Хугацаагүй';
   try {
     return format(new Date(date), 'yyyy-MM-dd');
-  } catch (error) {
+  } catch {
     return 'Буруу огноо';
   }
 }

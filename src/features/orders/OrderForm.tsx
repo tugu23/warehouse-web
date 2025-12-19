@@ -457,7 +457,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
 
                     // Get dynamic price from cache if available
                     let displayPrice = selectedProduct ? Number(selectedProduct.priceRetail) : 0;
-                    let wholesalePrice = selectedProduct
+                    const wholesalePrice = selectedProduct
                       ? Number(selectedProduct.priceWholesale)
                       : 0;
 

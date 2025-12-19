@@ -99,11 +99,11 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             );
           } else {
             setBarcodeWarning(null);
-          }
-        } catch (error) {
-          // No duplicate found or API error
-          setBarcodeWarning(null);
         }
+      } catch {
+        // No duplicate found or API error
+        setBarcodeWarning(null);
+      }
       } else {
         setBarcodeWarning(null);
       }

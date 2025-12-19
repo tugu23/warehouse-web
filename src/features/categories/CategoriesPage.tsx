@@ -21,7 +21,6 @@ import { useForm } from 'react-hook-form';
 import { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../../types';
 import { categoriesApi } from '../../api';
 import toast from 'react-hot-toast';
-import ConfirmDialog from '../../components/ConfirmDialog';
 import CategoryDetailsModal from './CategoryDetailsModal';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../hooks/useAuth';
@@ -33,8 +32,6 @@ export default function CategoriesPage() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
   const {
     register,
@@ -79,27 +76,6 @@ export default function CategoriesPage() {
       description: category.description || '',
     });
     setDetailsModalOpen(true);
-  };
-
-  const handleDelete = (category: Category) => {
-    setCategoryToDelete(category);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!categoryToDelete) return;
-
-    try {
-      await categoriesApi.delete(categoryToDelete.id);
-      toast.success('Category deleted successfully');
-      fetchCategories();
-    } catch (error) {
-      toast.error('Failed to delete category');
-      console.error(error);
-    } finally {
-      setDeleteDialogOpen(false);
-      setCategoryToDelete(null);
-    }
   };
 
   const onSubmit = async (data: CreateCategoryRequest) => {
@@ -235,18 +211,6 @@ export default function CategoriesPage() {
           </DialogActions>
         </form>
       </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        title="Delete Category"
-        message={`Are you sure you want to delete "${categoryToDelete?.nameMongolian}"?`}
-        onConfirm={confirmDelete}
-        onCancel={() => {
-          setDeleteDialogOpen(false);
-          setCategoryToDelete(null);
-        }}
-      />
     </Box>
   );
 }

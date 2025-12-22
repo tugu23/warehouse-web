@@ -31,11 +31,11 @@ export default function OrdersPage() {
       const response = await ordersApi.getAll({ limit: 1000 }); // Get all orders
 
       // Backend returns: { data: { data: { orders: [...], pagination: {...} } } }
-      let allOrders = response.data.data?.orders || [];
+      let allOrders = response.data?.data?.orders || [];
 
       // Filter orders for sales agents - they should only see their own orders
       if (isSalesAgent() && user) {
-        allOrders = allOrders.filter((order) => order.createdById === user.id);
+        allOrders = allOrders.filter((order) => order?.createdBy?.id === user?.id);
       }
 
       setOrders(allOrders);

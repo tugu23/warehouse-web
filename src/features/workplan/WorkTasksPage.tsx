@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, IconButton, Typography, Chip, Paper, Grid } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/material/icons';
+import {
+  Box,
+  Button,
+  IconButton,
+  Typography,
+  Chip,
+  Paper,
+  Grid,
+  CircularProgress,
+} from '@mui/material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import Modal from '../../components/Modal';
@@ -72,16 +81,16 @@ export default function WorkTasksPage() {
     }
   };
 
-  const handleStatusChange = async (task: WorkTask, newStatus: WorkTask['status']) => {
-    try {
-      await workTasksApi.update(task.id, { status: newStatus });
-      toast.success('Төлөв шинэчлэгдлээ');
-      fetchTasks();
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Алдаа гарлаа');
-    }
-  };
+  // const handleStatusChange = async (task: WorkTask, newStatus: WorkTask['status']) => {
+  //   try {
+  //     await workTasksApi.update(task.id, { status: newStatus });
+  //     toast.success('Төлөв шинэчлэгдлээ');
+  //     fetchTasks();
+  //   } catch (error) {
+  //     console.error('Error updating status:', error);
+  //     toast.error('Алдаа гарлаа');
+  //   }
+  // };
 
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, 'default' | 'info' | 'warning' | 'error'> = {
@@ -102,18 +111,27 @@ export default function WorkTasksPage() {
   const TaskCard = ({ task }: { task: WorkTask }) => (
     <Paper sx={{ p: 2, mb: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
-        <Typography variant="h6" sx={{ flex: 1 }}>{task.title}</Typography>
+        <Typography variant="h6" sx={{ flex: 1 }}>
+          {task.title}
+        </Typography>
         <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <IconButton size="small" onClick={() => {
-            setSelectedTask(task);
-            setModalOpen(true);
-          }}>
+          <IconButton
+            size="small"
+            onClick={() => {
+              setSelectedTask(task);
+              setModalOpen(true);
+            }}
+          >
             <EditIcon fontSize="small" />
           </IconButton>
-          <IconButton size="small" color="error" onClick={() => {
-            setSelectedTask(task);
-            setDeleteDialogOpen(true);
-          }}>
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => {
+              setSelectedTask(task);
+              setDeleteDialogOpen(true);
+            }}
+          >
             <DeleteIcon fontSize="small" />
           </IconButton>
         </Box>
@@ -129,7 +147,9 @@ export default function WorkTasksPage() {
     </Paper>
   );
 
-  return (
+  return loading ? (
+    <CircularProgress size={24} />
+  ) : (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Ажлын Даалгаврууд</Typography>
@@ -139,7 +159,7 @@ export default function WorkTasksPage() {
       </Box>
 
       <Grid container spacing={2}>
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Paper sx={{ p: 2, bgcolor: 'grey.100', minHeight: 400 }}>
             <Typography variant="h6" gutterBottom>
               Хийх ({tasksByStatus.Todo.length})
@@ -150,7 +170,7 @@ export default function WorkTasksPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Paper sx={{ p: 2, bgcolor: 'info.light', minHeight: 400 }}>
             <Typography variant="h6" gutterBottom>
               Хийж байгаа ({tasksByStatus.InProgress.length})
@@ -161,7 +181,7 @@ export default function WorkTasksPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Paper sx={{ p: 2, bgcolor: 'success.light', minHeight: 400 }}>
             <Typography variant="h6" gutterBottom>
               Дууссан ({tasksByStatus.Completed.length})
@@ -202,4 +222,3 @@ export default function WorkTasksPage() {
     </Box>
   );
 }
-

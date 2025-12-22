@@ -64,6 +64,7 @@ import {
   ProductPrice,
   CreateProductPriceRequest,
   UpdateProductPriceRequest,
+  ApiResponse,
 } from '../types';
 
 // Authentication API
@@ -125,7 +126,9 @@ export const productPricesApi = {
   getById: (id: number) =>
     api.get<ApiResponse<{ productPrice: ProductPrice }>>(`/api/product-prices/${id}`),
   getByProductId: (productId: number) =>
-    api.get<ApiResponse<{ productPrices: ProductPrice[] }>>(`/api/product-prices/product/${productId}`),
+    api.get<ApiResponse<{ productPrices: ProductPrice[] }>>(
+      `/api/product-prices/product/${productId}`
+    ),
   create: (data: CreateProductPriceRequest) =>
     api.post<ApiResponse<{ productPrice: ProductPrice }>>('/api/product-prices', data),
   update: (id: number, data: UpdateProductPriceRequest) =>
@@ -320,13 +323,17 @@ export const suppliersApi = {
 // e-Tax API
 export const etaxApi = {
   getOrganizationByRegno: (regno: string) =>
-    api.get<ApiResponse<{ organization: {
-      regno: string;
-      name: string;
-      address?: string;
-      vatPayer?: boolean;
-      status?: string;
-    } }>>(`/api/etax/organization/${regno}`),
+    api.get<
+      ApiResponse<{
+        organization: {
+          regno: string;
+          name: string;
+          address?: string;
+          vatPayer?: boolean;
+          status?: string;
+        };
+      }>
+    >(`/api/etax/organization/${regno}`),
 };
 
 // Delivery Plans API

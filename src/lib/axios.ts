@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'react-hot-toast';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -52,8 +52,7 @@ api.interceptors.response.use(
           toast.error('The requested resource was not found.');
           break;
 
-        case 422: // Validation error
-        {
+        case 422: { // Validation error
           const message = data?.message || 'Validation error occurred.';
           toast.error(message);
           break;

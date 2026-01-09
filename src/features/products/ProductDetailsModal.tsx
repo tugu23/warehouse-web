@@ -1,5 +1,26 @@
-import { Box, Button, Card, CardContent, Chip, Divider, Grid, Stack, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
-import { Edit as EditIcon, Inventory2 as InventoryIcon, AttachMoney as MoneyIcon } from '@mui/icons-material';
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Divider,
+  Grid,
+  Stack,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+} from '@mui/material';
+import {
+  Edit as EditIcon,
+  Inventory2 as InventoryIcon,
+  AttachMoney as MoneyIcon,
+} from '@mui/icons-material';
 import { Product } from '../../types';
 import ExpiryBadge from '../../components/ExpiryBadge';
 import PriceList from '../../components/PriceList';
@@ -33,37 +54,37 @@ export default function ProductDetailsModal({
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Product Code
                 </Typography>
                 <Typography variant="body1">{product.productCode || '-'}</Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Barcode
                 </Typography>
                 <Typography variant="body1">{product.barcode || '-'}</Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Name (English)
                 </Typography>
                 <Typography variant="body1">{product.nameEnglish}</Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Name (Mongolian)
                 </Typography>
                 <Typography variant="body1">{product.nameMongolian}</Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Name (Korean)
                 </Typography>
                 <Typography variant="body1">{product.nameKorean || '-'}</Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Category
                 </Typography>
@@ -71,7 +92,7 @@ export default function ProductDetailsModal({
                   {product.category?.nameMongolian || product.category?.nameEnglish || '-'}
                 </Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Status
                 </Typography>
@@ -95,7 +116,7 @@ export default function ProductDetailsModal({
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
                   Stock Quantity
                 </Typography>
@@ -106,20 +127,20 @@ export default function ProductDetailsModal({
                       product.stockQuantity < 10
                         ? 'error'
                         : product.stockQuantity < 20
-                        ? 'warning'
-                        : 'success'
+                          ? 'warning'
+                          : 'success'
                     }
                     size="medium"
                   />
                 </Box>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
                   Units Per Box
                 </Typography>
                 <Typography variant="body1">{product.unitsPerBox || '-'}</Typography>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
                   Net Weight
                 </Typography>
@@ -127,7 +148,7 @@ export default function ProductDetailsModal({
                   {product.netWeight ? `${product.netWeight} kg` : '-'}
                 </Typography>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
                   Gross Weight
                 </Typography>
@@ -140,9 +161,7 @@ export default function ProductDetailsModal({
         </Card>
 
         {/* Price Information */}
-        {product.prices && product.prices.length > 0 && (
-          <PriceList prices={product.prices} />
-        )}
+        {product.prices && product.prices.length > 0 && <PriceList prices={product.prices} />}
 
         {/* Batch Information */}
         {product.batches && product.batches.length > 0 && (
@@ -209,7 +228,7 @@ export default function ProductDetailsModal({
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
                   Wholesale Price
                 </Typography>
@@ -217,7 +236,7 @@ export default function ProductDetailsModal({
                   ₮{Number(product.priceWholesale).toLocaleString()}
                 </Typography>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
                   Retail Price
                 </Typography>
@@ -225,7 +244,7 @@ export default function ProductDetailsModal({
                   ₮{Number(product.priceRetail).toLocaleString()}
                 </Typography>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
                   Price Per Box
                 </Typography>
@@ -278,4 +297,3 @@ export default function ProductDetailsModal({
     </Box>
   );
 }
-

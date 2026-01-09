@@ -32,6 +32,7 @@ export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScanner
         stopScanner();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const startScanner = () => {
@@ -68,7 +69,7 @@ export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScanner
           halfSample: true,
         },
       },
-      (err) => {
+      (err: Error | null) => {
         if (err) {
           console.error('Scanner initialization error:', err);
           setError('Camera initialization failed. Please check your camera permissions.');
@@ -79,7 +80,7 @@ export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScanner
       }
     );
 
-    Quagga.onDetected((result) => {
+    Quagga.onDetected((result: { codeResult: { code: string } }) => {
       if (result.codeResult && result.codeResult.code) {
         const barcode = result.codeResult.code;
         onScan(barcode);

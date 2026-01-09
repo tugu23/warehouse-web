@@ -1,19 +1,14 @@
-import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { Box, Button, TextField, Grid, FormControl, InputLabel, Select, MenuItem, FormHelperText } from '@mui/material';
-import { CreateProductBatchRequest, UpdateProductBatchRequest, Product, Supplier } from '../../types';
-import { productsApi } from '../../api';
+import { Box, Button, TextField, Grid } from '@mui/material';
+import { CreateProductBatchRequest, UpdateProductBatchRequest, ProductBatch } from '../../types';
 
 interface ProductBatchFormProps {
-  batch: any | null;
+  batch: ProductBatch | null;
   onSubmit: (data: CreateProductBatchRequest | UpdateProductBatchRequest) => Promise<void>;
   onCancel: () => void;
 }
 
 export default function ProductBatchForm({ batch, onSubmit, onCancel }: ProductBatchFormProps) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
-
   const {
     control,
     handleSubmit,
@@ -31,23 +26,10 @@ export default function ProductBatchForm({ batch, onSubmit, onCancel }: ProductB
     },
   });
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
-    try {
-      const response = await productsApi.getAll();
-      setProducts(response.data.data?.products || []);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    }
-  };
-
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="batchNumber"
             control={control}
@@ -64,11 +46,14 @@ export default function ProductBatchForm({ batch, onSubmit, onCancel }: ProductB
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="quantity"
             control={control}
-            rules={{ required: 'Тоо ширхэг шаардлагатай', min: { value: 1, message: 'Тоо ширхэг 0-ээс их байх ёстой' } }}
+            rules={{
+              required: 'Тоо ширхэг шаардлагатай',
+              min: { value: 1, message: 'Тоо ширхэг 0-ээс их байх ёстой' },
+            }}
             render={({ field }) => (
               <TextField
                 {...field}
@@ -83,7 +68,7 @@ export default function ProductBatchForm({ batch, onSubmit, onCancel }: ProductB
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="receivedDate"
             control={control}
@@ -102,7 +87,7 @@ export default function ProductBatchForm({ batch, onSubmit, onCancel }: ProductB
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="expiryDate"
             control={control}
@@ -121,11 +106,14 @@ export default function ProductBatchForm({ batch, onSubmit, onCancel }: ProductB
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="priceWholesale"
             control={control}
-            rules={{ required: 'Бөөний үнэ шаардлагатай', min: { value: 0, message: 'Үнэ 0-ээс их байх ёстой' } }}
+            rules={{
+              required: 'Бөөний үнэ шаардлагатай',
+              min: { value: 0, message: 'Үнэ 0-ээс их байх ёстой' },
+            }}
             render={({ field }) => (
               <TextField
                 {...field}
@@ -140,11 +128,14 @@ export default function ProductBatchForm({ batch, onSubmit, onCancel }: ProductB
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="priceRetail"
             control={control}
-            rules={{ required: 'Жижиглэн үнэ шаардлагатай', min: { value: 0, message: 'Үнэ 0-ээс их байх ёстой' } }}
+            rules={{
+              required: 'Жижиглэн үнэ шаардлагатай',
+              min: { value: 0, message: 'Үнэ 0-ээс их байх ёстой' },
+            }}
             render={({ field }) => (
               <TextField
                 {...field}
@@ -171,4 +162,3 @@ export default function ProductBatchForm({ batch, onSubmit, onCancel }: ProductB
     </Box>
   );
 }
-

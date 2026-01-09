@@ -1,13 +1,4 @@
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Divider,
-  Grid,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Box, Button, Card, CardContent, Divider, Grid, Stack, Typography } from '@mui/material';
 import { Edit as EditIcon, Category as CategoryIcon } from '@mui/icons-material';
 import { Category } from '../../types';
 
@@ -36,7 +27,7 @@ export default function CategoryDetailsModal({
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Category ID
                 </Typography>
@@ -44,7 +35,7 @@ export default function CategoryDetailsModal({
                   {category.id}
                 </Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Mongolian Name
                 </Typography>
@@ -52,21 +43,17 @@ export default function CategoryDetailsModal({
                   {category.nameMongolian}
                 </Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   English Name
                 </Typography>
-                <Typography variant="body1">
-                  {category.nameEnglish || '-'}
-                </Typography>
+                <Typography variant="body1">{category.nameEnglish || '-'}</Typography>
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="caption" color="text.secondary">
                   Description
                 </Typography>
-                <Typography variant="body1">
-                  {category.description || '-'}
-                </Typography>
+                <Typography variant="body1">{category.description || '-'}</Typography>
               </Grid>
             </Grid>
           </CardContent>
@@ -90,4 +77,3 @@ export default function CategoryDetailsModal({
     </Box>
   );
 }
-

@@ -81,17 +81,6 @@ export default function WorkTasksPage() {
     }
   };
 
-  // const handleStatusChange = async (task: WorkTask, newStatus: WorkTask['status']) => {
-  //   try {
-  //     await workTasksApi.update(task.id, { status: newStatus });
-  //     toast.success('Төлөв шинэчлэгдлээ');
-  //     fetchTasks();
-  //   } catch (error) {
-  //     console.error('Error updating status:', error);
-  //     toast.error('Алдаа гарлаа');
-  //   }
-  // };
-
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, 'default' | 'info' | 'warning' | 'error'> = {
       Low: 'default',
@@ -147,9 +136,15 @@ export default function WorkTasksPage() {
     </Paper>
   );
 
-  return loading ? (
-    <CircularProgress size={24} />
-  ) : (
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Ажлын Даалгаврууд</Typography>
@@ -217,7 +212,7 @@ export default function WorkTasksPage() {
         onClose={() => setDeleteDialogOpen(false)}
         onConfirm={handleDelete}
         title="Даалгавар устгах"
-        message="Та энэ даалгаврыг устгахдаа итгэлтэй байна уу?"
+        message="Та энэ даалгаврыг устгахдаа итгэлтэй байна у|?"
       />
     </Box>
   );

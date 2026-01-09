@@ -81,9 +81,9 @@ export default function ProductSalesDetailModal({
 
       <DialogContent>
         <Grid container spacing={3}>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Grid container spacing={2}>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Card>
                   <CardContent>
                     <Typography variant="body2" color="text.secondary">
@@ -93,7 +93,7 @@ export default function ProductSalesDetailModal({
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Card>
                   <CardContent>
                     <Typography variant="body2" color="text.secondary">
@@ -103,7 +103,7 @@ export default function ProductSalesDetailModal({
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Card>
                   <CardContent>
                     <Typography variant="body2" color="text.secondary">
@@ -113,7 +113,7 @@ export default function ProductSalesDetailModal({
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Card>
                   <CardContent>
                     <Typography variant="body2" color="text.secondary">
@@ -127,7 +127,7 @@ export default function ProductSalesDetailModal({
           </Grid>
 
           {analytics.recommendedOrderQuantity && (
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Alert severity="info">
                 <Typography variant="body1" fontWeight="bold">
                   Санал болгох захиалгын хэмжээ:{' '}
@@ -141,7 +141,7 @@ export default function ProductSalesDetailModal({
           )}
 
           {outlierMonths.length > 0 && (
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Alert severity="warning" icon={<WarningIcon />}>
                 <Typography variant="body2" fontWeight="bold" gutterBottom>
                   Дундаж тооцоололд хамаарагаагүй сарууд:
@@ -164,7 +164,7 @@ export default function ProductSalesDetailModal({
             </Grid>
           )}
 
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -177,12 +177,7 @@ export default function ProductSalesDetailModal({
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar
-                      dataKey="sales"
-                      fill="#8884d8"
-                      name="Борлуулалт (ширхэг)"
-                      fillOpacity={(entry: { isOutlier?: boolean }) => (entry.isOutlier ? 0.4 : 1)}
-                    />
+                    <Bar dataKey="sales" fill="#8884d8" name="Борлуулалт (ширхэг)" />
                     <ReferenceLine
                       y={analytics.salesAverage3Month}
                       stroke="red"
@@ -195,7 +190,7 @@ export default function ProductSalesDetailModal({
             </Card>
           </Grid>
 
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -237,7 +232,7 @@ export default function ProductSalesDetailModal({
             </Card>
           </Grid>
 
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Card sx={{ bgcolor: 'background.default' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>

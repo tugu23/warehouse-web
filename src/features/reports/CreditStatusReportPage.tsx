@@ -42,6 +42,7 @@ export default function CreditStatusReportPage() {
   useEffect(() => {
     fetchCustomers();
     fetchReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCustomers = async () => {
@@ -103,7 +104,7 @@ export default function CreditStatusReportPage() {
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <FormControl fullWidth>
               <InputLabel>Filter by Customer</InputLabel>
               <Select
@@ -120,7 +121,7 @@ export default function CreditStatusReportPage() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <Button variant="contained" onClick={fetchReport} fullWidth>
               Generate Report
             </Button>
@@ -138,7 +139,7 @@ export default function CreditStatusReportPage() {
         <>
           {/* Summary Cards */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -150,7 +151,7 @@ export default function CreditStatusReportPage() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -162,7 +163,7 @@ export default function CreditStatusReportPage() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>

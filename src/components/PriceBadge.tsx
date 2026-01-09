@@ -7,11 +7,7 @@ interface PriceBadgeProps {
   showAll?: boolean;
 }
 
-export default function PriceBadge({ 
-  prices, 
-  customerTypeId,
-  showAll = false 
-}: PriceBadgeProps) {
+export default function PriceBadge({ prices, customerTypeId, showAll = false }: PriceBadgeProps) {
   if (!prices || prices.length === 0) {
     return (
       <Typography variant="body2" color="textSecondary">
@@ -22,7 +18,7 @@ export default function PriceBadge({
 
   // If specific customer type is requested
   if (customerTypeId && !showAll) {
-    const specificPrice = prices.find(p => p.customerTypeId === customerTypeId);
+    const specificPrice = prices.find((p) => p.customerTypeId === customerTypeId);
     if (specificPrice) {
       return (
         <Typography variant="body1" fontWeight="medium">
@@ -33,10 +29,10 @@ export default function PriceBadge({
   }
 
   // Show first price with tooltip showing all
-  const mainPrice = prices[0];
+  const mainPrice = prices[0]!;
   const tooltipContent = (
     <Box>
-      {prices.map(price => (
+      {prices.map((price) => (
         <Box key={price.id} mb={0.5}>
           <Typography variant="caption" display="block">
             {price.customerType.typeName}: ₮{price.price.toLocaleString()}
@@ -61,4 +57,3 @@ export default function PriceBadge({
     </Tooltip>
   );
 }
-

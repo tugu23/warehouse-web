@@ -28,7 +28,7 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const response = await ordersApi.getAll({ limit: 1000 }); // Get all orders
+      const response = await ordersApi.getAll({ limit: 'all' }); // Get all orders
 
       // Backend returns: { data: { data: { orders: [...], pagination: {...} } } }
       let allOrders = response.data?.data?.orders || [];

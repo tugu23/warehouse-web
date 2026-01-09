@@ -1,17 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { Box, Button, TextField, Grid, FormControl, InputLabel, Select, MenuItem, FormHelperText } from '@mui/material';
-import { CreateWorkTaskRequest, UpdateWorkTaskRequest, User } from '../../types';
+import {
+  Box,
+  Button,
+  TextField,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+} from '@mui/material';
+import { CreateWorkTaskRequest, UpdateWorkTaskRequest, Employee, WorkTask } from '../../types';
 import { employeesApi } from '../../api';
 
 interface WorkTaskFormProps {
-  task: any | null;
+  task: WorkTask | null;
   onSubmit: (data: CreateWorkTaskRequest | UpdateWorkTaskRequest) => Promise<void>;
   onCancel: () => void;
 }
 
 export default function WorkTaskForm({ task, onSubmit, onCancel }: WorkTaskFormProps) {
-  const [employees, setEmployees] = useState<User[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const {
     control,
@@ -44,11 +54,14 @@ export default function WorkTaskForm({ task, onSubmit, onCancel }: WorkTaskFormP
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={2}>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="title"
             control={control}
-            rules={{ required: 'Гарчиг оруулна уу', minLength: { value: 3, message: 'Гарчиг 3-аас дээш тэмдэгт байх ёстой' } }}
+            rules={{
+              required: 'Гарчиг оруулна уу',
+              minLength: { value: 3, message: 'Гарчиг 3-аас дээш тэмдэгт байх ёстой' },
+            }}
             render={({ field }) => (
               <TextField
                 {...field}
@@ -61,7 +74,7 @@ export default function WorkTaskForm({ task, onSubmit, onCancel }: WorkTaskFormP
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="description"
             control={control}
@@ -80,11 +93,14 @@ export default function WorkTaskForm({ task, onSubmit, onCancel }: WorkTaskFormP
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="assignedToId"
             control={control}
-            rules={{ required: 'Хариуцагч сонгоно уу', min: { value: 1, message: 'Хариуцагч сонгоно уу' } }}
+            rules={{
+              required: 'Хариуцагч сонгоно уу',
+              min: { value: 1, message: 'Хариуцагч сонгоно уу' },
+            }}
             render={({ field }) => (
               <FormControl fullWidth error={!!errors.assignedToId}>
                 <InputLabel>Хариуцагч *</InputLabel>
@@ -100,13 +116,15 @@ export default function WorkTaskForm({ task, onSubmit, onCancel }: WorkTaskFormP
                     </MenuItem>
                   ))}
                 </Select>
-                {errors.assignedToId && <FormHelperText>{errors.assignedToId.message}</FormHelperText>}
+                {errors.assignedToId && (
+                  <FormHelperText>{errors.assignedToId?.message}</FormHelperText>
+                )}
               </FormControl>
             )}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="priority"
             control={control}
@@ -125,7 +143,7 @@ export default function WorkTaskForm({ task, onSubmit, onCancel }: WorkTaskFormP
         </Grid>
 
         {task && (
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Controller
               name="status"
               control={control}
@@ -144,7 +162,7 @@ export default function WorkTaskForm({ task, onSubmit, onCancel }: WorkTaskFormP
           </Grid>
         )}
 
-        <Grid item xs={12} sm={task ? 6 : 12}>
+        <Grid size={{ xs: 12, sm: task ? 6 : 12 }}>
           <Controller
             name="dueDate"
             control={control}
@@ -175,4 +193,3 @@ export default function WorkTaskForm({ task, onSubmit, onCancel }: WorkTaskFormP
     </Box>
   );
 }
-

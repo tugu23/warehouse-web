@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Box, Button, IconButton, Typography, Chip, Card, CardContent, Grid } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  CheckCircle as CheckIcon,
+} from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import DataTable from '../../components/DataTable';
@@ -17,7 +22,7 @@ export default function VisitPlansPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<VisitPlan | null>(null);
-  const [filter, setFilter] = useState<string>('all');
+  const [filter] = useState<string>('all');
 
   useEffect(() => {
     fetchVisitPlans();
@@ -210,7 +215,7 @@ export default function VisitPlansPage() {
       </Typography>
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6">{todayPlans.length}</Typography>
@@ -220,7 +225,7 @@ export default function VisitPlansPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6">
@@ -232,7 +237,7 @@ export default function VisitPlansPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6">
@@ -244,7 +249,7 @@ export default function VisitPlansPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6">
@@ -294,4 +299,3 @@ export default function VisitPlansPage() {
     </Box>
   );
 }
-

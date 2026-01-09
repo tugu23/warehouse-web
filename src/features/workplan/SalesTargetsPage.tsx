@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, IconButton, Typography, LinearProgress, Card, CardContent, Grid } from '@mui/material';
+import {
+  Box,
+  Button,
+  IconButton,
+  Typography,
+  LinearProgress,
+  Card,
+  CardContent,
+  Grid,
+} from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
@@ -190,7 +199,7 @@ export default function SalesTargetsPage() {
       </Typography>
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6">{activeTargets.length}</Typography>
@@ -200,7 +209,7 @@ export default function SalesTargetsPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6">₮{totalTarget.toLocaleString()}</Typography>
@@ -210,7 +219,7 @@ export default function SalesTargetsPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6">₮{totalAchieved.toLocaleString()}</Typography>
@@ -220,7 +229,7 @@ export default function SalesTargetsPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6">
@@ -270,4 +279,3 @@ export default function SalesTargetsPage() {
     </Box>
   );
 }
-

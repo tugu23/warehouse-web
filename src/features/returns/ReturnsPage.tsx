@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Typography } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
@@ -68,7 +68,7 @@ export default function ReturnsPage() {
       id: 'unitPrice',
       label: 'Нэгж үнэ',
       align: 'right' as const,
-      format: (row: Return) => row.unitPrice ? `₮${row.unitPrice.toLocaleString()}` : '-',
+      format: (row: Return) => (row.unitPrice ? `₮${row.unitPrice.toLocaleString()}` : '-'),
     },
     {
       id: 'customer',

@@ -35,7 +35,7 @@ interface CustomerFormProps {
 export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerFormProps) {
   const [searchingRegno, setSearchingRegno] = useState(false);
   const [regnoSearchResult, setRegnoSearchResult] = useState<string | null>(null);
-  
+
   const {
     control,
     handleSubmit,
@@ -99,7 +99,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
         // Auto-fill form with e-Tax data
         setValue('name', orgInfo.name);
         setValue('isVatPayer', orgInfo.vatPayer || false);
-        
+
         if (orgInfo.address) {
           setValue('address', orgInfo.address);
         }
@@ -107,10 +107,11 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
         setRegnoSearchResult(`✅ Олдлоо: ${orgInfo.name}`);
         toast.success(`Байгууллагын мэдээлэл амжилттай татагдлаа: ${orgInfo.name}`);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching organization info:', error);
-      
-      if (error.response?.status === 404) {
+
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 404) {
         setRegnoSearchResult('❌ Татварын системд бүртгэлгүй регистр');
         toast.error('Татварын системд байгууллага олдсонгүй');
       } else {
@@ -125,7 +126,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="name"
             control={control}
@@ -141,7 +142,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="name2"
             control={control}
@@ -157,7 +158,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="registrationNumber"
             control={control}
@@ -167,7 +168,9 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
                 label="⭐ Байгууллагын регистр"
                 fullWidth
                 error={!!errors.registrationNumber}
-                helperText={errors.registrationNumber?.message || 'Байгууллагын регистрийн дугаар (7 орон)'}
+                helperText={
+                  errors.registrationNumber?.message || 'Байгууллагын регистрийн дугаар (7 орон)'
+                }
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -187,8 +190,14 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
             )}
           />
           {regnoSearchResult && (
-            <Alert 
-              severity={regnoSearchResult.startsWith('✅') ? 'success' : regnoSearchResult.startsWith('❌') ? 'error' : 'warning'}
+            <Alert
+              severity={
+                regnoSearchResult.startsWith('✅')
+                  ? 'success'
+                  : regnoSearchResult.startsWith('❌')
+                    ? 'error'
+                    : 'warning'
+              }
               sx={{ mt: 1 }}
             >
               {regnoSearchResult}
@@ -196,7 +205,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           )}
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="organizationType"
             control={control}
@@ -220,7 +229,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="phoneNumber"
             control={control}
@@ -236,7 +245,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="customerTypeId"
             control={control}
@@ -259,7 +268,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="district"
             control={control}
@@ -284,7 +293,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="isVatPayer"
             control={control}
@@ -305,7 +314,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="address"
             control={control}
@@ -323,7 +332,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="locationLatitude"
             control={control}
@@ -341,7 +350,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="assignedAgentId"
             control={control}

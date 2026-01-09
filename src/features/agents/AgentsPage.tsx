@@ -11,6 +11,7 @@ import {
   Grid,
   Paper,
   Button,
+  TextField,
 } from '@mui/material';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { agentsApi, employeesApi } from '../../api';
@@ -20,7 +21,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
 // Fix for default marker icons in React Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: string })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
@@ -31,7 +32,9 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<Employee[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
   const [agentRoute, setAgentRoute] = useState<AgentLocation[]>([]);
-  const [allLocations, setAllLocations] = useState<any[]>([]);
+  const [allLocations, setAllLocations] = useState<
+    { agent: Employee; lastLocation?: AgentLocation }[]
+  >([]);
   const [viewMode, setViewMode] = useState<'all' | 'route'>('all');
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -45,7 +48,7 @@ export default function AgentsPage() {
     try {
       const response = await employeesApi.getAll();
       const allEmployees = response.data.data?.employees || [];
-      const salesAgents = allEmployees.filter((emp: Employee) => emp.role.name === 'SalesAgent');
+      const salesAgents = allEmployees.filter((emp) => emp.role.name === 'SalesAgent');
       setAgents(salesAgents);
     } catch (error) {
       console.error('Error fetching agents:', error);
@@ -95,7 +98,7 @@ export default function AgentsPage() {
       </Typography>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={3}>
+        <Grid size={{ xs: 12, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -192,7 +195,7 @@ export default function AgentsPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={9}>
+        <Grid size={{ xs: 12, md: 9 }}>
           <Card>
             <CardContent sx={{ height: '70vh', p: 0 }}>
               <MapContainer center={center} zoom={12} style={{ height: '100%', width: '100%' }}>
@@ -247,6 +250,3 @@ export default function AgentsPage() {
     </Box>
   );
 }
-
-// Add TextField import
-import { TextField } from '@mui/material';

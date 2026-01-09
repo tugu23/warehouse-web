@@ -26,7 +26,7 @@ export default function CustomersPage() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const response = await customersApi.getAll({ limit: 1000 });
+      const response = await customersApi.getAll({ limit: 'all' });
       setCustomers(response.data.data?.customers || []);
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -102,9 +102,7 @@ export default function CustomersPage() {
               variant="outlined"
               sx={{ fontWeight: 'bold' }}
             />
-            {row.isVatPayer && (
-              <Chip label="НӨАТ" color="success" size="small" variant="filled" />
-            )}
+            {row.isVatPayer && <Chip label="НӨАТ" color="success" size="small" variant="filled" />}
           </Stack>
         ) : (
           <Typography variant="body2" color="text.secondary">
@@ -147,19 +145,24 @@ export default function CustomersPage() {
               size="small"
             />
           ) : (
-            <Typography variant="body2" color="text.secondary">-</Typography>
+            <Typography variant="body2" color="text.secondary">
+              -
+            </Typography>
           );
         }
-        
+
         // Display organizationType with appropriate color
-        const typeColors: Record<string, 'default' | 'primary' | 'secondary' | 'success' | 'error' | 'info' | 'warning'> = {
-          'Зах': 'primary',
-          'Дэлгүүр': 'secondary',
-          'Ресторан': 'success',
-          'Зах2': 'info',
-          'Борлуулалт': 'warning',
+        const typeColors: Record<
+          string,
+          'default' | 'primary' | 'secondary' | 'success' | 'error' | 'info' | 'warning'
+        > = {
+          Зах: 'primary',
+          Дэлгүүр: 'secondary',
+          Ресторан: 'success',
+          Зах2: 'info',
+          Борлуулалт: 'warning',
         };
-        
+
         return (
           <Chip
             label={row.organizationType}

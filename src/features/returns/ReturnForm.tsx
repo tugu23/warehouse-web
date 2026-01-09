@@ -57,7 +57,7 @@ export default function ReturnForm({ onSubmit, onCancel }: ReturnFormProps) {
       const [ordersRes, productsRes, customersRes] = await Promise.all([
         ordersApi.getAll({ status: 'Fulfilled' }),
         productsApi.getAll(),
-        customersApi.getAll({ limit: 1000 }),
+        customersApi.getAll({ limit: 'all' }),
       ]);
       setOrders(ordersRes.data.data?.orders || []);
       setProducts(productsRes.data.data?.products || []);
@@ -195,7 +195,9 @@ export default function ReturnForm({ onSubmit, onCancel }: ReturnFormProps) {
             margin="normal"
             error={!!errors.unitPrice}
             helperText={errors.unitPrice?.message}
-            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+            onChange={(e) =>
+              field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)
+            }
             inputProps={{ step: '0.01' }}
           />
         )}

@@ -33,10 +33,12 @@ import { format } from 'date-fns';
 
 export default function PosIntegrationPage() {
   const [loading, setLoading] = useState(false);
-  const [syncType, setSyncType] = useState<'products' | 'orders' | 'sales' | 'ereceipt' | null>(null);
+  const [syncType, setSyncType] = useState<'products' | 'orders' | 'sales' | 'ereceipt' | null>(
+    null
+  );
   const [syncHistory, setSyncHistory] = useState<SyncHistory[]>([]);
   const [lastSync, setLastSync] = useState<Record<string, { timestamp: string | null }>>({});
-  
+
   // И-баримт тестлэх хэсэг
   const [testAmount, setTestAmount] = useState('10000');
   const [testCustomerName, setTestCustomerName] = useState('Test Customer');
@@ -202,12 +204,13 @@ export default function PosIntegrationPage() {
       </Typography>
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        Энэ хуудас нь PosAPI 3.0 системтэй холбогдож мэдээлэл солилцоход ашиглагдана. Одоогоор энэ нь
-        mock горимд ажиллаж байна. Бодит API холболтыг .env файлд VITE_POSAPI_URL болон VITE_POSAPI_TOKEN тохируулснаар идэвхжүүлнэ.
+        Энэ хуудас нь PosAPI 3.0 системтэй холбогдож мэдээлэл солилцоход ашиглагдана. Одоогоор энэ
+        нь mock горимд ажиллаж байна. Бодит API холболтыг .env файлд VITE_POSAPI_URL болон
+        VITE_POSAPI_TOKEN тохируулснаар идэвхжүүлнэ.
       </Alert>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={3}>
+        <Grid size={{ xs: 12, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -234,7 +237,7 @@ export default function PosIntegrationPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={3}>
+        <Grid size={{ xs: 12, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -261,7 +264,7 @@ export default function PosIntegrationPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={3}>
+        <Grid size={{ xs: 12, md: 3 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -288,7 +291,7 @@ export default function PosIntegrationPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={3}>
+        <Grid size={{ xs: 12, md: 3 }}>
           <Card sx={{ bgcolor: 'primary.light' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -309,14 +312,18 @@ export default function PosIntegrationPage() {
       {/* И-баримт тестлэх хэсэг */}
       <Card sx={{ mb: 4, borderColor: 'primary.main', borderWidth: 2 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          >
             <ReceiptIcon />
             И-баримт Тестлэх
           </Typography>
           <Divider sx={{ my: 2 }} />
-          
+
           <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 label="Дүн (₮)"
                 type="number"
@@ -325,7 +332,7 @@ export default function PosIntegrationPage() {
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 label="Харилцагчийн нэр"
                 value={testCustomerName}
@@ -336,7 +343,8 @@ export default function PosIntegrationPage() {
           </Grid>
 
           <Alert severity="warning" sx={{ mb: 2 }}>
-            Энэ нь тестийн и-баримт юм. Бодит борлуулалтын и-баримт хэвлэхийн тулд захиалгын дэлгэрэнгүй хэсэгт орж "И-баримт хэвлэх" товчийг дарна уу.
+            Энэ нь тестийн и-баримт юм. Бодит борлуулалтын и-баримт хэвлэхийн тулд захиалгын
+            дэлгэрэнгүй хэсэгт орж "И-баримт хэвлэх" товчийг дарна уу.
           </Alert>
 
           <Button
@@ -350,14 +358,18 @@ export default function PosIntegrationPage() {
             disabled={loading}
             color="primary"
           >
-            {loading && syncType === 'ereceipt' ? 'И-баримт хэвлэж байна...' : 'Тест И-баримт Хэвлэх'}
+            {loading && syncType === 'ereceipt'
+              ? 'И-баримт хэвлэж байна...'
+              : 'Тест И-баримт Хэвлэх'}
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box
+            sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}
+          >
             <Typography variant="h6">Синхрончлолтын Түүх</Typography>
             <Button
               startIcon={<DeleteIcon />}
@@ -387,8 +399,8 @@ export default function PosIntegrationPage() {
                   {syncHistory.map((history) => (
                     <TableRow key={history.id}>
                       <TableCell>
-                        <Chip 
-                          label={getSyncTypeLabel(history.type)} 
+                        <Chip
+                          label={getSyncTypeLabel(history.type)}
                           size="small"
                           color={history.type === 'ereceipt' ? 'primary' : 'default'}
                         />

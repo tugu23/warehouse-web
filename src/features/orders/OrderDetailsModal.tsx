@@ -173,7 +173,7 @@ export default function OrderDetailsModal({
   return (
     <Box>
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={6}>
+        <Grid size={6}>
           <Typography variant="body2" color="text.secondary">
             Харилцагч
           </Typography>
@@ -181,13 +181,13 @@ export default function OrderDetailsModal({
             {order.customer?.name}
           </Typography>
         </Grid>
-        <Grid item xs={6}>
+        <Grid size={6}>
           <Typography variant="body2" color="text.secondary">
             Төлөв
           </Typography>
           <Chip label={order.status} color={getStatusColor(order.status)} />
         </Grid>
-        <Grid item xs={6}>
+        <Grid size={6}>
           <Typography variant="body2" color="text.secondary">
             Захиалгын төрөл
           </Typography>
@@ -205,13 +205,13 @@ export default function OrderDetailsModal({
             )}
           </Box>
         </Grid>
-        <Grid item xs={6}>
+        <Grid size={6}>
           <Typography variant="body2" color="text.secondary">
             Үүсгэсэн
           </Typography>
           <Typography variant="body1">{order.createdBy?.name}</Typography>
         </Grid>
-        <Grid item xs={6}>
+        <Grid size={6}>
           <Typography variant="body2" color="text.secondary">
             Огноо
           </Typography>
@@ -220,7 +220,7 @@ export default function OrderDetailsModal({
 
         {order.eReceiptNumber && (
           <>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <Typography variant="body2" color="text.secondary">
                 И-баримтын дугаар
               </Typography>
@@ -228,7 +228,7 @@ export default function OrderDetailsModal({
                 {order.eReceiptNumber}
               </Typography>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <Typography variant="body2" color="text.secondary">
                 И-баримтын төлөв
               </Typography>

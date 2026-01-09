@@ -32,9 +32,9 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await productsApi.getAll({ 
-        limit: 1000,
-        include: 'supplier,category,batches,prices'
+      const response = await productsApi.getAll({
+        limit: 'all',
+        include: 'supplier,category,batches,prices',
       });
       const products = response.data.data?.products || [];
       console.log('📦 Fetched products:', products.length);
@@ -45,7 +45,7 @@ export default function ProductsPage() {
           priceWholesale: products[0].priceWholesale,
           priceRetail: products[0].priceRetail,
           priceWholesaleType: typeof products[0].priceWholesale,
-          priceRetailType: typeof products[0].priceRetail
+          priceRetailType: typeof products[0].priceRetail,
         });
       }
       setProducts(products);
@@ -154,7 +154,9 @@ export default function ProductsPage() {
         <Box>
           <Chip
             label={row.stockQuantity}
-            color={row.stockQuantity < 10 ? 'error' : row.stockQuantity < 20 ? 'warning' : 'success'}
+            color={
+              row.stockQuantity < 10 ? 'error' : row.stockQuantity < 20 ? 'warning' : 'success'
+            }
             size="small"
           />
           {row.batches && row.batches.length > 0 && (

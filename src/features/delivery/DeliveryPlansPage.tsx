@@ -246,7 +246,7 @@ export default function DeliveryPlansPage() {
           <DialogTitle>{selectedPlan ? 'Edit Delivery Plan' : 'Add Delivery Plan'}</DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Controller
                   name="planDate"
                   control={control}
@@ -265,7 +265,7 @@ export default function DeliveryPlansPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Controller
                   name="scheduledTime"
                   control={control}
@@ -282,7 +282,7 @@ export default function DeliveryPlansPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Controller
                   name="agentId"
                   control={control}
@@ -304,7 +304,7 @@ export default function DeliveryPlansPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Controller
                   name="customerId"
                   control={control}
@@ -324,7 +324,7 @@ export default function DeliveryPlansPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Controller
                   name="orderId"
                   control={control}
@@ -343,7 +343,7 @@ export default function DeliveryPlansPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Controller
                   name="targetArea"
                   control={control}
@@ -358,7 +358,7 @@ export default function DeliveryPlansPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Controller
                   name="estimatedOrders"
                   control={control}
@@ -375,7 +375,7 @@ export default function DeliveryPlansPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Controller
                   name="description"
                   control={control}
@@ -392,7 +392,7 @@ export default function DeliveryPlansPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Controller
                   name="deliveryNotes"
                   control={control}

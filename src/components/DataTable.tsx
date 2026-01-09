@@ -34,7 +34,7 @@ interface DataTableProps<T> {
 
 type Order = 'asc' | 'desc';
 
-export default function DataTable<T extends Record<string, unknown>>({
+export default function DataTable<T extends object>({
   columns,
   data,
   onRowClick,
@@ -71,9 +71,11 @@ export default function DataTable<T extends Record<string, unknown>>({
   };
 
   const descendingComparator = (a: T, b: T, orderBy: string) => {
-    const aVal = a[orderBy];
-    const bVal = b[orderBy];
+    const aVal = (a as Record<string, unknown>)[orderBy] as string | number | null | undefined;
+    const bVal = (b as Record<string, unknown>)[orderBy] as string | number | null | undefined;
 
+    if (bVal == null) return -1;
+    if (aVal == null) return 1;
     if (bVal < aVal) return -1;
     if (bVal > aVal) return 1;
     return 0;
@@ -184,7 +186,7 @@ export default function DataTable<T extends Record<string, unknown>>({
                   sx={{ cursor: onRowClick ? 'pointer' : 'default' }}
                 >
                   {columns.map((column) => {
-                    const value = row[column.id];
+                    const value = (row as Record<string, unknown>)[column.id];
                     return (
                       <TableCell key={column.id} align={column.align}>
                         {column.format ? column.format(row) : String(value)}

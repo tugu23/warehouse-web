@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, TextField, Grid, FormControlLabel, Checkbox, Divider, Alert, MenuItem } from '@mui/material';
+import {
+  Box,
+  Button,
+  TextField,
+  Grid,
+  FormControlLabel,
+  Checkbox,
+  Divider,
+  Alert,
+  MenuItem,
+} from '@mui/material';
 import { productSchema } from '../../utils/validation';
 import { Product, CreateProductRequest, UpdateProductRequest, Category } from '../../types';
 import { z } from 'zod';
@@ -19,7 +29,7 @@ interface ProductFormProps {
 export default function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [barcodeWarning, setBarcodeWarning] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  
+
   const {
     control,
     handleSubmit,
@@ -53,7 +63,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await categoriesApi.getAll({ limit: 1000 });
+        const response = await categoriesApi.getAll({ limit: 'all' });
         setCategories(response.data.data?.categories || []);
       } catch (error) {
         console.error('Error fetching categories:', error);
@@ -91,7 +101,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
         try {
           const response = await productsApi.getByBarcode(barcodeValue);
           const existingProduct = response.data.data?.product;
-          
+
           // If found and it's not the current product being edited
           if (existingProduct && existingProduct.id !== product?.id) {
             setBarcodeWarning(
@@ -99,11 +109,11 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             );
           } else {
             setBarcodeWarning(null);
+          }
+        } catch {
+          // No duplicate found or API error
+          setBarcodeWarning(null);
         }
-      } catch {
-        // No duplicate found or API error
-        setBarcodeWarning(null);
-      }
       } else {
         setBarcodeWarning(null);
       }
@@ -124,7 +134,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
       )}
 
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="nameEnglish"
             control={control}
@@ -140,7 +150,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="nameMongolian"
             control={control}
@@ -156,7 +166,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="nameKorean"
             control={control}
@@ -172,7 +182,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="barcode"
             control={control}
@@ -193,7 +203,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           )}
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="categoryId"
             control={control}
@@ -204,7 +214,9 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
                 label="Төрөл/Ангилал"
                 fullWidth
                 value={field.value || ''}
-                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                onChange={(e) =>
+                  field.onChange(e.target.value ? parseInt(e.target.value) : undefined)
+                }
                 error={!!errors.categoryId}
                 helperText={errors.categoryId?.message}
               >
@@ -213,7 +225,8 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
                 </MenuItem>
                 {categories.map((category) => (
                   <MenuItem key={category.id} value={category.id}>
-                    {category.nameMongolian} {category.nameEnglish ? `(${category.nameEnglish})` : ''}
+                    {category.nameMongolian}{' '}
+                    {category.nameEnglish ? `(${category.nameEnglish})` : ''}
                   </MenuItem>
                 ))}
               </TextField>
@@ -221,7 +234,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="supplierId"
             control={control}
@@ -239,7 +252,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="stockQuantity"
             control={control}
@@ -257,7 +270,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="unitsPerBox"
             control={control}
@@ -275,7 +288,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="netWeight"
             control={control}
@@ -294,7 +307,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="grossWeight"
             control={control}
@@ -313,7 +326,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Controller
             name="priceWholesale"
             control={control}
@@ -331,7 +344,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Controller
             name="priceRetail"
             control={control}
@@ -349,7 +362,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Controller
             name="pricePerBox"
             control={control}
@@ -367,7 +380,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="isActive"
             control={control}

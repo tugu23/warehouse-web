@@ -1,13 +1,4 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Stack,
-  Chip,
-  Divider,
-  Grid,
-} from '@mui/material';
+import { Box, Card, CardContent, Typography, Stack, Chip, Divider, Grid } from '@mui/material';
 import { ProductPrice } from '../types';
 
 interface PriceListProps {
@@ -38,11 +29,7 @@ export default function PriceList({ prices, compact = false }: PriceListProps) {
           />
         ))}
         {prices.length > 3 && (
-          <Chip
-            label={`+${prices.length - 3} үнэ`}
-            size="small"
-            variant="outlined"
-          />
+          <Chip label={`+${prices.length - 3} үнэ`} size="small" variant="outlined" />
         )}
       </Stack>
     );
@@ -56,10 +43,10 @@ export default function PriceList({ prices, compact = false }: PriceListProps) {
           💰 Үнийн хүснэгт
         </Typography>
         <Divider sx={{ mb: 2 }} />
-        
+
         <Grid container spacing={2}>
           {prices.map((price) => (
-            <Grid item xs={12} sm={6} md={4} key={price.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={price.id}>
               <Box
                 sx={{
                   p: 2,
@@ -88,4 +75,3 @@ export default function PriceList({ prices, compact = false }: PriceListProps) {
     </Card>
   );
 }
-

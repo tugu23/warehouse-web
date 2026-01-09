@@ -1,17 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { Box, Button, TextField, Grid, FormControl, InputLabel, Select, MenuItem, FormHelperText } from '@mui/material';
-import { CreateVisitPlanRequest, UpdateVisitPlanRequest, User, Customer } from '../../types';
+import {
+  Box,
+  Button,
+  TextField,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+} from '@mui/material';
+import {
+  CreateVisitPlanRequest,
+  UpdateVisitPlanRequest,
+  Employee,
+  Customer,
+  VisitPlan,
+} from '../../types';
 import { employeesApi, customersApi } from '../../api';
 
 interface VisitPlanFormProps {
-  visitPlan: any | null;
+  visitPlan: VisitPlan | null;
   onSubmit: (data: CreateVisitPlanRequest | UpdateVisitPlanRequest) => Promise<void>;
   onCancel: () => void;
 }
 
 export default function VisitPlanForm({ visitPlan, onSubmit, onCancel }: VisitPlanFormProps) {
-  const [agents, setAgents] = useState<User[]>([]);
+  const [agents, setAgents] = useState<Employee[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
 
   const {
@@ -39,7 +55,7 @@ export default function VisitPlanForm({ visitPlan, onSubmit, onCancel }: VisitPl
         customersApi.getAll(),
       ]);
       const employees = employeesRes.data.data?.employees || [];
-      setAgents(employees.filter((e: any) => e.role.name === 'SalesAgent'));
+      setAgents(employees.filter((e) => e.role.name === 'SalesAgent'));
       setCustomers(customersRes.data.data?.customers || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -49,7 +65,7 @@ export default function VisitPlanForm({ visitPlan, onSubmit, onCancel }: VisitPl
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="agentId"
             control={control}
@@ -69,17 +85,20 @@ export default function VisitPlanForm({ visitPlan, onSubmit, onCancel }: VisitPl
                     </MenuItem>
                   ))}
                 </Select>
-                {errors.agentId && <FormHelperText>{errors.agentId.message}</FormHelperText>}
+                {errors.agentId && <FormHelperText>{errors.agentId?.message}</FormHelperText>}
               </FormControl>
             )}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="customerId"
             control={control}
-            rules={{ required: 'Харилцагч сонгоно уу', min: { value: 1, message: 'Харилцагч сонгоно уу' } }}
+            rules={{
+              required: 'Харилцагч сонгоно уу',
+              min: { value: 1, message: 'Харилцагч сонгоно уу' },
+            }}
             render={({ field }) => (
               <FormControl fullWidth error={!!errors.customerId}>
                 <InputLabel>Харилцагч *</InputLabel>
@@ -95,13 +114,13 @@ export default function VisitPlanForm({ visitPlan, onSubmit, onCancel }: VisitPl
                     </MenuItem>
                   ))}
                 </Select>
-                {errors.customerId && <FormHelperText>{errors.customerId.message}</FormHelperText>}
+                {errors.customerId && <FormHelperText>{errors.customerId?.message}</FormHelperText>}
               </FormControl>
             )}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="plannedDate"
             control={control}
@@ -120,7 +139,7 @@ export default function VisitPlanForm({ visitPlan, onSubmit, onCancel }: VisitPl
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="plannedTime"
             control={control}
@@ -139,7 +158,7 @@ export default function VisitPlanForm({ visitPlan, onSubmit, onCancel }: VisitPl
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="notes"
             control={control}
@@ -168,4 +187,3 @@ export default function VisitPlanForm({ visitPlan, onSubmit, onCancel }: VisitPl
     </Box>
   );
 }
-

@@ -1,17 +1,32 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { Box, Button, TextField, Grid, FormControl, InputLabel, Select, MenuItem, FormHelperText } from '@mui/material';
-import { CreateSalesTargetRequest, UpdateSalesTargetRequest, User } from '../../types';
+import {
+  Box,
+  Button,
+  TextField,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+} from '@mui/material';
+import {
+  CreateSalesTargetRequest,
+  UpdateSalesTargetRequest,
+  Employee,
+  SalesTarget,
+} from '../../types';
 import { employeesApi } from '../../api';
 
 interface SalesTargetFormProps {
-  target: any | null;
+  target: SalesTarget | null;
   onSubmit: (data: CreateSalesTargetRequest | UpdateSalesTargetRequest) => Promise<void>;
   onCancel: () => void;
 }
 
 export default function SalesTargetForm({ target, onSubmit, onCancel }: SalesTargetFormProps) {
-  const [agents, setAgents] = useState<User[]>([]);
+  const [agents, setAgents] = useState<Employee[]>([]);
 
   const {
     control,
@@ -34,7 +49,7 @@ export default function SalesTargetForm({ target, onSubmit, onCancel }: SalesTar
     try {
       const response = await employeesApi.getAll();
       const employees = response.data.data?.employees || [];
-      setAgents(employees.filter((e: any) => e.role.name === 'SalesAgent'));
+      setAgents(employees.filter((e) => e.role.name === 'SalesAgent'));
     } catch (error) {
       console.error('Error fetching agents:', error);
     }
@@ -43,7 +58,7 @@ export default function SalesTargetForm({ target, onSubmit, onCancel }: SalesTar
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="agentId"
             control={control}
@@ -64,13 +79,13 @@ export default function SalesTargetForm({ target, onSubmit, onCancel }: SalesTar
                     </MenuItem>
                   ))}
                 </Select>
-                {errors.agentId && <FormHelperText>{errors.agentId.message}</FormHelperText>}
+                {errors.agentId && <FormHelperText>{errors.agentId?.message}</FormHelperText>}
               </FormControl>
             )}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="targetPeriod"
             control={control}
@@ -88,11 +103,14 @@ export default function SalesTargetForm({ target, onSubmit, onCancel }: SalesTar
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="targetAmount"
             control={control}
-            rules={{ required: 'Зорилтот дүн оруулна уу', min: { value: 1, message: 'Зорилтот дүн 0-ээс их байх ёстой' } }}
+            rules={{
+              required: 'Зорилтот дүн оруулна уу',
+              min: { value: 1, message: 'Зорилтот дүн 0-ээс их байх ёстой' },
+            }}
             render={({ field }) => (
               <TextField
                 {...field}
@@ -107,11 +125,14 @@ export default function SalesTargetForm({ target, onSubmit, onCancel }: SalesTar
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="targetOrders"
             control={control}
-            rules={{ required: 'Захиалгын зорилт оруулна уу', min: { value: 1, message: 'Захиалгын зорилт 0-ээс их байх ёстой' } }}
+            rules={{
+              required: 'Захиалгын зорилт оруулна уу',
+              min: { value: 1, message: 'Захиалгын зорилт 0-ээс их байх ёстой' },
+            }}
             render={({ field }) => (
               <TextField
                 {...field}
@@ -138,4 +159,3 @@ export default function SalesTargetForm({ target, onSubmit, onCancel }: SalesTar
     </Box>
   );
 }
-

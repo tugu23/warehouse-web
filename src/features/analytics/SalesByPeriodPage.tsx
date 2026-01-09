@@ -129,7 +129,7 @@ export default function SalesByPeriodPage() {
       </Alert>
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <TextField
             fullWidth
             label="Эхлэх огноо"
@@ -139,7 +139,7 @@ export default function SalesByPeriodPage() {
             InputLabelProps={{ shrink: true }}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <TextField
             fullWidth
             label="Дуусах огноо"
@@ -149,7 +149,7 @@ export default function SalesByPeriodPage() {
             InputLabelProps={{ shrink: true }}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <TextField
             select
             fullWidth
@@ -164,7 +164,7 @@ export default function SalesByPeriodPage() {
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Button
             fullWidth
             variant="contained"
@@ -181,7 +181,7 @@ export default function SalesByPeriodPage() {
       {/* Summary Cards */}
       {summary && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Paper elevation={2} sx={{ p: 3 }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Нийт борлуулалт
@@ -191,7 +191,7 @@ export default function SalesByPeriodPage() {
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Paper elevation={2} sx={{ p: 3 }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Нийт захиалга
@@ -201,7 +201,7 @@ export default function SalesByPeriodPage() {
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Paper elevation={2} sx={{ p: 3 }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Дундаж захиалгын үнэ
@@ -217,7 +217,7 @@ export default function SalesByPeriodPage() {
       {/* Charts */}
       {data.length > 0 && !loading && (
         <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} lg={6}>
+          <Grid size={{ xs: 12, lg: 6 }}>
             <Paper elevation={2} sx={{ p: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Борлуулалтын чиг хандлага
@@ -243,7 +243,7 @@ export default function SalesByPeriodPage() {
               </ResponsiveContainer>
             </Paper>
           </Grid>
-          <Grid item xs={12} lg={6}>
+          <Grid size={{ xs: 12, lg: 6 }}>
             <Paper elevation={2} sx={{ p: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Захиалгын тоо

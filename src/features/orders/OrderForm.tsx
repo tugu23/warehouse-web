@@ -113,9 +113,9 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const fetchData = async () => {
     try {
       const [customersRes, productsRes, employeesRes] = await Promise.all([
-        customersApi.getAll({ limit: 1000 }),
-        productsApi.getAll({ limit: 1000 }),
-        employeesApi.getAll({ limit: 1000 }),
+        customersApi.getAll({ limit: 'all' }),
+        productsApi.getAll({ limit: 'all', include: 'prices,supplier,category' }),
+        employeesApi.getAll({ limit: 'all' }),
       ]);
       setCustomers(customersRes.data.data?.customers || []);
       setProducts(productsRes.data.data?.products || []);
@@ -125,11 +125,56 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     }
   };
 
-  // Fetch product prices for a specific product (with caching)
+  // Helper function: Харилцагчийн төрлөөс хамаарах үнийг авах
+  const getProductPriceByCustomerType = (
+    product: Product,
+    customerTypeId: number | null | undefined
+  ): number => {
+    // 1. Эхлээд product.prices массиваас хайх (Backend API-аас ирсэн)
+    if (product.prices && product.prices.length > 0 && customerTypeId) {
+      const priceEntry = product.prices.find((p) => p.customerTypeId === customerTypeId);
+      if (priceEntry) {
+        return Number(priceEntry.price);
+      }
+    }
+
+    // 2. Cache-аас хайх (өмнө нь тусдаа API дуудсан бол)
+    const cachedPrices = customerTypeId ? productPricesCache[product.id] : undefined;
+    if (cachedPrices) {
+      const priceEntry = cachedPrices.find((p) => p.customerTypeId === customerTypeId);
+      if (priceEntry) {
+        return Number(priceEntry.price);
+      }
+    }
+
+    // 3. Fallback: Харилцагчийн төрлөөс хамаарах default үнэ
+    const customer = customers.find((c) => c.id === selectedCustomerId);
+    // Check both 'name' and 'typeName' for compatibility
+    const customerTypeName = customer?.customerType?.name || customer?.customerType?.typeName;
+    if (customerTypeName === 'Wholesale') {
+      return Number(product.priceWholesale) || 0;
+    }
+
+    // 4. Default: priceRetail
+    return Number(product.priceRetail) || Number(product.priceWholesale) || 0;
+  };
+
+  // Fetch product prices for a specific product (with caching) - Fallback for products without prices
   const fetchProductPrices = async (productId: number): Promise<ProductPrice[]> => {
     // Check cache first
     if (productPricesCache[productId]) {
       return productPricesCache[productId];
+    }
+
+    // Check if product already has prices from API
+    const product = products.find((p) => p.id === productId);
+    if (product?.prices && product.prices.length > 0) {
+      // Cache the product's prices
+      setProductPricesCache((prev) => ({
+        ...prev,
+        [productId]: product.prices as ProductPrice[],
+      }));
+      return product.prices as ProductPrice[];
     }
 
     try {
@@ -149,49 +194,14 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     }
   };
 
-  // Get price for a product based on customer type
-  const getProductPrice = async (productId: number, customerTypeId: number): Promise<number> => {
-    const product = products.find((p) => p.id === productId);
-    if (!product) return 0;
-
-    // Try to get price from ProductPrice API
-    const prices = await fetchProductPrices(productId);
-    const priceEntry = prices.find((p) => p.customerTypeId === customerTypeId);
-
-    if (priceEntry) {
-      return priceEntry.price;
-    }
-
-    // Fallback to default product prices
-    const customer = customers.find((c) => c.id === watch('customerId'));
-    if (customer?.customerType.name === 'Wholesale') {
-      return Number(product.priceWholesale);
-    }
-    return Number(product.priceRetail);
-  };
-
   const calculateTotal = () => {
+    const customer = customers.find((c) => c.id === selectedCustomerId);
+    const customerTypeId = customer?.customerType?.id;
+
     return items.reduce((total, item) => {
       const product = products.find((p) => p.id === item.productId);
       if (product) {
-        const customer = customers.find((c) => c.id === watch('customerId'));
-
-        // First try to use ProductPrice from cache
-        const cachedPrices = productPricesCache[item.productId];
-        if (cachedPrices && cachedPrices.length > 0 && customer) {
-          const priceEntry = cachedPrices.find(
-            (p) => p.customerTypeId === customer.customerType.id
-          );
-          if (priceEntry) {
-            return total + priceEntry.price * item.quantity;
-          }
-        }
-
-        // Fallback to default product prices
-        const price =
-          customer?.customerType.name === 'Wholesale'
-            ? Number(product.priceWholesale)
-            : Number(product.priceRetail);
+        const price = getProductPriceByCustomerType(product, customerTypeId);
         return total + price * item.quantity;
       }
       return total;
@@ -454,24 +464,21 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                   render={({ field }) => {
                     const selectedProduct = products.find((p) => p.id === field.value) || null;
                     const customer = customers.find((c) => c.id === selectedCustomerId);
+                    const customerTypeId = customer?.customerType?.id;
 
-                    // Get dynamic price from cache if available
-                    let displayPrice = selectedProduct ? Number(selectedProduct.priceRetail) : 0;
-                    const wholesalePrice = selectedProduct
-                      ? Number(selectedProduct.priceWholesale)
+                    // Get dynamic price based on customer type
+                    const displayPrice = selectedProduct
+                      ? getProductPriceByCustomerType(selectedProduct, customerTypeId)
                       : 0;
 
-                    if (selectedProduct && customer) {
-                      const cachedPrices = productPricesCache[selectedProduct.id];
-                      if (cachedPrices && cachedPrices.length > 0) {
-                        const priceEntry = cachedPrices.find(
-                          (p) => p.customerTypeId === customer.customerType.id
-                        );
-                        if (priceEntry) {
-                          displayPrice = priceEntry.price;
-                        }
-                      }
-                    }
+                    // Check if product has special pricing for this customer type
+                    const hasSpecialPrice =
+                      selectedProduct &&
+                      customerTypeId &&
+                      (selectedProduct.prices?.some((p) => p.customerTypeId === customerTypeId) ||
+                        productPricesCache[selectedProduct.id]?.some(
+                          (p) => p.customerTypeId === customerTypeId
+                        ));
 
                     return (
                       <Box>
@@ -480,8 +487,8 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                           onChange={async (_, newValue) => {
                             field.onChange(newValue ? newValue.id : 0);
 
-                            // Preload prices for the selected product
-                            if (newValue && customer) {
+                            // Preload prices for the selected product (fallback)
+                            if (newValue && customer && !newValue.prices?.length) {
                               await fetchProductPrices(newValue.id);
                             }
                           }}
@@ -489,6 +496,37 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                           getOptionLabel={(product) =>
                             `${product.nameEnglish} - Үлдэгдэл: ${product.stockQuantity}${product.unitsPerBox ? ` (${product.unitsPerBox} ш/хайрцаг)` : ''}`
                           }
+                          renderOption={(props, product) => {
+                            const price = getProductPriceByCustomerType(product, customerTypeId);
+                            const hasPrice =
+                              customerTypeId &&
+                              (product.prices?.some((p) => p.customerTypeId === customerTypeId) ||
+                                productPricesCache[product.id]?.some(
+                                  (p) => p.customerTypeId === customerTypeId
+                                ));
+                            return (
+                              <li {...props} key={product.id}>
+                                <Box sx={{ width: '100%' }}>
+                                  <Typography variant="body2">{product.nameEnglish}</Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Үлдэгдэл: {product.stockQuantity}
+                                    {product.unitsPerBox
+                                      ? ` (${product.unitsPerBox} ш/хайрцаг)`
+                                      : ''}
+                                    {' | '}
+                                    <span
+                                      style={{
+                                        color: hasPrice ? '#2e7d32' : 'inherit',
+                                        fontWeight: hasPrice ? 'bold' : 'normal',
+                                      }}
+                                    >
+                                      Үнэ: ₮{price.toLocaleString()}
+                                    </span>
+                                  </Typography>
+                                </Box>
+                              </li>
+                            );
+                          }}
                           isOptionEqualToValue={(option, value) => option.id === value.id}
                           ListboxProps={{
                             style: { maxHeight: '250px' },
@@ -505,16 +543,20 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                         />
                         {selectedProduct && (
                           <FormHelperText>
-                            {customer && productPricesCache[selectedProduct.id]?.length > 0 ? (
+                            {hasSpecialPrice ? (
                               <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>
-                                ✓ Тусгай үнэ ({customer.customerType.name}): ₮
+                                ✓ Тусгай үнэ ({customer?.customerType?.name || 'Customer'}): ₮
                                 {displayPrice.toLocaleString()}
                               </span>
                             ) : (
-                              <>
-                                Үнэ: ₮{Number(selectedProduct.priceRetail).toLocaleString()} |
-                                Бөөний: ₮{Number(selectedProduct.priceWholesale).toLocaleString()}
-                              </>
+                              <span>
+                                Үнэ: ₮{displayPrice.toLocaleString()}
+                                {customer && (
+                                  <span style={{ color: '#ff9800', marginLeft: '8px' }}>
+                                    (Үндсэн үнэ - тусгай үнэ тохируулаагүй)
+                                  </span>
+                                )}
+                              </span>
                             )}
                           </FormHelperText>
                         )}

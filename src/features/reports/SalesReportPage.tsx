@@ -252,7 +252,7 @@ export default function SalesReportPage() {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <TextField
                 label="Эхлэх огноо"
                 type="date"
@@ -262,7 +262,7 @@ export default function SalesReportPage() {
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <TextField
                 label="Дуусах огноо"
                 type="date"
@@ -272,7 +272,7 @@ export default function SalesReportPage() {
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <FormControl fullWidth>
                 <InputLabel>Бүлэглэх</InputLabel>
                 <Select
@@ -286,7 +286,7 @@ export default function SalesReportPage() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <FormControl fullWidth>
                 <InputLabel>Ажилтан</InputLabel>
                 <Select
@@ -305,7 +305,7 @@ export default function SalesReportPage() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <FormControl fullWidth>
                 <InputLabel>Захиалгын төрөл</InputLabel>
                 <Select
@@ -319,7 +319,7 @@ export default function SalesReportPage() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Button
                 variant="contained"
                 onClick={fetchSalesData}
@@ -330,7 +330,7 @@ export default function SalesReportPage() {
                 {loading ? 'Татаж байна...' : 'Тайлан үүсгэх'}
               </Button>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Button
                 variant="outlined"
                 startIcon={<DownloadIcon />}
@@ -349,7 +349,7 @@ export default function SalesReportPage() {
       {orders.length > 0 && (
         <>
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h5">₮{totalSales.toLocaleString()}</Typography>
@@ -359,7 +359,7 @@ export default function SalesReportPage() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h5">{totalOrders}</Typography>
@@ -383,7 +383,7 @@ export default function SalesReportPage() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h5">₮{avgOrderValue.toLocaleString()}</Typography>
@@ -393,7 +393,7 @@ export default function SalesReportPage() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h5">{completedOrders}</Typography>
@@ -406,7 +406,7 @@ export default function SalesReportPage() {
           </Grid>
 
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -427,7 +427,7 @@ export default function SalesReportPage() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -445,7 +445,7 @@ export default function SalesReportPage() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {paymentMethodData.map((entry, index) => (
+                        {paymentMethodData.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -456,7 +456,7 @@ export default function SalesReportPage() {
               </Card>
             </Grid>
             {orderTypeData.length > 0 && (
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Card>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
@@ -483,7 +483,7 @@ export default function SalesReportPage() {
                 </Card>
               </Grid>
             )}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>

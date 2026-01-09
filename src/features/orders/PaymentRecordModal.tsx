@@ -29,7 +29,11 @@ interface PaymentFormData {
   notes: string;
 }
 
-export default function PaymentRecordModal({ order, onSuccess, onCancel }: PaymentRecordModalProps) {
+export default function PaymentRecordModal({
+  order,
+  onSuccess,
+  onCancel,
+}: PaymentRecordModalProps) {
   const [loading, setLoading] = useState(false);
 
   const {
@@ -76,31 +80,31 @@ export default function PaymentRecordModal({ order, onSuccess, onCancel }: Payme
           Захиалгын мэдээлэл
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={6}>
+          <Grid size={6}>
             <Typography variant="body2">Захиалгын №:</Typography>
             <Typography variant="body1" fontWeight="bold">
               #{order.id}
             </Typography>
           </Grid>
-          <Grid item xs={6}>
+          <Grid size={6}>
             <Typography variant="body2">Харилцагч:</Typography>
             <Typography variant="body1" fontWeight="bold">
               {order.customer?.name}
             </Typography>
           </Grid>
-          <Grid item xs={4}>
+          <Grid size={4}>
             <Typography variant="body2">Нийт дүн:</Typography>
             <Typography variant="body1" fontWeight="bold">
               ₮{totalAmount.toLocaleString()}
             </Typography>
           </Grid>
-          <Grid item xs={4}>
+          <Grid size={4}>
             <Typography variant="body2">Төлсөн:</Typography>
             <Typography variant="body1" fontWeight="bold" color="success.main">
               ₮{paidAmount.toLocaleString()}
             </Typography>
           </Grid>
-          <Grid item xs={4}>
+          <Grid size={4}>
             <Typography variant="body2">Үлдэгдэл:</Typography>
             <Typography variant="body1" fontWeight="bold" color="error.main">
               ₮{remainingAmount.toLocaleString()}
@@ -110,7 +114,7 @@ export default function PaymentRecordModal({ order, onSuccess, onCancel }: Payme
       </Paper>
 
       <Grid container spacing={2}>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="amount"
             control={control}
@@ -136,7 +140,7 @@ export default function PaymentRecordModal({ order, onSuccess, onCancel }: Payme
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="paymentMethod"
             control={control}
@@ -157,7 +161,7 @@ export default function PaymentRecordModal({ order, onSuccess, onCancel }: Payme
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="notes"
             control={control}
@@ -186,4 +190,3 @@ export default function PaymentRecordModal({ order, onSuccess, onCancel }: Payme
     </Box>
   );
 }
-

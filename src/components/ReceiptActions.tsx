@@ -248,7 +248,7 @@ export default function ReceiptActions({
         </Button>
 
         {/* Share button - only on mobile */}
-        {navigator.share && (
+        {typeof navigator.share === 'function' && (
           <Button
             variant="outlined"
             color="secondary"

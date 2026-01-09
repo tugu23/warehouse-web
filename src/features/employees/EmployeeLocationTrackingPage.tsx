@@ -135,7 +135,7 @@ export default function EmployeeLocationTrackingPage() {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <FormControl fullWidth required>
                 <InputLabel>Ажилтан</InputLabel>
                 <Select
@@ -154,7 +154,7 @@ export default function EmployeeLocationTrackingPage() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <FormControl fullWidth>
                 <InputLabel>Дэлгүүрийн хаяг</InputLabel>
                 <Select
@@ -171,7 +171,7 @@ export default function EmployeeLocationTrackingPage() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
               <TextField
                 label="Эхлэх огноо"
                 type="date"
@@ -181,7 +181,7 @@ export default function EmployeeLocationTrackingPage() {
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
               <TextField
                 label="Дуусах огноо"
                 type="date"
@@ -191,7 +191,7 @@ export default function EmployeeLocationTrackingPage() {
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
               <Button
                 variant="contained"
                 onClick={fetchLocationData}
@@ -211,7 +211,7 @@ export default function EmployeeLocationTrackingPage() {
       {locationData && !loading && (
         <>
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h5">{locationData.summary.totalVisits}</Typography>
@@ -221,7 +221,7 @@ export default function EmployeeLocationTrackingPage() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h5">{locationData.summary.uniqueStores}</Typography>
@@ -231,7 +231,7 @@ export default function EmployeeLocationTrackingPage() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h5">
@@ -243,7 +243,7 @@ export default function EmployeeLocationTrackingPage() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Button
                 variant="outlined"
                 startIcon={<DownloadIcon />}
@@ -259,7 +259,7 @@ export default function EmployeeLocationTrackingPage() {
 
           <Grid container spacing={3}>
             {/* Map View - Placeholder */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -284,7 +284,7 @@ export default function EmployeeLocationTrackingPage() {
             </Grid>
 
             {/* Timeline View */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>

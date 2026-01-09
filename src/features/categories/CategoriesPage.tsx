@@ -47,7 +47,7 @@ export default function CategoriesPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await categoriesApi.getAll({ limit: 1000 });
+      const response = await categoriesApi.getAll({ limit: 'all' });
       setCategories(response.data.data?.categories || []);
     } catch (error) {
       toast.error('Failed to load categories');
@@ -133,14 +133,14 @@ export default function CategoriesPage() {
               </TableRow>
             ) : (
               categories.map((category) => (
-                <TableRow 
+                <TableRow
                   key={category.id}
                   onClick={() => handleRowClick(category)}
-                  sx={{ 
+                  sx={{
                     cursor: 'pointer',
                     '&:hover': {
                       backgroundColor: 'action.hover',
-                    }
+                    },
                   }}
                 >
                   <TableCell>{category.id}</TableCell>

@@ -1,6 +1,6 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, TextField, Typography, Alert } from '@mui/material';
+import { Box, Button, TextField, Alert } from '@mui/material';
 import { toast } from 'react-hot-toast';
 import { inventoryAdjustmentSchema } from '../../utils/validation';
 import { Product } from '../../types';

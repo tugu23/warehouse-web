@@ -45,7 +45,7 @@ export default function CustomerDetailsModal({
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="caption" color="text.secondary">
                   Байгууллагын нэр
                 </Typography>
@@ -58,7 +58,7 @@ export default function CustomerDetailsModal({
                   </Typography>
                 )}
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Регистрийн дугаар
                 </Typography>
@@ -83,18 +83,14 @@ export default function CustomerDetailsModal({
                   )}
                 </Box>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Харилцагчийн төрөл
                 </Typography>
                 <Box sx={{ mt: 1 }}>
                   {customer.organizationType ? (
                     <Stack direction="row" spacing={1}>
-                      <Chip
-                        label={customer.organizationType}
-                        color="primary"
-                        size="medium"
-                      />
+                      <Chip label={customer.organizationType} color="primary" size="medium" />
                       {customer.customerType && (
                         <Chip
                           label={customer.customerType.typeName || customer.customerType.name}
@@ -111,7 +107,9 @@ export default function CustomerDetailsModal({
                       size="medium"
                     />
                   ) : (
-                    <Typography variant="body2" color="text.secondary">-</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      -
+                    </Typography>
                   )}
                 </Box>
               </Grid>
@@ -128,7 +126,7 @@ export default function CustomerDetailsModal({
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Утасны дугаар
                 </Typography>
@@ -137,7 +135,7 @@ export default function CustomerDetailsModal({
                 </Typography>
               </Grid>
               {customer.email && (
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary">
                     <EmailIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
                     Имэйл
@@ -146,7 +144,7 @@ export default function CustomerDetailsModal({
                 </Grid>
               )}
               {customer.contactPerson && (
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary">
                     Холбоо барих хүн
                   </Typography>
@@ -166,14 +164,14 @@ export default function CustomerDetailsModal({
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography variant="caption" color="text.secondary">
                   Хаяг
                 </Typography>
                 <Typography variant="body1">{customer.address}</Typography>
               </Grid>
               {customer.district && (
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary">
                     Дүүрэг
                   </Typography>
@@ -181,7 +179,7 @@ export default function CustomerDetailsModal({
                 </Grid>
               )}
               {customer.locationLatitude && customer.locationLongitude && (
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary">
                     GPS координат
                   </Typography>
@@ -215,7 +213,7 @@ export default function CustomerDetailsModal({
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
                   Хариуцсан борлуулагч
                 </Typography>
@@ -224,7 +222,7 @@ export default function CustomerDetailsModal({
                 </Typography>
               </Grid>
               {customer.creditLimit && (
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary">
                     Зээлийн лимит
                   </Typography>
@@ -255,4 +253,3 @@ export default function CustomerDetailsModal({
     </Box>
   );
 }
-

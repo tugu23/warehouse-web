@@ -74,7 +74,7 @@ export const authApi = {
 
 // Employees API
 export const employeesApi = {
-  getAll: (params?: { limit?: number; page?: number }) =>
+  getAll: (params?: { limit?: number | string; page?: number }) =>
     api.get<ApiResponse<{ employees: Employee[] }>>('/api/employees', { params }),
   getById: (id: number) => api.get<ApiResponse<{ employee: Employee }>>(`/api/employees/${id}`),
   create: (data: CreateEmployeeRequest) =>
@@ -90,7 +90,7 @@ export const productsApi = {
     search?: string;
     supplierId?: number;
     categoryId?: number;
-    limit?: number;
+    limit?: number | string;
     page?: number;
     include?: string;
   }) =>
@@ -138,7 +138,7 @@ export const productPricesApi = {
 
 // Customers API
 export const customersApi = {
-  getAll: (params?: { search?: string; limit?: number; page?: number; district?: string }) =>
+  getAll: (params?: { search?: string; limit?: string; page?: number; district?: string }) =>
     api.get<ApiResponse<{ customers: Customer[]; pagination?: PaginationInfo }>>('/api/customers', {
       params,
     }),
@@ -155,7 +155,7 @@ export const ordersApi = {
     status?: string;
     customerId?: number;
     paymentStatus?: string;
-    limit?: number;
+    limit?: string;
     page?: number;
   }) =>
     api.get<ApiResponse<{ orders: Order[]; pagination?: PaginationInfo }>>('/api/orders', {

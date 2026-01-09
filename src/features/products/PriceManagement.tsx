@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
   Box,
@@ -17,7 +17,12 @@ import {
   CircularProgress,
   Divider,
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon, Save as SaveIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Save as SaveIcon,
+} from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { productPricesApi } from '../../api';
 import { ProductPrice, CreateProductPriceRequest, UpdateProductPriceRequest } from '../../types';
@@ -59,11 +64,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
     },
   });
 
-  useEffect(() => {
-    fetchPrices();
-  }, [productId]);
-
-  const fetchPrices = async () => {
+  const fetchPrices = useCallback(async () => {
     setLoading(true);
     try {
       const response = await productPricesApi.getByProductId(productId);
@@ -74,7 +75,11 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId]);
+
+  useEffect(() => {
+    fetchPrices();
+  }, [fetchPrices]);
 
   const handleCreate = async (data: CreateProductPriceRequest) => {
     try {
@@ -84,9 +89,10 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
       reset();
       fetchPrices();
       onUpdate?.();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating price:', error);
-      toast.error(error.response?.data?.message || 'Үнэ нэмэхэд алдаа гарлаа');
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Үнэ нэмэхэд алдаа гарлаа');
     }
   };
 
@@ -98,9 +104,10 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
       reset();
       fetchPrices();
       onUpdate?.();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating price:', error);
-      toast.error(error.response?.data?.message || 'Үнэ шинэчлэхэд алдаа гарлаа');
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Үнэ шинэчлэхэд алдаа гарлаа');
     }
   };
 
@@ -112,9 +119,10 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
       toast.success('Үнэ амжилттай устгагдлаа!');
       fetchPrices();
       onUpdate?.();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting price:', error);
-      toast.error(error.response?.data?.message || 'Үнэ устгахад алдаа гарлаа');
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Үнэ устгахад алдаа гарлаа');
     }
   };
 
@@ -153,12 +161,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">Харилцагчийн төрөл бүрт зориулсан үнэ</Typography>
         {!showAddForm && (
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={handleAddNew}
-          >
+          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={handleAddNew}>
             Үнэ нэмэх
           </Button>
         )}
@@ -178,7 +181,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
           </Typography>
           <Box component="form" onSubmit={handleSubmit(handleCreate)}>
             <Grid container spacing={2} alignItems="flex-start">
-              <Grid item xs={12} sm={5}>
+              <Grid size={{ xs: 12, sm: 5 }}>
                 <Controller
                   name="customerTypeId"
                   control={control}
@@ -205,7 +208,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={5}>
+              <Grid size={{ xs: 12, sm: 5 }}>
                 <Controller
                   name="price"
                   control={control}
@@ -227,7 +230,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={2}>
+              <Grid size={{ xs: 12, sm: 2 }}>
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
                     type="submit"
@@ -264,7 +267,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
             // Edit Mode
             <Box component="form" onSubmit={handleSubmit((data) => handleUpdate(price.id, data))}>
               <Grid container spacing={2} alignItems="flex-start">
-                <Grid item xs={12} sm={5}>
+                <Grid size={{ xs: 12, sm: 5 }}>
                   <Controller
                     name="customerTypeId"
                     control={control}
@@ -286,7 +289,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
                     )}
                   />
                 </Grid>
-                <Grid item xs={12} sm={5}>
+                <Grid size={{ xs: 12, sm: 5 }}>
                   <Controller
                     name="price"
                     control={control}
@@ -303,7 +306,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
                     )}
                   />
                 </Grid>
-                <Grid item xs={12} sm={2}>
+                <Grid size={{ xs: 12, sm: 2 }}>
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <Button
                       type="submit"
@@ -358,10 +361,9 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
 
       <Divider sx={{ my: 3 }} />
       <Alert severity="info">
-        <strong>Анхаар:</strong> Бараа бүрт харилцагчийн төрөл бүрт зориулсан үнэ тохируулж болно. Жишээ нь:
-        Retail (Жижиглэн), Wholesale (Бөөний), Market (Захын лангуу) гэх мэт.
+        <strong>Анхаар:</strong> Бараа бүрт харилцагчийн төрөл бүрт зориулсан үнэ тохируулж болно.
+        Жишээ нь: Retail (Жижиглэн), Wholesale (Бөөний), Market (Захын лангуу) гэх мэт.
       </Alert>
     </Box>
   );
 }
-

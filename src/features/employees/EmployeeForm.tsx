@@ -56,7 +56,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={2}>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="name"
             control={control}
@@ -72,7 +72,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="email"
             control={control}
@@ -90,7 +90,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="phoneNumber"
             control={control}
@@ -107,7 +107,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
         </Grid>
 
         {!employee && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Controller
               name="password"
               control={control}
@@ -125,7 +125,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
           </Grid>
         )}
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Controller
             name="roleName"
             control={control}

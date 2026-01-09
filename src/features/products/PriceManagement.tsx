@@ -81,9 +81,10 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
     fetchPrices();
   }, [fetchPrices]);
 
-  const handleCreate = async (data: CreateProductPriceRequest) => {
+  const handleCreate = async (data: CreateProductPriceRequest | UpdateProductPriceRequest) => {
     try {
-      await productPricesApi.create({ ...data, productId });
+      const createData = data as CreateProductPriceRequest;
+      await productPricesApi.create({ ...createData, productId });
       toast.success('Үнэ амжилттай нэмэгдлээ!');
       setShowAddForm(false);
       reset();
@@ -185,7 +186,9 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
                 <Controller
                   name="customerTypeId"
                   control={control}
-                  rules={{ validate: (value) => value > 0 || 'Харилцагчийн төрөл сонгоно уу' }}
+                  rules={{
+                    validate: (value) => (value && value > 0) || 'Харилцагчийн төрөл сонгоно уу',
+                  }}
                   render={({ field }) => (
                     <FormControl fullWidth error={!!errors.customerTypeId} size="small">
                       <InputLabel>Харилцагчийн төрөл *</InputLabel>

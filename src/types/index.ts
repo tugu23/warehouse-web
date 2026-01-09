@@ -236,11 +236,14 @@ export interface Customer {
   address: string;
   district?: string; // Дүүрэг
   phoneNumber: string;
+  email?: string; // Имэйл хаяг
+  contactPerson?: string; // Холбоо барих хүн
   isVatPayer?: boolean; // НӨАТ төлөгч эсэх
   locationLatitude: number;
   locationLongitude: number;
   customerType: CustomerType;
   assignedAgent?: User;
+  creditLimit?: number; // Зээлийн лимит
   createdAt?: string;
 }
 

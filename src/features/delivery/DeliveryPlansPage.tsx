@@ -426,7 +426,7 @@ export default function DeliveryPlansPage() {
         title="Delete Delivery Plan"
         message={`Are you sure you want to delete this delivery plan?`}
         onConfirm={confirmDelete}
-        onCancel={() => {
+        onClose={() => {
           setDeleteDialogOpen(false);
           setPlanToDelete(null);
         }}

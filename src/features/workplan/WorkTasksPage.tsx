@@ -41,9 +41,9 @@ export default function WorkTasksPage() {
     }
   };
 
-  const handleCreate = async (data: CreateWorkTaskRequest) => {
+  const handleCreate = async (data: CreateWorkTaskRequest | UpdateWorkTaskRequest) => {
     try {
-      await workTasksApi.create(data);
+      await workTasksApi.create(data as CreateWorkTaskRequest);
       toast.success('Даалгавар амжилттай үүсгэгдлээ');
       setModalOpen(false);
       fetchTasks();
@@ -53,10 +53,10 @@ export default function WorkTasksPage() {
     }
   };
 
-  const handleUpdate = async (data: UpdateWorkTaskRequest) => {
+  const handleUpdate = async (data: CreateWorkTaskRequest | UpdateWorkTaskRequest) => {
     if (!selectedTask) return;
     try {
-      await workTasksApi.update(selectedTask.id, data);
+      await workTasksApi.update(selectedTask.id, data as UpdateWorkTaskRequest);
       toast.success('Даалгавар амжилттай засагдлаа');
       setModalOpen(false);
       setSelectedTask(null);

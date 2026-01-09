@@ -64,7 +64,6 @@ import {
   ProductPrice,
   CreateProductPriceRequest,
   UpdateProductPriceRequest,
-  ApiResponse,
 } from '../types';
 
 // Authentication API
@@ -298,7 +297,7 @@ export const salesTargetsApi = {
 
 // Categories API
 export const categoriesApi = {
-  getAll: (params?: { search?: string; limit?: number; page?: number }) =>
+  getAll: (params?: { search?: string; limit?: number | string; page?: number }) =>
     api.get<ApiResponse<{ categories: Category[] }>>('/api/categories', { params }),
   getById: (id: number) => api.get<ApiResponse<{ category: Category }>>(`/api/categories/${id}`),
   create: (data: CreateCategoryRequest) =>

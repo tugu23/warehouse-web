@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { agentsApi, employeesApi } from '../../api';
-import { Employee, AgentLocation } from '../../types';
+import { User, Employee, AgentLocation } from '../../types';
 import { format } from 'date-fns';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -33,7 +33,7 @@ export default function AgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
   const [agentRoute, setAgentRoute] = useState<AgentLocation[]>([]);
   const [allLocations, setAllLocations] = useState<
-    { agent: Employee; lastLocation?: AgentLocation }[]
+    { agent: User; lastLocation: AgentLocation | null }[]
   >([]);
   const [viewMode, setViewMode] = useState<'all' | 'route'>('all');
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));

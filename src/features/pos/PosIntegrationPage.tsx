@@ -119,6 +119,7 @@ export default function PosIntegrationPage() {
       const testRequest: EReceiptRequest = {
         orderId: 999,
         amount: parseFloat(testAmount),
+        vatAmount: Math.round(parseFloat(testAmount) * 0.1), // 10% VAT
         customerName: testCustomerName,
         items: [
           {

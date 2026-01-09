@@ -35,9 +35,9 @@ export default function CustomersPage() {
     }
   };
 
-  const handleCreate = async (data: CreateCustomerRequest) => {
+  const handleCreate = async (data: CreateCustomerRequest | UpdateCustomerRequest) => {
     try {
-      await customersApi.create(data);
+      await customersApi.create(data as CreateCustomerRequest);
       toast.success('Customer created successfully!');
       setEditModalOpen(false);
       fetchCustomers();
@@ -46,10 +46,10 @@ export default function CustomersPage() {
     }
   };
 
-  const handleUpdate = async (data: UpdateCustomerRequest) => {
+  const handleUpdate = async (data: CreateCustomerRequest | UpdateCustomerRequest) => {
     if (!selectedCustomer) return;
     try {
-      await customersApi.update(selectedCustomer.id, data);
+      await customersApi.update(selectedCustomer.id, data as UpdateCustomerRequest);
       toast.success('Customer updated successfully!');
       setEditModalOpen(false);
       setSelectedCustomer(null);

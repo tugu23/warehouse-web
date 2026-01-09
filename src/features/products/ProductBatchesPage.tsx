@@ -47,9 +47,9 @@ export default function ProductBatchesPage() {
     }
   };
 
-  const handleCreate = async (data: CreateProductBatchRequest) => {
+  const handleCreate = async (data: CreateProductBatchRequest | UpdateProductBatchRequest) => {
     try {
-      await productsApi.createBatch(data);
+      await productsApi.createBatch(data as CreateProductBatchRequest);
       toast.success('Багц амжилттай үүсгэгдлээ');
       setModalOpen(false);
       fetchBatches();
@@ -58,10 +58,10 @@ export default function ProductBatchesPage() {
     }
   };
 
-  const handleUpdate = async (data: UpdateProductBatchRequest) => {
+  const handleUpdate = async (data: CreateProductBatchRequest | UpdateProductBatchRequest) => {
     if (!selectedBatch) return;
     try {
-      await productsApi.updateBatch(selectedBatch.id, data);
+      await productsApi.updateBatch(selectedBatch.id, data as UpdateProductBatchRequest);
       toast.success('Багц амжилттай засагдлаа');
       setModalOpen(false);
       setSelectedBatch(null);
@@ -114,7 +114,7 @@ export default function ProductBatchesPage() {
 
   const getExpiryStatus = (expiryDate: string) => {
     const daysUntilExpiry = differenceInDays(new Date(expiryDate), new Date());
-    
+
     if (daysUntilExpiry < 0) {
       return { label: 'Дууссан', color: 'error' as const };
     } else if (daysUntilExpiry <= 30) {
@@ -156,7 +156,9 @@ export default function ProductBatchesPage() {
         const status = getExpiryStatus(row.expiryDate);
         return (
           <Box>
-            <Typography variant="body2">{format(new Date(row.expiryDate), 'yyyy-MM-dd')}</Typography>
+            <Typography variant="body2">
+              {format(new Date(row.expiryDate), 'yyyy-MM-dd')}
+            </Typography>
             <Chip label={status.label} color={status.color} size="small" />
           </Box>
         );
@@ -266,4 +268,3 @@ export default function ProductBatchesPage() {
     </Box>
   );
 }
-

@@ -141,9 +141,10 @@ export default function EmployeeLocationTrackingPage() {
                 <Select
                   value={selectedEmployee}
                   label="Ажилтан"
-                  onChange={(e) =>
-                    setSelectedEmployee(e.target.value === '' ? '' : Number(e.target.value))
-                  }
+                  onChange={(e) => {
+                    const val = String(e.target.value);
+                    setSelectedEmployee(val === '' ? '' : Number(val));
+                  }}
                 >
                   <MenuItem value="">Сонгох</MenuItem>
                   {employees.map((emp) => (

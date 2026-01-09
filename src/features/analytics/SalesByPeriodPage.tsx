@@ -31,8 +31,8 @@ export default function SalesByPeriodPage() {
   // Filters
   const today = new Date();
   const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-  const [startDate, setStartDate] = useState<string>(lastMonth.toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState<string>(today.toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState<string>(lastMonth.toISOString().split('T')[0] ?? '');
+  const [endDate, setEndDate] = useState<string>(today.toISOString().split('T')[0] ?? '');
   const [period, setPeriod] = useState<SalesPeriod>('month');
 
   const fetchData = useCallback(async () => {

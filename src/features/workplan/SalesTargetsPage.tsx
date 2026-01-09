@@ -42,9 +42,9 @@ export default function SalesTargetsPage() {
     }
   };
 
-  const handleCreate = async (data: CreateSalesTargetRequest) => {
+  const handleCreate = async (data: CreateSalesTargetRequest | UpdateSalesTargetRequest) => {
     try {
-      await salesTargetsApi.create(data);
+      await salesTargetsApi.create(data as CreateSalesTargetRequest);
       toast.success('Зорилт амжилттай үүсгэгдлээ');
       setModalOpen(false);
       fetchTargets();
@@ -54,10 +54,10 @@ export default function SalesTargetsPage() {
     }
   };
 
-  const handleUpdate = async (data: UpdateSalesTargetRequest) => {
+  const handleUpdate = async (data: CreateSalesTargetRequest | UpdateSalesTargetRequest) => {
     if (!selectedTarget) return;
     try {
-      await salesTargetsApi.update(selectedTarget.id, data);
+      await salesTargetsApi.update(selectedTarget.id, data as UpdateSalesTargetRequest);
       toast.success('Зорилт амжилттай засагдлаа');
       setModalOpen(false);
       setSelectedTarget(null);

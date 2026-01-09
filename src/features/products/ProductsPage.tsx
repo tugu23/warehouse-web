@@ -38,14 +38,15 @@ export default function ProductsPage() {
       });
       const products = response.data.data?.products || [];
       console.log('📦 Fetched products:', products.length);
-      if (products.length > 0) {
+      const firstProduct = products[0];
+      if (firstProduct) {
         console.log('📦 First product:', {
-          id: products[0].id,
-          name: products[0].nameMongolian,
-          priceWholesale: products[0].priceWholesale,
-          priceRetail: products[0].priceRetail,
-          priceWholesaleType: typeof products[0].priceWholesale,
-          priceRetailType: typeof products[0].priceRetail,
+          id: firstProduct.id,
+          name: firstProduct.nameMongolian,
+          priceWholesale: firstProduct.priceWholesale,
+          priceRetail: firstProduct.priceRetail,
+          priceWholesaleType: typeof firstProduct.priceWholesale,
+          priceRetailType: typeof firstProduct.priceRetail,
         });
       }
       setProducts(products);
@@ -56,9 +57,9 @@ export default function ProductsPage() {
     }
   };
 
-  const handleCreate = async (data: CreateProductRequest) => {
+  const handleCreate = async (data: CreateProductRequest | UpdateProductRequest) => {
     try {
-      await productsApi.create(data);
+      await productsApi.create(data as CreateProductRequest);
       toast.success('Product created successfully!');
       setEditModalOpen(false);
       fetchProducts();
@@ -67,10 +68,10 @@ export default function ProductsPage() {
     }
   };
 
-  const handleUpdate = async (data: UpdateProductRequest) => {
+  const handleUpdate = async (data: CreateProductRequest | UpdateProductRequest) => {
     if (!selectedProduct) return;
     try {
-      await productsApi.update(selectedProduct.id, data);
+      await productsApi.update(selectedProduct.id, data as UpdateProductRequest);
       toast.success('Product updated successfully!');
       setEditModalOpen(false);
       setSelectedProduct(null);

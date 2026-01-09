@@ -154,9 +154,10 @@ export default function SalesReportPage() {
         grouped[key] = { orders: [], total: 0, count: 0 };
       }
 
-      grouped[key].orders.push(order);
-      grouped[key].total += Number(order.totalAmount);
-      grouped[key].count += 1;
+      const group = grouped[key]!;
+      group.orders.push(order);
+      group.total += Number(order.totalAmount);
+      group.count += 1;
     });
 
     return Object.entries(grouped)
@@ -292,9 +293,10 @@ export default function SalesReportPage() {
                 <Select
                   value={selectedEmployee}
                   label="Ажилтан"
-                  onChange={(e) =>
-                    setSelectedEmployee(e.target.value === '' ? '' : Number(e.target.value))
-                  }
+                  onChange={(e) => {
+                    const val = String(e.target.value);
+                    setSelectedEmployee(val === '' ? '' : Number(val));
+                  }}
                 >
                   <MenuItem value="">Бүгд</MenuItem>
                   {employees.map((emp) => (

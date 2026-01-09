@@ -33,9 +33,9 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleCreate = async (data: CreateEmployeeRequest) => {
+  const handleCreate = async (data: CreateEmployeeRequest | UpdateEmployeeRequest) => {
     try {
-      await employeesApi.create(data);
+      await employeesApi.create(data as CreateEmployeeRequest);
       toast.success('Employee created successfully!');
       setModalOpen(false);
       fetchEmployees();
@@ -44,10 +44,10 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleUpdate = async (data: UpdateEmployeeRequest) => {
+  const handleUpdate = async (data: CreateEmployeeRequest | UpdateEmployeeRequest) => {
     if (!selectedEmployee) return;
     try {
-      await employeesApi.update(selectedEmployee.id, data);
+      await employeesApi.update(selectedEmployee.id, data as UpdateEmployeeRequest);
       toast.success('Employee updated successfully!');
       setModalOpen(false);
       setSelectedEmployee(null);

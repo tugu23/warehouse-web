@@ -40,9 +40,9 @@ export default function VisitPlansPage() {
     }
   };
 
-  const handleCreate = async (data: CreateVisitPlanRequest) => {
+  const handleCreate = async (data: CreateVisitPlanRequest | UpdateVisitPlanRequest) => {
     try {
-      await visitPlansApi.create(data);
+      await visitPlansApi.create(data as CreateVisitPlanRequest);
       toast.success('Айлчлалын төлөвлөгөө амжилттай үүсгэгдлээ');
       setModalOpen(false);
       fetchVisitPlans();
@@ -52,10 +52,10 @@ export default function VisitPlansPage() {
     }
   };
 
-  const handleUpdate = async (data: UpdateVisitPlanRequest) => {
+  const handleUpdate = async (data: CreateVisitPlanRequest | UpdateVisitPlanRequest) => {
     if (!selectedPlan) return;
     try {
-      await visitPlansApi.update(selectedPlan.id, data);
+      await visitPlansApi.update(selectedPlan.id, data as UpdateVisitPlanRequest);
       toast.success('Айлчлалын төлөвлөгөө амжилттай засагдлаа');
       setModalOpen(false);
       setSelectedPlan(null);

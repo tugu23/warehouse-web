@@ -37,6 +37,7 @@ import {
   Assessment as ReportIcon,
   Analytics as AnalyticsIcon,
   Place as PlaceIcon,
+  Receipt as ReceiptIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../config/ThemeProvider';
@@ -84,6 +85,12 @@ const menuItems: MenuItem[] = [
     text: 'Байршил хяналт',
     icon: <PlaceIcon />,
     path: '/employees/location-tracking',
+    roles: ['Admin', 'Manager'],
+  },
+  {
+    text: 'И-Баримт',
+    icon: <ReceiptIcon />,
+    path: '/ebarimt',
     roles: ['Admin', 'Manager'],
   },
 ];

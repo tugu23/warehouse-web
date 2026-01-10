@@ -27,6 +27,7 @@ const VisitPlansPage = lazy(() => import('../features/workplan/VisitPlansPage'))
 const WorkTasksPage = lazy(() => import('../features/workplan/WorkTasksPage'));
 const SalesTargetsPage = lazy(() => import('../features/workplan/SalesTargetsPage'));
 const PosIntegrationPage = lazy(() => import('../features/pos/PosIntegrationPage'));
+const EBarimtPage = lazy(() => import('../features/pos/EBarimtPage'));
 const SalesReportPage = lazy(() => import('../features/reports/SalesReportPage'));
 const CreditStatusReportPage = lazy(() => import('../features/reports/CreditStatusReportPage'));
 const CategoriesPage = lazy(() => import('../features/categories/CategoriesPage'));
@@ -94,6 +95,11 @@ export default function AppRoutes() {
 
               {/* PosAPI Integration */}
               <Route path="/pos-integration" element={<PosIntegrationPage />} />
+
+              {/* E-Barimt - Admin/Manager only */}
+              <Route element={<ProtectedRoute allowedRoles={['Admin', 'Manager']} />}>
+                <Route path="/ebarimt" element={<EBarimtPage />} />
+              </Route>
 
               {/* Manager and Admin only */}
               <Route element={<ProtectedRoute allowedRoles={['Admin', 'Manager']} />}>

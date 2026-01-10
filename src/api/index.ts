@@ -176,9 +176,9 @@ export const ordersApi = {
   getDocument: (id: number) => api.get(`/api/orders/${id}/document`),
   exportToExcel: (id: number) => api.get(`/api/orders/${id}/export`, { responseType: 'blob' }),
   // PDF Receipt API
-  viewReceiptPDF: async (id: number) => {
+  viewReceiptPDF: async (id: number, showVat: boolean = true) => {
     try {
-      const response = await api.get(`/api/orders/${id}/receipt/pdf`, {
+      const response = await api.get(`/api/orders/${id}/receipt/pdf?showVat=${showVat}`, {
         responseType: 'blob',
       });
 
@@ -202,11 +202,37 @@ export const ordersApi = {
       throw error;
     }
   },
-  downloadReceiptPDF: async (id: number) => {
+  // View non-VAT receipt (НӨАТ-гүй падаан)
+  viewNonVatReceiptPDF: async (id: number) => {
     try {
-      const response = await api.get(`/api/orders/${id}/receipt/pdf?download=true`, {
+      const response = await api.get(`/api/orders/${id}/receipt/pdf?showVat=false`, {
         responseType: 'blob',
       });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const pdfUrl = window.URL.createObjectURL(blob);
+      const newWindow = window.open(pdfUrl, '_blank');
+
+      if (newWindow) {
+        newWindow.onload = () => {
+          window.URL.revokeObjectURL(pdfUrl);
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error viewing non-VAT PDF:', error);
+      throw error;
+    }
+  },
+  downloadReceiptPDF: async (id: number, showVat: boolean = true) => {
+    try {
+      const response = await api.get(
+        `/api/orders/${id}/receipt/pdf?download=true&showVat=${showVat}`,
+        {
+          responseType: 'blob',
+        }
+      );
 
       // Create blob from response
       const blob = new Blob([response.data], { type: 'application/pdf' });
@@ -215,7 +241,7 @@ export const ordersApi = {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `receipt-order-${id}.pdf`;
+      a.download = showVat ? `receipt-order-${id}.pdf` : `padaan-order-${id}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -335,6 +361,9 @@ export const etaxApi = {
     >(`/api/etax/organization/${regno}`),
 };
 
+// E-Barimt API (re-export from ebarimtApi.ts)
+export { ebarimtApi } from './ebarimtApi';
+
 // Delivery Plans API
 export const deliveryPlansApi = {
   getAll: (params?: {
@@ -441,6 +470,8 @@ export const reportsApi = {
     api.get('/api/reports/inventory/export', { params, responseType: 'blob' }),
 };
 
+import { ebarimtApi } from './ebarimtApi';
+
 export default {
   auth: authApi,
   employees: employeesApi,
@@ -459,4 +490,5 @@ export default {
   reports: reportsApi,
   analytics: analyticsApi,
   etax: etaxApi,
+  ebarimt: ebarimtApi,
 };

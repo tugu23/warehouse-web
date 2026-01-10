@@ -1,17 +1,18 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   console.log('Vite build mode:', mode);
-  const apiBaseUrl = mode === 'production' ? '' : 'http://43.231.115.209:3000';
-  console.log('API Base URL:', apiBaseUrl);
-  
+  // In development, use empty string to leverage Vite's proxy to localhost:4000
+  // In production, also empty string as nginx handles proxying
+  const apiBaseUrl = '';
+  console.log('API Base URL:', apiBaseUrl || '(using proxy)');
+
   return {
     plugins: [react()],
     define: {
-      // In production, API calls go through nginx proxy (empty baseURL)
-      // In development, use the backend server directly
-      '__API_BASE_URL__': JSON.stringify(apiBaseUrl),
+      // API calls go through proxy in both dev (Vite) and prod (nginx)
+      __API_BASE_URL__: JSON.stringify(apiBaseUrl),
     },
     server: {
       port: 5173,
@@ -20,8 +21,8 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:4000',
           changeOrigin: true,
           secure: false,
-        }
-      }
-    }
+        },
+      },
+    },
   };
-})
+});

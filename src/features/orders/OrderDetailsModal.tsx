@@ -23,6 +23,7 @@ import {
   Warehouse as WarehouseIcon,
   PictureAsPdf as PdfIcon,
   Download as DownloadIcon,
+  Description as DescriptionIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { Order } from '../../types';
@@ -150,10 +151,19 @@ export default function OrderDetailsModal({
 
   const handleViewReceiptPDF = async () => {
     try {
-      await ordersApi.viewReceiptPDF(order.id);
+      await ordersApi.viewReceiptPDF(order.id, true); // With VAT
     } catch (error) {
       console.error('Error viewing PDF:', error);
       toast.error('Failed to open PDF receipt');
+    }
+  };
+
+  const handleViewNonVatReceipt = async () => {
+    try {
+      await ordersApi.viewNonVatReceiptPDF(order.id); // НӨАТ-гүй падаан
+    } catch (error) {
+      console.error('Error viewing non-VAT receipt:', error);
+      toast.error('Failed to open receipt');
     }
   };
 
@@ -330,6 +340,14 @@ export default function OrderDetailsModal({
           onClick={handleViewReceiptPDF}
         >
           View Receipt (PDF)
+        </Button>
+        <Button
+          variant="outlined"
+          color="warning"
+          startIcon={<DescriptionIcon />}
+          onClick={handleViewNonVatReceipt}
+        >
+          Падаан харах
         </Button>
         <Button
           variant="outlined"

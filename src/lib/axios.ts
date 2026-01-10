@@ -6,7 +6,7 @@ declare const __API_BASE_URL__: string;
 
 // Base URL is replaced at build time:
 // - Production: empty string (nginx proxies /api to backend)
-// - Development: http://43.231.115.209:3000
+// - Development: empty string (Vite proxy forwards /api to localhost:4000)
 const api = axios.create({
   baseURL: __API_BASE_URL__,
   headers: {

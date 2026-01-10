@@ -1,8 +1,8 @@
 # Dependencies
 node_modules
 
-# Build output
-dist
+# Build output (not ignored for Dockerfile.prod which uses pre-built dist)
+# dist
 
 # Git
 .git

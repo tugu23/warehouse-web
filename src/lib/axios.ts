@@ -1,8 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'react-hot-toast';
 
+// Declare the global define from vite.config.ts
+declare const __API_BASE_URL__: string;
+
+// Base URL is replaced at build time:
+// - Production: empty string (nginx proxies /api to backend)
+// - Development: http://43.231.115.209:3000
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
+  baseURL: __API_BASE_URL__,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -52,7 +58,8 @@ api.interceptors.response.use(
           toast.error('The requested resource was not found.');
           break;
 
-        case 422: { // Validation error
+        case 422: {
+          // Validation error
           const message = data?.message || 'Validation error occurred.';
           toast.error(message);
           break;

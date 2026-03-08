@@ -50,6 +50,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
       name2: '',
       organizationType: '',
       registrationNumber: '',
+      ebarimtConsumerNo: '',
       address: '',
       district: '',
       phoneNumber: '',
@@ -70,6 +71,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
         name2: customer.name2 || '',
         organizationType: customer.organizationType || '',
         registrationNumber: customer.registrationNumber || '',
+        ebarimtConsumerNo: customer.ebarimtConsumerNo || '',
         address: customer.address,
         district: customer.district || '',
         phoneNumber: customer.phoneNumber,
@@ -203,6 +205,25 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
               {regnoSearchResult}
             </Alert>
           )}
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Controller
+            name="ebarimtConsumerNo"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="E-Barimt бүртгэлийн дугаар"
+                fullWidth
+                error={!!errors.ebarimtConsumerNo}
+                helperText={
+                  errors.ebarimtConsumerNo?.message || 'И-Баримт апп-д бүртгүүлсэн 8 оронтой дугаар'
+                }
+                inputProps={{ maxLength: 20 }}
+              />
+            )}
+          />
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6 }}>

@@ -47,6 +47,7 @@ import {
   RegisteredOrder,
   getLotteryWarningLevel,
 } from '../../api/ebarimtApi';
+import EBarimtResultModal, { EBarimtResultData } from '../../components/EBarimtResultModal';
 
 export default function EBarimtPage() {
   // State
@@ -61,6 +62,10 @@ export default function EBarimtPage() {
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [returnOrderId, setReturnOrderId] = useState<number | null>(null);
   const [returnReason, setReturnReason] = useState('');
+
+  // Result modal state
+  const [resultModalOpen, setResultModalOpen] = useState(false);
+  const [resultModalData, setResultModalData] = useState<EBarimtResultData | null>(null);
 
   // Fetch data
   const fetchInfo = useCallback(async () => {
@@ -138,25 +143,18 @@ export default function EBarimtPage() {
       const result = response.data.data;
 
       if (result.success) {
-        toast.success(
-          <Box>
-            <Typography variant="body2" fontWeight="bold">
-              И-баримт амжилттай бүртгэгдлээ!
-            </Typography>
-            <Typography variant="caption">ДДТД: {result.billId}</Typography>
-            {result.lottery && (
-              <Typography variant="caption" display="block">
-                Сугалаа: {result.lottery}
-              </Typography>
-            )}
-            {result.isB2B && (
-              <Typography variant="caption" display="block" color="info.main">
-                (ААН баримт - сугалаагүй)
-              </Typography>
-            )}
-          </Box>,
-          { duration: 5000 }
-        );
+        toast.success('И-баримт амжилттай бүртгэгдлээ!');
+
+        setResultModalData({
+          orderId: result.orderId,
+          billId: result.billId,
+          lottery: result.lottery,
+          qrData: result.qrData,
+          isB2B: result.isB2B,
+          message: result.message,
+        });
+        setResultModalOpen(true);
+
         fetchUnregisteredOrders();
         fetchRegisteredOrders();
         fetchInfo();
@@ -445,9 +443,9 @@ export default function EBarimtPage() {
                   <TableRow>
                     <TableCell>ID</TableCell>
                     <TableCell>ДДТД</TableCell>
-                    <TableCell>Сугалаа</TableCell>
                     <TableCell>Огноо</TableCell>
                     <TableCell>Харилцагч</TableCell>
+                    <TableCell>ТТД</TableCell>
                     <TableCell align="right">Дүн</TableCell>
                     <TableCell align="center">Үйлдэл</TableCell>
                   </TableRow>
@@ -462,19 +460,23 @@ export default function EBarimtPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        {order.ebarimtLottery ? (
-                          <Chip label={order.ebarimtLottery} size="small" color="primary" />
-                        ) : (
-                          <Chip label="ААН" size="small" variant="outlined" />
-                        )}
-                      </TableCell>
-                      <TableCell>
                         {order.ebarimtDate
                           ? format(new Date(order.ebarimtDate), 'MM/dd HH:mm')
                           : '-'}
                       </TableCell>
                       <TableCell>
                         {order.customer.organizationName || order.customer.name}
+                      </TableCell>
+                      <TableCell>
+                        {order.customer.registrationNumber ? (
+                          <Chip
+                            label={order.customer.registrationNumber}
+                            size="small"
+                            color="info"
+                          />
+                        ) : (
+                          <Chip label="B2C" size="small" variant="outlined" />
+                        )}
                       </TableCell>
                       <TableCell align="right">{order.totalAmount?.toLocaleString()}₮</TableCell>
                       <TableCell align="center">
@@ -524,6 +526,13 @@ export default function EBarimtPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* E-Barimt Result Modal */}
+      <EBarimtResultModal
+        open={resultModalOpen}
+        onClose={() => setResultModalOpen(false)}
+        result={resultModalData}
+      />
     </Box>
   );
 }

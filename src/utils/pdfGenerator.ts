@@ -339,39 +339,23 @@ export const generateOrderReceiptPDF = async (
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 5;
 
-  // Section 7: QR Code
-  yPosition = addText('7. QR код', margin, yPosition, {
+  // Section 7: E-Receipt Info
+  yPosition = addText('7. И-Баримт мэдээлэл', margin, yPosition, {
     fontSize: 11,
     fontStyle: 'bold',
   });
   yPosition += 5;
 
-  // Add QR code image if available
-  if (order.eReceiptQrCode) {
-    try {
-      const qrSize = 40;
-      const qrX = (pageWidth - qrSize) / 2;
-      doc.addImage(order.eReceiptQrCode, 'PNG', qrX, yPosition, qrSize, qrSize);
-      yPosition += qrSize + 3;
-    } catch (error) {
-      console.error('Error adding QR code:', error);
-      yPosition = addText('QR КОД', pageWidth / 2, yPosition + 20, {
-        align: 'center',
-        fontSize: 9,
-      });
-      yPosition += 5;
-    }
-  } else {
-    yPosition = addText('QR КОД', pageWidth / 2, yPosition + 20, {
-      align: 'center',
-      fontSize: 9,
-    });
-    yPosition += 5;
-  }
+  // QR code placeholder
+  yPosition = addText('QR код бүртгэлийн үед харагдана', pageWidth / 2, yPosition + 10, {
+    align: 'center',
+    fontSize: 9,
+  });
+  yPosition += 15;
 
-  // Lottery number if available
-  if (order.eReceiptLottery) {
-    yPosition = addText(`Сугалааны дугаар: ${order.eReceiptLottery}`, pageWidth / 2, yPosition, {
+  // E-Receipt Number
+  if (order.eReceiptNumber) {
+    yPosition = addText(`Баримтын дугаар: ${order.eReceiptNumber}`, pageWidth / 2, yPosition, {
       align: 'center',
       fontSize: 8,
     });
@@ -400,15 +384,10 @@ export const generateOrderReceiptPDF = async (
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 4;
 
-  addText(
-    'Зураг 2.3.3.13. Төлбөрийн баримт хэвлэгсэн байдал (Сугалаатай)',
-    pageWidth / 2,
-    yPosition,
-    {
-      align: 'center',
-      fontSize: 7,
-    }
-  );
+  addText('Төлбөрийн баримт', pageWidth / 2, yPosition, {
+    align: 'center',
+    fontSize: 7,
+  });
 
   // Download or return PDF
   if (options.download) {

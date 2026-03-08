@@ -20,14 +20,11 @@ import {
   Share as ShareIcon,
   MoreVert as MoreIcon,
   Receipt as ReceiptIcon,
-  QrCode as QrCodeIcon,
 } from '@mui/icons-material';
 import receiptService from '../services/receiptService';
 
 interface Order {
   eReceiptNumber?: string;
-  eReceiptLottery?: string;
-  eReceiptQrCode?: string;
 }
 
 interface ReceiptActionsProps {
@@ -202,14 +199,6 @@ export default function ReceiptActions({
               color="success"
               icon={<ReceiptIcon />}
             />
-            {eBarimtInfo.lottery && (
-              <Chip
-                label={`Сугалаа: ${eBarimtInfo.lottery}`}
-                size="small"
-                color="primary"
-                icon={<QrCodeIcon />}
-              />
-            )}
           </Box>
         </Alert>
       )}

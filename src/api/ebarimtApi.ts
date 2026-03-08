@@ -79,6 +79,28 @@ export interface EBarimtReturnResult {
   message?: string;
 }
 
+export interface EBarimtEditResult {
+  status: string;
+  data: {
+    orderId: number;
+    newBillId: string;
+    lottery?: string;
+    qrData?: string;
+    message: string;
+  };
+}
+
+export interface EBarimtSupplementResult {
+  status: string;
+  data: {
+    orderId: number;
+    billId: string;
+    lottery?: string;
+    qrData?: string;
+    message: string;
+  };
+}
+
 export interface UnregisteredOrder {
   id: number;
   orderNumber?: string;
@@ -101,7 +123,6 @@ export interface RegisteredOrder {
   orderDate: string;
   ebarimtDate?: string;
   ebarimtBillId?: string;
-  ebarimtLottery?: string;
   totalAmount?: number;
   customer: {
     name: string;

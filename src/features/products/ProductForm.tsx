@@ -44,6 +44,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
       nameEnglish: '',
       productCode: '',
       barcode: '',
+      classificationCode: '',
       categoryId: undefined,
       supplierId: 1,
       stockQuantity: 0,
@@ -58,6 +59,8 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
   });
 
   const barcodeValue = watch('barcode');
+  const classificationCodeValue = watch('classificationCode');
+  const showEbarimtWarning = !barcodeValue?.trim() && !classificationCodeValue?.trim();
 
   // Fetch categories on mount
   useEffect(() => {
@@ -80,6 +83,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
         nameEnglish: product.nameEnglish,
         productCode: product.productCode,
         barcode: product.barcode || '',
+        classificationCode: product.classificationCode || '',
         categoryId: product.categoryId || undefined,
         supplierId: product.supplierId,
         stockQuantity: product.stockQuantity,
@@ -202,6 +206,33 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             </Alert>
           )}
         </Grid>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Controller
+            name="classificationCode"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="БҮНА код (Classification Code)"
+                fullWidth
+                error={!!errors.classificationCode}
+                helperText={
+                  errors.classificationCode?.message || 'Бараа, үйлчилгээний нэгдсэн ангиллын код'
+                }
+              />
+            )}
+          />
+        </Grid>
+
+        {showEbarimtWarning && (
+          <Grid size={12}>
+            <Alert severity="warning">
+              И-Баримт бүртгэхэд barcode эсвэл БҮНА код аль нэг нь заавал шаардлагатай. Аль нэгийг
+              бөглөнө үү.
+            </Alert>
+          </Grid>
+        )}
 
         <Grid size={{ xs: 12, sm: 6 }}>
           <Controller

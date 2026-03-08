@@ -58,6 +58,7 @@ export interface Product {
   nameEnglish: string;
   productCode: string;
   barcode?: string;
+  classificationCode?: string; // БҮНА код
   categoryId?: number;
   category?: Category;
   supplierId: number;
@@ -82,6 +83,7 @@ export interface CreateProductRequest {
   nameEnglish: string;
   productCode: string;
   barcode?: string;
+  classificationCode?: string;
   categoryId?: number;
   supplierId: number;
   stockQuantity: number;
@@ -100,6 +102,7 @@ export interface UpdateProductRequest {
   nameEnglish?: string;
   productCode?: string;
   barcode?: string;
+  classificationCode?: string;
   categoryId?: number;
   supplierId?: number;
   stockQuantity?: number;
@@ -233,6 +236,7 @@ export interface Customer {
   name2?: string; // Хоёр дахь нэр (нэмэлт нэр)
   organizationType?: string; // Дэлгүүр, Сүлжээ, Ресторан
   registrationNumber?: string; // Регистрийн дугаар ⭐
+  ebarimtConsumerNo?: string; // E-Barimt апп бүртгэлийн дугаар (8 орон)
   address: string;
   district?: string; // Дүүрэг
   phoneNumber: string;
@@ -258,6 +262,7 @@ export interface CreateCustomerRequest {
   name2?: string;
   organizationType?: string;
   registrationNumber?: string;
+  ebarimtConsumerNo?: string;
   address: string;
   district?: string;
   phoneNumber: string;
@@ -273,6 +278,7 @@ export interface UpdateCustomerRequest {
   name2?: string;
   organizationType?: string;
   registrationNumber?: string;
+  ebarimtConsumerNo?: string;
   address?: string;
   district?: string;
   phoneNumber?: string;
@@ -329,8 +335,6 @@ export interface Order {
   eReceiptNumber?: string; // И-баримтын дугаар
   eReceiptStatus?: 'pending' | 'printed' | 'failed'; // И-баримтын төлөв
   eReceiptUrl?: string; // И-баримт татах линк
-  eReceiptQrCode?: string; // QR код
-  eReceiptLottery?: string; // Сугалааны дугаар
   eReceiptPrintedAt?: string; // Хэвлэсэн огноо
 }
 

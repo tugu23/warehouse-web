@@ -290,42 +290,34 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* 7. QR Code */}
+        {/* 7. E-Receipt Info */}
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 2, mb: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-            7. QR код
+            7. И-Баримт мэдээлэл
           </Typography>
-          {order.eReceiptQrCode ? (
-            <img
-              src={order.eReceiptQrCode}
-              alt="E-Receipt QR"
-              style={{ width: 120, height: 120 }}
-            />
-          ) : (
-            <Box
-              sx={{
-                width: 120,
-                height: 120,
-                border: '1px solid #ddd',
-                bgcolor: '#f9f9f9',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Typography variant="caption" color="text.secondary">
-                QR КОД
-              </Typography>
-            </Box>
-          )}
-          {order.eReceiptLottery && (
-            <Typography variant="caption" sx={{ mt: 1 }}>
-              Сугалааны дугаар: {order.eReceiptLottery}
+          <Box
+            sx={{
+              width: 120,
+              height: 120,
+              border: '1px solid #ddd',
+              bgcolor: '#f9f9f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Typography variant="caption" color="text.secondary" textAlign="center">
+              QR код бүртгэлийн үед харагдана
             </Typography>
-          )}
+          </Box>
           {order.eReceiptId && (
             <Typography variant="caption" sx={{ fontSize: '9px', mt: 0.5 }}>
               YF: {order.eReceiptId}
+            </Typography>
+          )}
+          {order.eReceiptNumber && (
+            <Typography variant="caption" sx={{ mt: 0.5 }}>
+              Баримтын дугаар: {order.eReceiptNumber}
             </Typography>
           )}
           <Typography variant="body2" sx={{ mt: 2, textAlign: 'center', fontStyle: 'italic' }}>

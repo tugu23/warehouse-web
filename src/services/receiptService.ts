@@ -7,8 +7,6 @@ export interface ReceiptResponse {
   success: boolean;
   receiptUrl?: string;
   receiptId?: string;
-  lottery?: string;
-  qrCode?: string;
   error?: string;
 }
 
@@ -146,21 +144,13 @@ class ReceiptService {
   /**
    * Get E-Barimt info from order
    */
-  getEBarimtInfo(order: {
-    eReceiptNumber?: string;
-    eReceiptLottery?: string;
-    eReceiptQrCode?: string;
-  }): {
+  getEBarimtInfo(order: { eReceiptNumber?: string }): {
     hasEBarimt: boolean;
     receiptNumber?: string;
-    lottery?: string;
-    qrCode?: string;
   } {
     return {
       hasEBarimt: !!order.eReceiptNumber,
       receiptNumber: order.eReceiptNumber,
-      lottery: order.eReceiptLottery,
-      qrCode: order.eReceiptQrCode,
     };
   }
 }

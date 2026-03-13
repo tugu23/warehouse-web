@@ -7,6 +7,7 @@ import {
   TextField,
   Grid,
   FormControl,
+  FormLabel,
   InputLabel,
   Select,
   MenuItem,
@@ -18,13 +19,16 @@ import {
   Checkbox,
   FormControlLabel,
   Alert,
-  Autocomplete,
+  Radio,
+  RadioGroup,
+  CircularProgress,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
-  Store as StoreIcon,
-  Warehouse as WarehouseIcon,
+  Search as SearchIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { addDays, format } from 'date-fns';
 import { orderSchema } from '../../utils/validation';
@@ -33,26 +37,40 @@ import {
   Customer,
   Product,
   Employee,
+  Order,
   OrderType,
   ProductPrice,
 } from '../../types';
 import { customersApi, productsApi, employeesApi, productPricesApi } from '../../api';
 import { z } from 'zod';
+import toast from 'react-hot-toast';
+import { createEbarimtRequest } from '../../api/ebarimt';
 
 type OrderFormData = z.infer<typeof orderSchema>;
 
 interface OrderFormProps {
-  onSubmit: (data: CreateOrderRequest) => Promise<void>;
+  onSubmit: (data: CreateOrderRequest) => Promise<Order>;
   onCancel: () => void;
 }
 
+interface RegLookupResult {
+  name: string;
+  registrationNumber: string;
+  vatPayer?: boolean;
+  customerId?: number;
+}
+
 export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('Market');
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
   const [productPricesCache, setProductPricesCache] = useState<Record<number, ProductPrice[]>>({});
+  const [regNumber, setRegNumber] = useState<string>('');
+  const [regLookupResult, setRegLookupResult] = useState<RegLookupResult | null>(null);
+  const [isLookingUp, setIsLookingUp] = useState<boolean>(false);
+  const [regError, setRegError] = useState<string>('');
+  const [individualRegNo, setIndividualRegNo] = useState('');
 
   const {
     control,
@@ -63,6 +81,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   } = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
+      customerKind: 'organization',
       customerId: 0,
       distributorId: undefined,
       paymentMethod: 'Cash',
@@ -73,51 +92,39 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'items',
-  });
+  const { fields, append, remove } = useFieldArray({ control, name: 'items' });
 
   const items = watch('items');
   const isCredit = watch('isCredit');
   const creditTermDays = watch('creditTermDays');
   const paidAmount = watch('paidAmount');
-  const selectedCustomerId = watch('customerId');
+  const customerKind = watch('customerKind');
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  // Detect order type based on customer organization type
   useEffect(() => {
-    const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
-    if (selectedCustomer) {
-      const orgType = selectedCustomer.organizationType;
-      if (orgType === 'Market Warehouse') {
-        setOrderType('Market');
-        // Set delivery date to next day for market orders
-        const tomorrow = addDays(new Date(), 1);
-        setDeliveryDate(format(tomorrow, 'yyyy-MM-dd'));
-      } else if (orgType === 'Store') {
-        setOrderType('Store');
-        setDeliveryDate(null); // Store orders are immediate
-      } else {
-        // Default to Market for other types
-        setOrderType('Market');
-        const tomorrow = addDays(new Date(), 1);
-        setDeliveryDate(format(tomorrow, 'yyyy-MM-dd'));
-      }
+    if (!regLookupResult) return;
+    if (regLookupResult.customerId) {
+      setValue('customerId', regLookupResult.customerId);
     }
-  }, [selectedCustomerId, customers]);
+    if (regLookupResult.vatPayer) {
+      setOrderType('Store');
+      setDeliveryDate(null);
+    } else {
+      setOrderType('Market');
+      const tomorrow = addDays(new Date(), 1);
+      setDeliveryDate(format(tomorrow, 'yyyy-MM-dd'));
+    }
+  }, [regLookupResult]);
 
   const fetchData = async () => {
     try {
-      const [customersRes, productsRes, employeesRes] = await Promise.all([
-        customersApi.getAll({ limit: 'all' }),
+      const [productsRes, employeesRes] = await Promise.all([
         productsApi.getAll({ limit: 'all', include: 'prices,supplier,category' }),
         employeesApi.getAll({ limit: 'all' }),
       ]);
-      setCustomers(customersRes.data.data?.customers || []);
       setProducts(productsRes.data.data?.products || []);
       setEmployees(employeesRes.data.data?.employees || []);
     } catch (error) {
@@ -125,68 +132,79 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     }
   };
 
-  // Helper function: Харилцагчийн төрлөөс хамаарах үнийг авах
-  const getProductPriceByCustomerType = (
-    product: Product,
-    customerTypeId: number | null | undefined
-  ): number => {
-    // 1. Эхлээд product.prices массиваас хайх (Backend API-аас ирсэн)
-    if (product.prices && product.prices.length > 0 && customerTypeId) {
-      const priceEntry = product.prices.find((p) => p.customerTypeId === customerTypeId);
-      if (priceEntry) {
-        return Number(priceEntry.price);
+  const handleRegNumberLookup = async () => {
+    const trimmed = regNumber.trim();
+    if (!trimmed) {
+      setRegError('Регистрийн дугаар оруулна уу');
+      return;
+    }
+    setIsLookingUp(true);
+    setRegError('');
+    setRegLookupResult(null);
+    setValue('customerId', 0);
+    try {
+      const res = await customersApi.getAll({ limit: 'all' });
+      const allCustomers: Customer[] = res.data.data?.customers || [];
+      const found = allCustomers.find(
+        (c) => (c.registrationNumber || '').trim().toLowerCase() === trimmed.toLowerCase()
+      );
+      if (found) {
+        setRegLookupResult({
+          name: found.name,
+          registrationNumber: found.registrationNumber || trimmed,
+          vatPayer: found.isVatPayer ?? false,
+          customerId: found.id,
+        });
+        toast.success(`Байгууллага олдлоо: ${found.name}`);
+        return;
       }
-    }
-
-    // 2. Cache-аас хайх (өмнө нь тусдаа API дуудсан бол)
-    const cachedPrices = customerTypeId ? productPricesCache[product.id] : undefined;
-    if (cachedPrices) {
-      const priceEntry = cachedPrices.find((p) => p.customerTypeId === customerTypeId);
-      if (priceEntry) {
-        return Number(priceEntry.price);
+      const tinRes = await fetch(`https://api.ebarimt.mn/api/info/check/getTinInfo?regNo=${trimmed}`);
+      const tinData = await tinRes.json();
+      if (!tinData || tinData.status !== 200) {
+        setRegError('TIN олдсонгүй');
+        return;
       }
+      const tin = tinData.data;
+      const infoRes = await fetch(`https://api.ebarimt.mn/api/info/check/getInfo?tin=${tin}`);
+      const infoData = await infoRes.json();
+      console.log('infoData:', infoData);
+      if (!infoData || infoData.status !== 200) {
+        setRegError('Байгууллагын мэдээлэл олдсонгүй');
+        return;
+      }
+      const company = infoData.data;
+      setRegLookupResult({
+        name: company.name,
+        registrationNumber: trimmed,
+        vatPayer: company.vatpayer ?? false,
+        customerId: undefined,
+      });
+      toast('Системд бүртгэлгүй байгууллага. eBarimt-с мэдээлэл авлаа.', { icon: 'ℹ️' });
+    } catch (error) {
+      console.error('Регистр хайхад алдаа:', error);
+      setRegError('Хайлт амжилтгүй. Дахин оролдоно уу.');
+    } finally {
+      setIsLookingUp(false);
     }
+  };
 
-    // 3. Fallback: Харилцагчийн төрлөөс хамаарах default үнэ
-    const customer = customers.find((c) => c.id === selectedCustomerId);
-    // Check both 'name' and 'typeName' for compatibility
-    const customerTypeName = customer?.customerType?.name || customer?.customerType?.typeName;
-    if (customerTypeName === 'Wholesale') {
-      return Number(product.priceWholesale) || 0;
-    }
-
-    // 4. Default: priceRetail
+  const getProductBasePrice = (product: Product): number => {
+    const firstPrice = product.prices && product.prices.length > 0 ? product.prices[0] : undefined;
+    if (firstPrice) return Number(firstPrice.price);
     return Number(product.priceRetail) || Number(product.priceWholesale) || 0;
   };
 
-  // Fetch product prices for a specific product (with caching) - Fallback for products without prices
   const fetchProductPrices = async (productId: number): Promise<ProductPrice[]> => {
-    // Check cache first
-    if (productPricesCache[productId]) {
-      return productPricesCache[productId];
-    }
-
-    // Check if product already has prices from API
+    if (productPricesCache[productId]) return productPricesCache[productId];
     const product = products.find((p) => p.id === productId);
     if (product?.prices && product.prices.length > 0) {
-      // Cache the product's prices
-      setProductPricesCache((prev) => ({
-        ...prev,
-        [productId]: product.prices as ProductPrice[],
-      }));
+      setProductPricesCache((prev) => ({ ...prev, [productId]: product.prices as ProductPrice[] }));
       return product.prices as ProductPrice[];
     }
-
     try {
       const response = await productPricesApi.getByProductId(productId);
       const prices = response.data.data?.productPrices || [];
-
-      // Cache the result
-      setProductPricesCache((prev) => ({
-        ...prev,
-        [productId]: prices,
-      }));
-
+      setProductPricesCache((prev) => ({ ...prev, [productId]: prices }));
       return prices;
     } catch (error) {
       console.warn(`Could not fetch prices for product ${productId}:`, error);
@@ -195,13 +213,10 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   };
 
   const calculateTotal = () => {
-    const customer = customers.find((c) => c.id === selectedCustomerId);
-    const customerTypeId = customer?.customerType?.id;
-
     return items.reduce((total, item) => {
       const product = products.find((p) => p.id === item.productId);
       if (product) {
-        const price = getProductPriceByCustomerType(product, customerTypeId);
+        const price = getProductBasePrice(product);
         return total + price * item.quantity;
       }
       return total;
@@ -209,95 +224,199 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   };
 
   const totalAmount = calculateTotal();
-  const vatRate = 0.1; // 10% VAT
+  const vatRate = 0.1;
   const vatAmount = orderType === 'Store' ? totalAmount * vatRate : 0;
   const totalWithVat = orderType === 'Store' ? totalAmount + vatAmount : totalAmount;
   const remainingAmount = isCredit ? totalWithVat - (paidAmount || 0) : 0;
   const creditDueDate =
     isCredit && creditTermDays ? format(addDays(new Date(), creditTermDays), 'yyyy-MM-dd') : null;
 
-  const handleFormSubmit = async (data: OrderFormData) => {
-    const submitData: CreateOrderRequest = {
-      customerId: data.customerId,
-      distributorId: data.distributorId,
-      paymentMethod: data.paymentMethod,
-      orderType: orderType,
-      items: data.items,
+    const handleFormSubmit = async (data: OrderFormData) => {
+      console.log("button is clicing")
+      try {
+        // Build submitData from form data
+        const submitData: CreateOrderRequest = {
+          customerId: data.customerId || 0,
+          distributorId: data.distributorId,
+          paymentMethod: data.paymentMethod,
+          // isCredit: data.isCredit || false,
+          paidAmount: data.paidAmount || 0,
+          creditTermDays: data.creditTermDays,
+          orderType,
+          items: data.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+        };
+    
+        // 1️⃣ Create order in backend first
+        const orderResponse = await onSubmit(submitData);
+    
+        toast.success('Захиалга амжилттай үүслээ');
+    
+        // 2️⃣ E-Barimt — only for Store orders
+        if (orderType === 'Store') {
+          try {
+            // Map form items to E-Barimt items
+            const ebarimtItems = data.items.map((item) => {
+              const product = products.find((p) => p.id === item.productId);
+              return {
+                name: product?.nameMongolian || product?.nameEnglish || `Product ${item.productId}`,
+                barCode: product?.barcode || undefined,
+                classificationCode: product?.classificationCode || undefined,
+                unitPrice: getProductBasePrice(product!),
+                qty: item.quantity,
+              };
+            });
+    
+            // Map payment method
+            const paymentTypeMap: Record<string, string> = {
+              Cash: 'CASH',
+              BankTransfer: 'BANK_TRANSFER',
+              Card: 'PAYMENT_CARD',
+            };
+    
+            const isB2B = customerKind === 'organization';
+    
+            // Build E-Barimt payload
+            const ebarimtPayload = await createEbarimtRequest({
+              items: ebarimtItems,
+              paymentType: (paymentTypeMap[data.paymentMethod] || 'CASH') as any,
+              type: isB2B ? 'B2B_RECEIPT' : 'B2C_RECEIPT',
+              consumerNo: !isB2B && individualRegNo ? individualRegNo : null,
+              customerTin: null,
+              regNo: isB2B && regLookupResult?.registrationNumber
+                ? Number(regLookupResult.registrationNumber)
+                : undefined,
+            });
+    
+            // 3️⃣ POST directly to POS device
+            const ebarimtRes = await fetch('http://localhost:7080/rest/receipt', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(ebarimtPayload),
+            });
+    
+            const ebarimtResult = await ebarimtRes.json();
+    
+            if (ebarimtResult?.id) {
+              toast.success(`eBarimt амжилттай бүртгэгдлээ. ДДТД: ${ebarimtResult.id}`);
+              if (ebarimtResult.lottery) {
+                toast(`Сугалааны дугаар: ${ebarimtResult.lottery}`, { icon: '🎟️' });
+              }
+            } else {
+              toast.error(`eBarimt алдаа: ${ebarimtResult?.message || 'Тодорхойгүй алдаа'}`);
+            }
+    
+          } catch (ebarimtError) {
+            // Order already saved — warn but don't block
+            console.error('eBarimt бүртгэлд алдаа гарлаа:', ebarimtError);
+            toast.error('Захиалга үүслээ, гэвч eBarimt бүртгэхэд алдаа гарлаа. EBarimtPage дээрээс дахин бүртгэнэ үү.');
+          }
+        }
+    
+      } catch (error) {
+        console.error('Order error:', error);
+        toast.error('Захиалга үүсгэхэд алдаа гарлаа');
+      }
     };
-
-    // Add delivery date for market orders
-    if (orderType === 'Market' && deliveryDate) {
-      submitData.deliveryDate = deliveryDate;
-    }
-
-    if (data.isCredit && data.creditTermDays) {
-      submitData.paidAmount = data.paidAmount || 0;
-      submitData.creditTermDays = data.creditTermDays;
-    }
-
-    await onSubmit(submitData);
-  };
 
   return (
     <Box component="form" onSubmit={handleSubmit(handleFormSubmit)}>
       <Grid container spacing={3}>
+
+        {/* Байгууллага / Хувь хүн сонголт */}
         <Grid size={{ xs: 12 }}>
-          <Controller
-            name="customerId"
-            control={control}
-            render={({ field }) => {
-              const selectedCustomer = customers.find((c) => c.id === field.value) || null;
-              return (
-                <Autocomplete
-                  value={selectedCustomer}
-                  onChange={(_, newValue) => {
-                    field.onChange(newValue ? newValue.id : 0);
-                  }}
-                  options={customers}
-                  getOptionLabel={(customer) => {
-                    const baseLabel = `${customer.name} (${customer.customerType.name})`;
-                    // Only show organizationType if it exists and is not "undefined" string
-                    if (customer.organizationType && customer.organizationType !== 'undefined') {
-                      return `${baseLabel} - ${customer.organizationType}`;
-                    }
-                    return baseLabel;
-                  }}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  ListboxProps={{
-                    style: { maxHeight: '250px' },
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Байгууллага *"
-                      error={!!errors.customerId}
-                      helperText={errors.customerId?.message}
-                    />
-                  )}
-                  noOptionsText="Байгууллага олдсонгүй"
-                />
-              );
-            }}
-          />
+          <FormControl>
+            <FormLabel>Байгууллага уу? Хувь хүн үү?</FormLabel>
+            <RadioGroup
+              row
+              value={customerKind}
+              onChange={(_, value) => {
+                const next = value === 'individual' ? 'individual' : 'organization';
+                setValue('customerKind', next, { shouldValidate: true });
+                setValue('customerId', 0);
+                setRegNumber('');
+                setRegLookupResult(null);
+                setRegError('');
+              }}
+            >
+              <FormControlLabel value="organization" control={<Radio />} label="Байгууллага" />
+              <FormControlLabel value="individual" control={<Radio />} label="Хувь хүн" />
+              {customerKind === 'individual' && (
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    label="Хувь хүний регистр/утасны дугаар *"
+                    value={individualRegNo}
+                    onChange={(e) => setIndividualRegNo(e.target.value)}
+                    fullWidth
+                    helperText="Баримт хэвлэхэд заавал шаардлагатай"
+                  />
+                </Grid>
+              )}
+            </RadioGroup>
+          </FormControl>
         </Grid>
 
-        {selectedCustomerId > 0 && (
+        {customerKind === 'organization' && (
           <Grid size={{ xs: 12 }}>
-            <Alert
-              severity={orderType === 'Store' ? 'success' : 'info'}
-              icon={orderType === 'Store' ? <StoreIcon /> : <WarehouseIcon />}
-              sx={{ display: 'flex', alignItems: 'center' }}
-            >
-              <Box>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+              <TextField
+                label="Байгууллагын регистрийн дугаар *"
+                value={regNumber}
+                onChange={(e) => {
+                  setRegNumber(e.target.value);
+                  setRegError('');
+                  if (regLookupResult) {
+                    setRegLookupResult(null);
+                    setValue('customerId', 0);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleRegNumberLookup();
+                  }
+                }}
+                error={!!regError}
+                helperText={regError || 'Регистрийн дугаар бичээд Enter эсвэл Хайх товч дарна уу'}
+                placeholder="Жишээ: 1234567"
+                fullWidth
+                InputProps={{
+                  endAdornment: regLookupResult ? (
+                    <InputAdornment position="end">
+                      <CheckCircleIcon color="success" />
+                    </InputAdornment>
+                  ) : null,
+                }}
+              />
+              <Button
+                variant="outlined"
+                onClick={handleRegNumberLookup}
+                disabled={isLookingUp || !regNumber.trim()}
+                sx={{ mt: 0.5, minWidth: 100, height: 56 }}
+                startIcon={isLookingUp ? <CircularProgress size={16} /> : <SearchIcon />}
+              >
+                {isLookingUp ? 'Хайж байна...' : 'Хайх'}
+              </Button>
+            </Box>
+
+            {regLookupResult && (
+              <Paper sx={{ p: 2, mt: 1, bgcolor: 'success.light' }}>
                 <Typography variant="subtitle2" fontWeight="bold">
-                  {orderType === 'Market' ? 'Захын лангуу захиалга' : 'Дэлгүүрийн захиалга'}
+                  ✅ Байгууллага олдлоо
                 </Typography>
-                <Typography variant="body2">
-                  {orderType === 'Market'
-                    ? `Хүргэх огноо: ${deliveryDate ? format(new Date(deliveryDate), 'yyyy-MM-dd') : 'Дараа өдөр'} (Өмнөх өдөр захиалга, дараа өдөр хүргэлт)`
-                    : 'Шууд захиалга үүсгэж, шууд бараа өгөх. НӨАТ баримт хэвлэгдэнэ.'}
-                </Typography>
-              </Box>
+                <Typography variant="body2">Нэр: {regLookupResult.name}</Typography>
+                <Typography variant="body2">Регистр: {regLookupResult.registrationNumber}</Typography>
+              </Paper>
+            )}
+          </Grid>
+        )}
+
+        {customerKind === 'individual' && (
+          <Grid size={{ xs: 12 }}>
+            <Alert severity="info">
+              Хувь хүний захиалга — eBarimt хувь хүн баримт хэвлэгдэнэ.
             </Alert>
           </Grid>
         )}
@@ -342,9 +461,6 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                 <Select {...field} label="Төлбөрийн хэлбэр *">
                   <MenuItem value="Cash">Бэлэн (Cash)</MenuItem>
                   <MenuItem value="BankTransfer">Данс (Bank Transfer)</MenuItem>
-                  <MenuItem value="Sales">Борлуулалт (Sales)</MenuItem>
-                  <MenuItem value="Padan">Падаан (Padan)</MenuItem>
-                  <MenuItem value="Credit">Зээл (Credit)</MenuItem>
                 </Select>
                 {errors.paymentMethod && (
                   <FormHelperText>{errors.paymentMethod.message}</FormHelperText>
@@ -420,9 +536,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
 
             <Grid size={{ xs: 12 }}>
               <Paper sx={{ p: 2, bgcolor: 'info.light' }}>
-                <Typography variant="body2">
-                  <strong>Зээлийн мэдээлэл:</strong>
-                </Typography>
+                <Typography variant="body2"><strong>Зээлийн мэдээлэл:</strong></Typography>
                 <Typography variant="body2">Нийт дүн: ₮{totalAmount.toLocaleString()}</Typography>
                 {orderType === 'Store' && (
                   <>
@@ -434,12 +548,8 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                     </Typography>
                   </>
                 )}
-                <Typography variant="body2">
-                  Урьдчилгаа: ₮{(paidAmount || 0).toLocaleString()}
-                </Typography>
-                <Typography variant="body2">
-                  Үлдэгдэл: ₮{remainingAmount.toLocaleString()}
-                </Typography>
+                <Typography variant="body2">Урьдчилгаа: ₮{(paidAmount || 0).toLocaleString()}</Typography>
+                <Typography variant="body2">Үлдэгдэл: ₮{remainingAmount.toLocaleString()}</Typography>
                 <Typography variant="body2">Төлөх огноо: {creditDueDate || 'N/A'}</Typography>
               </Paper>
             </Grid>
@@ -463,101 +573,50 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                   control={control}
                   render={({ field }) => {
                     const selectedProduct = products.find((p) => p.id === field.value) || null;
-                    const customer = customers.find((c) => c.id === selectedCustomerId);
-                    const customerTypeId = customer?.customerType?.id;
-
-                    // Get dynamic price based on customer type
-                    const displayPrice = selectedProduct
-                      ? getProductPriceByCustomerType(selectedProduct, customerTypeId)
-                      : 0;
-
-                    // Check if product has special pricing for this customer type
-                    const hasSpecialPrice =
-                      selectedProduct &&
-                      customerTypeId &&
-                      (selectedProduct.prices?.some((p) => p.customerTypeId === customerTypeId) ||
-                        productPricesCache[selectedProduct.id]?.some(
-                          (p) => p.customerTypeId === customerTypeId
-                        ));
-
+                    const displayPrice = selectedProduct ? getProductBasePrice(selectedProduct) : 0;
                     return (
                       <Box>
-                        <Autocomplete
-                          value={selectedProduct}
-                          onChange={async (_, newValue) => {
-                            field.onChange(newValue ? newValue.id : 0);
-
-                            // Preload prices for the selected product (fallback)
-                            if (newValue && customer && !newValue.prices?.length) {
-                              await fetchProductPrices(newValue.id);
+                        <TextField
+                          select
+                          label="Бараа *"
+                          value={field.value || ''}
+                          onChange={async (e) => {
+                            const productId = Number(e.target.value);
+                            field.onChange(productId);
+                            if (!productId) return;
+                            try {
+                              const res = await productsApi.getById(productId);
+                              const fresh = res.data.data?.product;
+                              if (fresh) {
+                                setProducts((prev) =>
+                                  prev.map((p) => (p.id === fresh.id ? { ...p, ...fresh } : p))
+                                );
+                              }
+                            } catch (error) {
+                              console.warn('Could not refresh product details:', error);
+                            }
+                            const product = products.find((p) => p.id === productId);
+                            if (!product?.prices?.length) {
+                              await fetchProductPrices(productId);
                             }
                           }}
-                          options={products}
-                          getOptionLabel={(product) =>
-                            `${product.nameEnglish} - Үлдэгдэл: ${product.stockQuantity}${product.unitsPerBox ? ` (${product.unitsPerBox} ш/хайрцаг)` : ''}`
-                          }
-                          renderOption={(props, product) => {
-                            const price = getProductPriceByCustomerType(product, customerTypeId);
-                            const hasPrice =
-                              customerTypeId &&
-                              (product.prices?.some((p) => p.customerTypeId === customerTypeId) ||
-                                productPricesCache[product.id]?.some(
-                                  (p) => p.customerTypeId === customerTypeId
-                                ));
-                            return (
-                              <li {...props} key={product.id}>
-                                <Box sx={{ width: '100%' }}>
-                                  <Typography variant="body2">{product.nameEnglish}</Typography>
-                                  <Typography variant="caption" color="text.secondary">
-                                    Үлдэгдэл: {product.stockQuantity}
-                                    {product.unitsPerBox
-                                      ? ` (${product.unitsPerBox} ш/хайрцаг)`
-                                      : ''}
-                                    {' | '}
-                                    <span
-                                      style={{
-                                        color: hasPrice ? '#2e7d32' : 'inherit',
-                                        fontWeight: hasPrice ? 'bold' : 'normal',
-                                      }}
-                                    >
-                                      Үнэ: ₮{price.toLocaleString()}
-                                    </span>
-                                  </Typography>
-                                </Box>
-                              </li>
-                            );
-                          }}
-                          isOptionEqualToValue={(option, value) => option.id === value.id}
-                          ListboxProps={{
-                            style: { maxHeight: '250px' },
-                          }}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              label="Бараа *"
-                              error={!!errors.items?.[index]?.productId}
-                              helperText={errors.items?.[index]?.productId?.message}
-                            />
-                          )}
-                          noOptionsText="Бараа олдсонгүй"
-                        />
+                          fullWidth
+                          error={!!errors.items?.[index]?.productId}
+                          helperText={errors.items?.[index]?.productId?.message}
+                          SelectProps={{ MenuProps: { PaperProps: { style: { maxHeight: 250 } } } }}
+                        >
+                          <MenuItem value="">Бараа сонгоно уу</MenuItem>
+                          {products.map((product) => (
+                            <MenuItem key={product.id} value={product.id}>
+                              {product.nameEnglish} — Үлдэгдэл: {product.stockQuantity}
+                              {product.unitsPerBox ? ` (${product.unitsPerBox} ш/хайрцаг)` : ''}{' '}
+                              | Үнэ: ₮{getProductBasePrice(product).toLocaleString()}
+                            </MenuItem>
+                          ))}
+                        </TextField>
                         {selectedProduct && (
                           <FormHelperText>
-                            {hasSpecialPrice ? (
-                              <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>
-                                ✓ Тусгай үнэ ({customer?.customerType?.name || 'Customer'}): ₮
-                                {displayPrice.toLocaleString()}
-                              </span>
-                            ) : (
-                              <span>
-                                Үнэ: ₮{displayPrice.toLocaleString()}
-                                {customer && (
-                                  <span style={{ color: '#ff9800', marginLeft: '8px' }}>
-                                    (Үндсэн үнэ - тусгай үнэ тохируулаагүй)
-                                  </span>
-                                )}
-                              </span>
-                            )}
+                            <span>Үнэ: ₮{displayPrice.toLocaleString()}</span>
                           </FormHelperText>
                         )}
                       </Box>
@@ -577,7 +636,6 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                     const boxQuantity = selectedProduct?.unitsPerBox
                       ? (field.value / selectedProduct.unitsPerBox).toFixed(2)
                       : null;
-
                     return (
                       <TextField
                         {...field}
@@ -599,12 +657,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
 
               <Grid size={{ xs: 2, sm: 1 }}>
                 {fields.length > 1 && (
-                  <IconButton
-                    color="error"
-                    onClick={() => remove(index)}
-                    size="large"
-                    sx={{ mt: 1 }}
-                  >
+                  <IconButton color="error" onClick={() => remove(index)} size="large" sx={{ mt: 1 }}>
                     <DeleteIcon />
                   </IconButton>
                 )}

@@ -18,7 +18,7 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor - Add auth token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -34,17 +34,17 @@ apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error: AxiosError) => {
+  (error: {response: {status: number, data: {message: string}}, message: string}) => {
     if (error.response?.status === 401) {
       // Unauthorized - clear token and redirect to login
-      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_token');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
     
     // Extract error message
     const errorMessage = 
-      (error.response?.data as any)?.message || 
+      error.response?.data?.message || 
       error.message || 
       'An error occurred';
     

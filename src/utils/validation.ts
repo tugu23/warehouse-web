@@ -55,7 +55,8 @@ export const orderItemSchema = z.object({
 
 export const orderSchema = z
   .object({
-    customerId: z.number().min(1, 'Customer is required'),
+    customerKind: z.enum(['organization', 'individual']).optional(),
+    customerId: z.number().optional(),
     distributorId: z.number().optional(),
     paymentMethod: z.enum(['Cash', 'BankTransfer', 'Sales', 'Padan', 'Credit'], {
       message: 'Payment method is required',
@@ -65,6 +66,19 @@ export const orderSchema = z
     creditTermDays: z.number().min(1, 'Credit term must be at least 1 day').optional(),
     items: z.array(orderItemSchema).min(1, 'At least one item is required'),
   })
+  .refine(
+    (data) => {
+      const kind = data.customerKind ?? 'organization';
+      if (kind === 'organization') {
+        return typeof data.customerId === 'number' && data.customerId >= 1;
+      }
+      return true;
+    },
+    {
+      message: 'Customer is required',
+      path: ['customerId'],
+    }
+  )
   .refine(
     (data) => {
       if (data.isCredit && data.creditTermDays) {

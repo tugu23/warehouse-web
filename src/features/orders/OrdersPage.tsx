@@ -11,6 +11,7 @@ import OrderForm from './OrderForm';
 import OrderDetailsModal from './OrderDetailsModal';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 import { formatDateTimeMN } from '../../utils/dateFormatter';
+import EbarimtDemoForm from './OrderForm2';
 
 export default function OrdersPage() {
   const { canManage, user, isSalesAgent } = useAuth();
@@ -28,16 +29,11 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const response = await ordersApi.getAll({ limit: 'all' }); // Get all orders
-
-      // Backend returns: { data: { data: { orders: [...], pagination: {...} } } }
+      const response = await ordersApi.getAll({ limit: 'all' });
       let allOrders = response.data?.data?.orders || [];
-
-      // Filter orders for sales agents - they should only see their own orders
       if (isSalesAgent() && user) {
         allOrders = allOrders.filter((order) => order?.createdBy?.id === user?.id);
       }
-
       setOrders(allOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -46,14 +42,25 @@ export default function OrdersPage() {
     }
   };
 
-  const handleCreate = async (data: CreateOrderRequest) => {
+  const handleCreate = async (data: CreateOrderRequest): Promise<Order> => {
     try {
-      await ordersApi.create(data);
-      toast.success('Order created successfully!');
+      // AFTER:
+      const response = await ordersApi.create(data);
+      const order = response.data?.data?.order;
+      if (!order) throw new Error('Order creation returned no data');
+      toast.success('Захиалга амжилттай үүслээ!');
       setCreateModalOpen(false);
       fetchOrders();
+      return order;
     } catch (error) {
-      console.error('Error creating order:', error);
+      const err = error as any;
+      console.error('Error creating order:', {
+        message: err?.message,
+        status: err?.response?.status,
+        data: err?.response?.data,
+        payload: data,
+      });
+      throw error;
     }
   };
 
@@ -160,7 +167,8 @@ export default function OrdersPage() {
         title="Create New Order"
         maxWidth="lg"
       >
-        <OrderForm onSubmit={handleCreate} onCancel={() => setCreateModalOpen(false)} />
+        {/* <OrderForm onSubmit={handleCreate} onCancel={() => setCreateModalOpen(false)} /> */}
+        <EbarimtDemoForm/>
       </Modal>
 
       <Modal

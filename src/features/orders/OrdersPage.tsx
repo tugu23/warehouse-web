@@ -11,7 +11,6 @@ import OrderForm from './OrderForm';
 import OrderDetailsModal from './OrderDetailsModal';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 import { formatDateTimeMN } from '../../utils/dateFormatter';
-import EbarimtDemoForm from './OrderForm2';
 
 export default function OrdersPage() {
   const { canManage, user, isSalesAgent } = useAuth();
@@ -53,11 +52,12 @@ export default function OrdersPage() {
       fetchOrders();
       return order;
     } catch (error) {
-      const err = error as any;
+      const err = error as Record<string, unknown>;
+      const response = err?.response as Record<string, unknown> | undefined;
       console.error('Error creating order:', {
         message: err?.message,
-        status: err?.response?.status,
-        data: err?.response?.data,
+        status: response?.status,
+        data: response?.data,
         payload: data,
       });
       throw error;
@@ -167,8 +167,7 @@ export default function OrdersPage() {
         title="Create New Order"
         maxWidth="lg"
       >
-        {/* <OrderForm onSubmit={handleCreate} onCancel={() => setCreateModalOpen(false)} /> */}
-        <EbarimtDemoForm/>
+        <OrderForm onSubmit={handleCreate} onCancel={() => setCreateModalOpen(false)} />
       </Modal>
 
       <Modal

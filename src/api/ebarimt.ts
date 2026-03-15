@@ -121,7 +121,7 @@ export async function createEbarimtRequest({
   customerTin = null,
   regNo,
 }: EbarimtParams) {
-  const merchantTin = '89001226559';
+  const merchantTin = '37900846788';
 
   let finalCustomerTin = customerTin;
 
@@ -228,4 +228,3 @@ export async function getTinInfo(regNo: number) {
 
   return { tinNumber, tinName };
 }
-    

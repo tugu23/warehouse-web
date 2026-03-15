@@ -165,6 +165,10 @@ export const ordersApi = {
     api.post<ApiResponse<{ order: Order }>>('/api/orders', data),
   updateStatus: (id: number, data: UpdateOrderStatusRequest) =>
     api.put<ApiResponse<{ order: Order }>>(`/api/orders/${id}/status`, data),
+  updateEbarimt: (
+    id: number,
+    data: { ebarimtId: string; ebarimtBillId: string; ebarimtDate: string }
+  ) => api.put<ApiResponse<{ order: Order }>>(`/api/orders/${id}/ebarimt`, data),
   recordPayment: (data: RecordPaymentRequest) =>
     api.post<ApiResponse<{ payment: PaymentRecord; order: Order }>>(
       `/api/orders/${data.orderId}/payments`,

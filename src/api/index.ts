@@ -281,6 +281,7 @@ export const returnsApi = {
   getById: (id: number) => api.get<ApiResponse<{ return: Return }>>(`/api/returns/${id}`),
   create: (data: CreateReturnRequest) =>
     api.post<ApiResponse<{ return: Return }>>('/api/returns', data),
+  delete: (id: number) => api.delete<ApiResponse<{ message?: string }>>(`/api/returns/${id}`),
 };
 
 // Agents API

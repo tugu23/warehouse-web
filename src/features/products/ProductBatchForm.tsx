@@ -20,7 +20,6 @@ export default function ProductBatchForm({ batch, onSubmit, onCancel }: ProductB
       quantity: batch?.quantity || 0,
       receivedDate: batch?.receivedDate || '',
       expiryDate: batch?.expiryDate || '',
-      supplierId: batch?.supplierId || 0,
       priceWholesale: batch?.priceWholesale || 0,
       priceRetail: batch?.priceRetail || 0,
     },

@@ -1,13 +1,6 @@
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
-import {
-  Product,
-  Customer,
-  Order,
-  Return,
-  ProductBatch,
-  MonthlyInventory,
-} from '../types';
+import { Product, Customer, Order, Return, ProductBatch, MonthlyInventory } from '../types';
 
 /**
  * Common Excel export utility functions
@@ -36,12 +29,12 @@ const headerStyle = {
 const autoFitColumns = (worksheet: ExcelJS.Worksheet) => {
   worksheet.columns.forEach((column) => {
     if (!column.values) return;
-    
+
     const lengths = column.values.map((v) => {
       const value = v?.toString() || '';
       return value.length;
     });
-    
+
     const maxLength = Math.max(...lengths.filter((v) => typeof v === 'number'));
     column.width = Math.min(Math.max(maxLength + 2, 10), 50);
   });
@@ -73,9 +66,7 @@ export const exportProductsToExcel = async (products: Product[]) => {
   // Add headers
   worksheet.columns = [
     { header: 'Барааны код', key: 'productCode', width: 15 },
-    { header: 'Нэр (Англи)', key: 'nameEnglish', width: 25 },
     { header: 'Нэр (Монгол)', key: 'nameMongolian', width: 25 },
-    { header: 'Нийлүүлэгч', key: 'supplier', width: 20 },
     { header: 'Үлдэгдэл', key: 'stockQuantity', width: 12 },
     { header: 'Бөөний үнэ', key: 'priceWholesale', width: 15 },
     { header: 'Жижиглэн үнэ', key: 'priceRetail', width: 15 },
@@ -90,9 +81,7 @@ export const exportProductsToExcel = async (products: Product[]) => {
   products.forEach((product) => {
     worksheet.addRow({
       productCode: product.productCode,
-      nameEnglish: product.nameEnglish,
       nameMongolian: product.nameMongolian,
-      supplier: product.supplier?.name || 'N/A',
       stockQuantity: product.stockQuantity,
       priceWholesale: Number(product.priceWholesale),
       priceRetail: Number(product.priceRetail),
@@ -213,7 +202,7 @@ export const exportReturnsToExcel = async (returns: Return[]) => {
     worksheet.addRow({
       id: returnItem.id,
       orderId: returnItem.orderId,
-      product: returnItem.product?.nameEnglish || 'N/A',
+      product: returnItem.product?.nameMongolian || 'N/A',
       quantity: returnItem.quantity,
       reason: returnItem.reason,
       createdBy: returnItem.createdBy?.name || 'N/A',
@@ -236,7 +225,6 @@ export const exportProductBatchesToExcel = async (batches: ProductBatch[]) => {
     { header: 'Багцын дугаар', key: 'batchNumber', width: 15 },
     { header: 'Бараа', key: 'product', width: 25 },
     { header: 'Тоо ширхэг', key: 'quantity', width: 12 },
-    { header: 'Нийлүүлэгч', key: 'supplier', width: 20 },
     { header: 'Ирсэн огноо', key: 'receivedDate', width: 15 },
     { header: 'Дуусах хугацаа', key: 'expiryDate', width: 15 },
     { header: 'Бөөний үнэ', key: 'priceWholesale', width: 15 },
@@ -250,9 +238,8 @@ export const exportProductBatchesToExcel = async (batches: ProductBatch[]) => {
   batches.forEach((batch) => {
     worksheet.addRow({
       batchNumber: batch.batchNumber,
-      product: batch.product?.nameEnglish || 'N/A',
+      product: batch.product?.nameMongolian || 'N/A',
       quantity: batch.quantity,
-      supplier: batch.supplier?.name || 'N/A',
       receivedDate: format(new Date(batch.receivedDate), 'yyyy-MM-dd'),
       expiryDate: format(new Date(batch.expiryDate), 'yyyy-MM-dd'),
       priceWholesale: batch.priceWholesale,
@@ -290,7 +277,7 @@ export const exportMonthlyInventoryToExcel = async (
 
   inventory.forEach((item) => {
     worksheet.addRow({
-      product: item.product?.nameEnglish || 'N/A',
+      product: item.product?.nameMongolian || 'N/A',
       openingStock: item.openingStock,
       received: item.received,
       sold: item.sold,
@@ -333,17 +320,17 @@ export const exportSalesReportToExcel = async (
   endDate: string
 ) => {
   const workbook = new ExcelJS.Workbook();
-  
+
   // Summary sheet
   const summarySheet = workbook.addWorksheet('Хураангуй');
   summarySheet.addRow(['Борлуулалтын тайлан']);
   summarySheet.addRow(['Хугацаа', `${startDate} - ${endDate}`]);
   summarySheet.addRow([]);
-  
+
   const totalSales = orders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
   const totalOrders = orders.length;
   const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-  
+
   summarySheet.addRow(['Нийт борлуулалт', totalSales]);
   summarySheet.addRow(['Нийт захиалга', totalOrders]);
   summarySheet.addRow(['Дундаж захиалгын үнэ', avgOrderValue]);
@@ -380,4 +367,3 @@ export const exportSalesReportToExcel = async (
   autoFitColumns(detailSheet);
   await downloadExcel(workbook, `sales_report_${startDate}_${endDate}`);
 };
-

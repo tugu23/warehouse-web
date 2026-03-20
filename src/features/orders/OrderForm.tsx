@@ -136,7 +136,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const fetchData = async () => {
     try {
       const [productsRes, employeesRes] = await Promise.all([
-        productsApi.getAll({ limit: 'all', include: 'prices,supplier,category' }),
+        productsApi.getAll({ limit: 'all', include: 'prices,category' }),
         employeesApi.getAll({ limit: 'all' }),
       ]);
       setProducts(productsRes.data.data?.products || []);
@@ -248,9 +248,14 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     isCredit && creditTermDays ? format(addDays(new Date(), creditTermDays), 'yyyy-MM-dd') : null;
 
   const handleFormSubmit = async (data: OrderFormData) => {
+    if (customerKind === 'organization' && (!data.customerId || data.customerId < 1)) {
+      toast.error('Байгууллагыг эхлээд Харилцагч хэсэгт бүртгэнэ үү');
+      return;
+    }
+
     try {
       const submitData: CreateOrderRequest = {
-        customerId: data.customerId || 0,
+        ...(data.customerId && data.customerId > 0 ? { customerId: data.customerId } : {}),
         distributorId: data.distributorId,
         paymentMethod: data.paymentMethod,
         paidAmount: data.paidAmount || 0,
@@ -271,7 +276,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
           const ebarimtItems = data.items.map((item) => {
             const product = products.find((p) => p.id === item.productId);
             return {
-              name: product?.nameMongolian || product?.nameEnglish || `Product ${item.productId}`,
+              name: product?.nameMongolian || `Product ${item.productId}`,
               barCode: product?.barcode || undefined,
               classificationCode: product?.classificationCode || undefined,
               unitPrice: getProductBasePrice(product!),
@@ -445,14 +450,27 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
             </Box>
 
             {regLookupResult && (
-              <Paper sx={{ p: 2, mt: 1, bgcolor: 'success.light' }}>
+              <Paper
+                sx={{
+                  p: 2,
+                  mt: 1,
+                  bgcolor: regLookupResult.customerId ? 'success.light' : 'warning.light',
+                }}
+              >
                 <Typography variant="subtitle2" fontWeight="bold">
-                  ✅ Байгууллага олдлоо
+                  {regLookupResult.customerId
+                    ? '✅ Байгууллага олдлоо'
+                    : '⚠️ eBarimt-д бүртгэлтэй, системд байхгүй'}
                 </Typography>
                 <Typography variant="body2">Нэр: {regLookupResult.name}</Typography>
                 <Typography variant="body2">
                   Регистр: {regLookupResult.registrationNumber}
                 </Typography>
+                {!regLookupResult.customerId && (
+                  <Typography variant="body2" color="warning.dark" sx={{ mt: 0.5 }}>
+                    Захиалга үүсгэхийн өмнө энэ байгууллагыг Харилцагч хэсэгт бүртгэнэ үү.
+                  </Typography>
+                )}
               </Paper>
             )}
           </Grid>
@@ -657,7 +675,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                           <MenuItem value="">Бараа сонгоно уу</MenuItem>
                           {products.map((product) => (
                             <MenuItem key={product.id} value={product.id}>
-                              {product.nameEnglish} — Үлдэгдэл: {product.stockQuantity}
+                              {product.nameMongolian} — Үлдэгдэл: {product.stockQuantity}
                               {product.unitsPerBox ? ` (${product.unitsPerBox} ш/хайрцаг)` : ''} |
                               Үнэ: ₮{getProductBasePrice(product).toLocaleString()}
                             </MenuItem>

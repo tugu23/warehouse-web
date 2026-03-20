@@ -145,7 +145,7 @@ export default function ForecastDetailModal({ open, onClose, forecast }: Forecas
                 <Typography variant="body2" color="text.secondary">
                   Англи нэр:
                 </Typography>
-                <Typography variant="body1">{forecast.product.nameEnglish || 'N/A'}</Typography>
+                <Typography variant="body1">{forecast.product.nameMongolian || 'N/A'}</Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="body2" color="text.secondary">

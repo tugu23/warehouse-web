@@ -274,7 +274,7 @@ export const generateOrderReceiptPDF = async (
   const tableData =
     order.orderItems?.map((item, index) => [
       (index + 1).toString(),
-      item.product?.nameMongolian || item.product?.nameEnglish || 'N/A',
+      item.product?.nameMongolian || 'N/A',
       item.product?.barcode || '-',
       item.quantity.toString(),
       Number(item.unitPrice).toLocaleString(),

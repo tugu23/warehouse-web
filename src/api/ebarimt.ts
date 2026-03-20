@@ -174,10 +174,11 @@ export async function createEbarimtRequest({
     posNo: '001',
 
     customerTin: type === 'B2B_RECEIPT' ? finalCustomerTin : null,
-    consumerNo: type === 'B2C_RECEIPT' ? consumerNo : null,
+    consumerNo: type === 'B2C_RECEIPT' ? (consumerNo ?? '') : '',
 
     type,
     inactiveId: null,
+    invoiceId: null,
     reportMonth: null,
     billIdSuffix: '01',
 
@@ -185,11 +186,10 @@ export async function createEbarimtRequest({
       {
         totalAmount,
         taxType: 'VAT_ABLE',
-        merchantTin,
+        merchantTin: '',
         customerTin: type === 'B2B_RECEIPT' ? finalCustomerTin : null,
         totalVAT,
         totalCityTax,
-        invoiceId: null,
         bankAccountNo: '',
         iBan: '',
         items: calculatedItems,

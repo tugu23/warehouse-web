@@ -110,7 +110,7 @@ export default function ReturnForm({ onSubmit, onCancel }: ReturnFormProps) {
               <MenuItem value={0}>Бараа сонгох</MenuItem>
               {products.map((product) => (
                 <MenuItem key={product.id} value={product.id}>
-                  {product.nameEnglish} - {product.nameMongolian}
+                  {product.nameMongolian}
                 </MenuItem>
               ))}
             </Select>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Chip, Stack, Typography } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Box, Button, Chip, Stack, Typography, Tooltip, IconButton } from '@mui/material';
+import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -30,6 +30,7 @@ export default function CustomersPage() {
       setCustomers(response.data.data?.customers || []);
     } catch (error) {
       console.error('Error fetching customers:', error);
+      toast.error('Харилцагч татахад алдаа гарлаа');
     } finally {
       setLoading(false);
     }
@@ -38,11 +39,12 @@ export default function CustomersPage() {
   const handleCreate = async (data: CreateCustomerRequest | UpdateCustomerRequest) => {
     try {
       await customersApi.create(data as CreateCustomerRequest);
-      toast.success('Customer created successfully!');
+      toast.success('Харилцагч амжилттай нэмэгдлээ!');
       setEditModalOpen(false);
       fetchCustomers();
     } catch (error) {
       console.error('Error creating customer:', error);
+      toast.error('Харилцагч нэмэхэд алдаа гарлаа');
     }
   };
 
@@ -50,12 +52,13 @@ export default function CustomersPage() {
     if (!selectedCustomer) return;
     try {
       await customersApi.update(selectedCustomer.id, data as UpdateCustomerRequest);
-      toast.success('Customer updated successfully!');
+      toast.success('Харилцагч амжилттай шинэчлэгдлээ!');
       setEditModalOpen(false);
       setSelectedCustomer(null);
       fetchCustomers();
     } catch (error) {
       console.error('Error updating customer:', error);
+      toast.error('Харилцагч шинэчлэхэд алдаа гарлаа');
     }
   };
 
@@ -211,18 +214,25 @@ export default function CustomersPage() {
         searchPlaceholder="Нэр, регистр, утас, хаягаар хайх..."
         onRowClick={handleRowClick}
         actions={
-          canCreate() && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setSelectedCustomer(null);
-                setEditModalOpen(true);
-              }}
-            >
-              Харилцагч нэмэх
-            </Button>
-          )
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Tooltip title="Шинэчлэх">
+              <IconButton onClick={fetchCustomers} size="small">
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+            {canCreate() && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setSelectedCustomer(null);
+                  setEditModalOpen(true);
+                }}
+              >
+                Харилцагч нэмэх
+              </Button>
+            )}
+          </Box>
         }
       />
 

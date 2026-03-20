@@ -20,11 +20,6 @@ import {
   Divider,
   IconButton,
   Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   LinearProgress,
 } from '@mui/material';
 import {
@@ -35,90 +30,72 @@ import {
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Info as InfoIcon,
-  PlayArrow as RegisterIcon,
+  Print as PrintIcon,
   Undo as ReturnIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
-import {
-  ebarimtApi,
-  EBarimtInformation,
-  UnregisteredOrder,
-  RegisteredOrder,
-  getLotteryWarningLevel,
-} from '../../api/ebarimtApi';
-import EBarimtResultModal, { EBarimtResultData } from '../../components/EBarimtResultModal';
+import { ordersApi } from '../../api';
+import { Order } from '../../types';
+import { ebarimtApi, EBarimtInformation, getLotteryWarningLevel } from '../../api/ebarimtApi';
+import EbarimtPrintModal from '../orders/EbarimtPrintModal';
+
+const POS_API_URL = 'http://localhost:7080';
 
 export default function EBarimtPage() {
-  // State
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState<EBarimtInformation | null>(null);
-  const [unregisteredOrders, setUnregisteredOrders] = useState<UnregisteredOrder[]>([]);
-  const [registeredOrders, setRegisteredOrders] = useState<RegisteredOrder[]>([]);
   const [sendingData, setSendingData] = useState(false);
-  const [registeringOrderId, setRegisteringOrderId] = useState<number | null>(null);
 
-  // Return dialog state
-  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
-  const [returnOrderId, setReturnOrderId] = useState<number | null>(null);
-  const [returnReason, setReturnReason] = useState('');
+  // Захиалгын жагсаалт
+  const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
+  const [registeredOrders, setRegisteredOrders] = useState<Order[]>([]);
 
-  // Result modal state
-  const [resultModalOpen, setResultModalOpen] = useState(false);
-  const [resultModalData, setResultModalData] = useState<EBarimtResultData | null>(null);
+  // eBarimt хэвлэх modal
+  const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  const [loadingOrderId, setLoadingOrderId] = useState<number | null>(null);
 
-  // Fetch data
+  // eBarimt буцаалт
+  const [returningId, setReturningId] = useState<number | null>(null);
+
   const fetchInfo = useCallback(async () => {
     try {
-      const response = await ebarimtApi.getInformation();
-      setInfo(response.data.data);
-    } catch (error) {
-      console.error('Error fetching eBarimt info:', error);
+      const res = await ebarimtApi.getInformation();
+      setInfo(res.data.data);
+    } catch {
+      // POS холбогдоогүй бол алдаа харуулахгүй
     }
   }, []);
 
-  const fetchUnregisteredOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async () => {
     try {
-      const response = await ebarimtApi.getUnregisteredOrders(50);
-      setUnregisteredOrders(response.data.data.orders);
-    } catch (error) {
-      console.error('Error fetching unregistered orders:', error);
-    }
-  }, []);
-
-  const fetchRegisteredOrders = useCallback(async () => {
-    try {
-      const today = new Date();
-      const startDate = new Date(today.getFullYear(), today.getMonth(), 1)
-        .toISOString()
-        .split('T')[0];
-      const response = await ebarimtApi.getRegisteredOrders({
-        startDate,
-        limit: 50,
-      });
-      setRegisteredOrders(response.data.data.orders);
-    } catch (error) {
-      console.error('Error fetching registered orders:', error);
+      const res = await ordersApi.getAll({ limit: 'all' });
+      const all = res.data.data?.orders || [];
+      // Гүйцэтгэсэн + бүртгэлгүй → eBarimt хэвлэх шаардлагатай
+      setPendingOrders(all.filter((o) => o.status === 'Fulfilled' && !o.ebarimtRegistered));
+      // eBarimt бүртгэгдсэн
+      setRegisteredOrders(all.filter((o) => o.ebarimtRegistered));
+    } catch {
+      toast.error('Захиалга ачааллахад алдаа гарлаа');
     }
   }, []);
 
   const fetchAllData = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchInfo(), fetchUnregisteredOrders(), fetchRegisteredOrders()]);
+    await Promise.all([fetchInfo(), fetchOrders()]);
     setLoading(false);
-  }, [fetchInfo, fetchUnregisteredOrders, fetchRegisteredOrders]);
+  }, [fetchInfo, fetchOrders]);
 
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
 
-  // Handle send data to central system
+  // Нэгдсэн системд илгээх
   const handleSendData = async () => {
     setSendingData(true);
     try {
-      const response = await ebarimtApi.sendData();
-      const result = response.data.data;
-
+      const res = await ebarimtApi.sendData();
+      const result = res.data.data;
       if (result.success) {
         toast.success(
           `${result.sentBillCount || 0} баримт амжилттай илгээгдлээ! (${result.sentAmount?.toLocaleString() || 0}₮)`
@@ -127,81 +104,105 @@ export default function EBarimtPage() {
       } else {
         toast.error(result.message || 'Илгээлт амжилтгүй боллоо');
       }
-    } catch (error) {
-      console.error('Error sending data:', error);
+    } catch {
       toast.error('Мэдээлэл илгээхэд алдаа гарлаа');
     } finally {
       setSendingData(false);
     }
   };
 
-  // Handle register order with eBarimt
-  const handleRegisterOrder = async (orderId: number) => {
-    setRegisteringOrderId(orderId);
+  // eBarimt хэвлэх — бүтэн захиалга татаж modal нээнэ
+  const handleOpenPrint = async (orderId: number) => {
+    setLoadingOrderId(orderId);
     try {
-      const response = await ebarimtApi.registerOrder(orderId);
-      const result = response.data.data;
-
-      if (result.success) {
-        toast.success('И-баримт амжилттай бүртгэгдлээ!');
-
-        setResultModalData({
-          orderId: result.orderId,
-          billId: result.billId,
-          lottery: result.lottery,
-          qrData: result.qrData,
-          isB2B: result.isB2B,
-          message: result.message,
-        });
-        setResultModalOpen(true);
-
-        fetchUnregisteredOrders();
-        fetchRegisteredOrders();
-        fetchInfo();
-      } else {
-        toast.error(result.message || 'Бүртгэл амжилтгүй');
+      const res = await ordersApi.getById(orderId);
+      const order = res.data.data?.order;
+      if (!order) {
+        toast.error('Захиалга олдсонгүй');
+        return;
       }
-    } catch (error) {
-      console.error('Error registering order:', error);
-      toast.error('И-баримт бүртгэхэд алдаа гарлаа');
+      setPrintOrder(order);
+    } catch {
+      toast.error('Захиалга ачааллахад алдаа гарлаа');
     } finally {
-      setRegisteringOrderId(null);
+      setLoadingOrderId(null);
     }
   };
 
-  // Handle return order
-  const handleReturnOrder = async () => {
-    if (!returnOrderId) return;
+  // B2B эсэхийг тодорхойлох: ebarimtType эсвэл customer-ийн регистр
+  const isB2BOrder = (order: Order) =>
+    order.ebarimtType === 'B2B' || (!order.ebarimtType && !!order.customer?.registrationNumber);
 
+  // eBarimt буцаалт — frontend-ээс шууд POS API DELETE
+  const handleEbarimtReturn = async (order: Order) => {
+    if (isB2BOrder(order)) {
+      toast.error('B2B баримт буцаалт хийх боломжгүй');
+      return;
+    }
+    if (
+      !window.confirm(
+        `Захиалга #${order.id}-ийн eBarimt баримтыг буцаах уу?\nBill ID: ${order.ebarimtBillId}`
+      )
+    )
+      return;
+
+    setReturningId(order.id);
     try {
-      const response = await ebarimtApi.returnOrder(returnOrderId, returnReason);
-      const result = response.data.data;
-
-      if (result.success) {
-        toast.success('И-баримт буцаалт амжилттай');
-        setReturnDialogOpen(false);
-        setReturnOrderId(null);
-        setReturnReason('');
-        fetchRegisteredOrders();
-      } else {
-        toast.error(result.message || 'Буцаалт амжилтгүй');
+      // 1. Backend-ээс ebarimtBillId, ebarimtDate авах
+      const infoRes = await ordersApi.ebarimtReturn(order.id);
+      const { ebarimtBillId, ebarimtDate } = infoRes.data?.data || {};
+      if (!ebarimtBillId) {
+        toast.error('eBarimt мэдээлэл олдсонгүй');
+        return;
       }
-    } catch (error) {
-      console.error('Error returning order:', error);
-      toast.error('И-баримт буцаахад алдаа гарлаа');
+
+      // 2. POS API-руу DELETE хүсэлт
+      const posRes = await fetch(`${POS_API_URL}/rest/receipt`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ebarimtBillId, date: ebarimtDate }),
+      });
+
+      interface PosReceiptDeleteBody {
+        message?: string;
+        id?: string;
+      }
+      let posData: PosReceiptDeleteBody | null = null;
+      const rawText = await posRes.text();
+      try {
+        posData = rawText ? (JSON.parse(rawText) as PosReceiptDeleteBody) : null;
+      } catch {
+        /* non-JSON */
+      }
+
+      const errMessage = posData?.message || '';
+      const alreadyReturned = errMessage.toLowerCase().includes('unique constraint');
+      const isSuccess = posRes.ok || alreadyReturned;
+
+      if (isSuccess) {
+        // 3. DB шинэчлэх
+        await ordersApi.ebarimtReturnDone(order.id, posData?.id || ebarimtBillId);
+        toast.success(
+          alreadyReturned
+            ? 'eBarimt-д аль хэдийн буцаагдсан байсан. Систем шинэчлэгдлээ.'
+            : 'eBarimt буцаалт амжилттай!'
+        );
+        fetchOrders();
+      } else {
+        toast.error(`eBarimt буцаалт амжилтгүй: ${errMessage || `HTTP ${posRes.status}`}`);
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'eBarimt буцаалт хийхэд алдаа гарлаа');
+    } finally {
+      setReturningId(null);
     }
   };
 
-  // Get lottery warning color
   const getLotteryWarningColor = (level: 'ok' | 'warning' | 'critical') => {
-    switch (level) {
-      case 'critical':
-        return 'error';
-      case 'warning':
-        return 'warning';
-      default:
-        return 'success';
-    }
+    if (level === 'critical') return 'error';
+    if (level === 'warning') return 'warning';
+    return 'success';
   };
 
   const lotteryLevel = getLotteryWarningLevel(info?.lotteryCount);
@@ -220,23 +221,17 @@ export default function EBarimtPage() {
         </Button>
       </Box>
 
-      {/* Warning Messages */}
+      {/* Анхааруулга */}
       {info?.warningMessage && (
         <Alert severity="warning" icon={<WarningIcon />} sx={{ mb: 3 }}>
           {info.warningMessage}
         </Alert>
       )}
 
-      {/* Status Cards */}
+      {/* Статус карт */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {/* Lottery Count */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            sx={{
-              borderLeft: 4,
-              borderColor: `${getLotteryWarningColor(lotteryLevel)}.main`,
-            }}
-          >
+          <Card sx={{ borderLeft: 4, borderColor: `${getLotteryWarningColor(lotteryLevel)}.main` }}>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography color="text.secondary" variant="body2">
@@ -267,7 +262,6 @@ export default function EBarimtPage() {
           </Card>
         </Grid>
 
-        {/* Pending Bills */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
@@ -294,26 +288,26 @@ export default function EBarimtPage() {
           </Card>
         </Grid>
 
-        {/* Last Sent Date */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography color="text.secondary" variant="body2">
-                Сүүлд илгээсэн
+                eBarimt хүлээгдэж буй
               </Typography>
-              <Typography variant="h6" fontWeight="bold">
-                {info?.lastSentDate
-                  ? format(new Date(info.lastSentDate), 'yyyy-MM-dd HH:mm')
-                  : 'Хэзээ ч илгээгээгүй'}
+              <Typography
+                variant="h4"
+                fontWeight="bold"
+                color={pendingOrders.length > 0 ? 'warning.main' : 'text.primary'}
+              >
+                {pendingOrders.length}
               </Typography>
-              {info?.shouldSendNow && (
-                <Chip label="Илгээх шаардлагатай" color="warning" size="small" sx={{ mt: 1 }} />
-              )}
+              <Typography variant="caption" color="text.secondary">
+                Гүйцэтгэсэн, хэвлээгүй
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Send Data Button */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
             <CardContent sx={{ width: '100%' }}>
@@ -340,7 +334,7 @@ export default function EBarimtPage() {
 
       <Divider sx={{ my: 4 }} />
 
-      {/* Unregistered Orders */}
+      {/* eBarimt хүлээгдэж буй захиалгууд */}
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography
@@ -349,63 +343,55 @@ export default function EBarimtPage() {
             sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
           >
             <ReceiptIcon />
-            Бүртгэлгүй дэлгүүрийн захиалгууд
-            <Chip label={unregisteredOrders.length} size="small" color="warning" />
+            eBarimt хэвлэх шаардлагатай захиалгууд
+            {pendingOrders.length > 0 && (
+              <Chip label={pendingOrders.length} size="small" color="warning" />
+            )}
           </Typography>
 
           {loading ? (
             <LinearProgress />
-          ) : unregisteredOrders.length === 0 ? (
+          ) : pendingOrders.length === 0 ? (
             <Alert severity="success" icon={<CheckCircleIcon />}>
-              Бүх дэлгүүрийн захиалгууд и-баримтанд бүртгэгдсэн байна
+              Бүх гүйцэтгэсэн захиалга eBarimt бүртгэгдсэн байна
             </Alert>
           ) : (
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>ID</TableCell>
-                    <TableCell>Дугаар</TableCell>
+                    <TableCell>#</TableCell>
                     <TableCell>Огноо</TableCell>
                     <TableCell>Харилцагч</TableCell>
-                    <TableCell>ТТД</TableCell>
                     <TableCell align="right">Дүн</TableCell>
+                    <TableCell>Төлбөр</TableCell>
                     <TableCell align="center">Үйлдэл</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {unregisteredOrders.map((order) => (
-                    <TableRow key={order.id}>
+                  {pendingOrders.map((order) => (
+                    <TableRow key={order.id} hover>
                       <TableCell>{order.id}</TableCell>
-                      <TableCell>{order.orderNumber || '-'}</TableCell>
-                      <TableCell>{format(new Date(order.orderDate), 'MM/dd HH:mm')}</TableCell>
-                      <TableCell>
-                        {order.customer.organizationName || order.customer.name}
+                      <TableCell>{format(new Date(order.createdAt), 'MM/dd HH:mm')}</TableCell>
+                      <TableCell>{order.customer?.name || '-'}</TableCell>
+                      <TableCell align="right">
+                        {Number(order.totalAmount).toLocaleString()}₮
                       </TableCell>
                       <TableCell>
-                        {order.customer.registrationNumber ? (
-                          <Chip
-                            label={order.customer.registrationNumber}
-                            size="small"
-                            color="info"
-                          />
-                        ) : (
-                          '-'
-                        )}
+                        <Chip label={order.paymentMethod} size="small" variant="outlined" />
                       </TableCell>
-                      <TableCell align="right">{order.totalAmount?.toLocaleString()}₮</TableCell>
                       <TableCell align="center">
-                        <Tooltip title="И-баримт бүртгэх">
+                        <Tooltip title="eBarimt хэвлэх">
                           <IconButton
                             color="primary"
                             size="small"
-                            onClick={() => handleRegisterOrder(order.id)}
-                            disabled={registeringOrderId === order.id}
+                            onClick={() => handleOpenPrint(order.id)}
+                            disabled={loadingOrderId === order.id}
                           >
-                            {registeringOrderId === order.id ? (
+                            {loadingOrderId === order.id ? (
                               <CircularProgress size={20} />
                             ) : (
-                              <RegisterIcon />
+                              <PrintIcon />
                             )}
                           </IconButton>
                         </Tooltip>
@@ -419,7 +405,7 @@ export default function EBarimtPage() {
         </CardContent>
       </Card>
 
-      {/* Registered Orders (This Month) */}
+      {/* Бүртгэгдсэн баримтууд */}
       <Card>
         <CardContent>
           <Typography
@@ -428,73 +414,92 @@ export default function EBarimtPage() {
             sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
           >
             <CheckCircleIcon color="success" />
-            Энэ сарын бүртгэгдсэн баримтууд
+            Бүртгэгдсэн eBarimt баримтууд
             <Chip label={registeredOrders.length} size="small" color="success" />
           </Typography>
 
           {loading ? (
             <LinearProgress />
           ) : registeredOrders.length === 0 ? (
-            <Alert severity="info">Энэ сард бүртгэгдсэн баримт байхгүй</Alert>
+            <Alert severity="info">eBarimt бүртгэгдсэн захиалга байхгүй</Alert>
           ) : (
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>ID</TableCell>
-                    <TableCell>ДДТД</TableCell>
-                    <TableCell>Огноо</TableCell>
+                    <TableCell>#</TableCell>
+                    <TableCell>ДДТД (сүүлийн 12)</TableCell>
+                    <TableCell>eBarimt огноо</TableCell>
                     <TableCell>Харилцагч</TableCell>
-                    <TableCell>ТТД</TableCell>
+                    <TableCell>Төрөл</TableCell>
                     <TableCell align="right">Дүн</TableCell>
+                    <TableCell align="center">Төлөв</TableCell>
                     <TableCell align="center">Үйлдэл</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {registeredOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell>{order.id}</TableCell>
-                      <TableCell>
-                        <Typography variant="caption" fontFamily="monospace">
-                          {order.ebarimtBillId || '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        {order.ebarimtDate
-                          ? format(new Date(order.ebarimtDate), 'MM/dd HH:mm')
-                          : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {order.customer.organizationName || order.customer.name}
-                      </TableCell>
-                      <TableCell>
-                        {order.customer.registrationNumber ? (
+                  {registeredOrders.map((order) => {
+                    const isB2B = isB2BOrder(order);
+                    const isReturned = !!order.ebarimtReturnId;
+                    const isProcessing = returningId === order.id;
+                    return (
+                      <TableRow key={order.id} hover>
+                        <TableCell>{order.id}</TableCell>
+                        <TableCell>
+                          <Typography variant="caption" fontFamily="monospace">
+                            {order.ebarimtBillId?.slice(-12) || '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {order.ebarimtId ||
+                            (order.ebarimtDate
+                              ? format(new Date(order.ebarimtDate), 'MM/dd HH:mm')
+                              : '-')}
+                        </TableCell>
+                        <TableCell>{order.customer?.name || '-'}</TableCell>
+                        <TableCell>
                           <Chip
-                            label={order.customer.registrationNumber}
+                            label={isB2B ? 'B2B' : 'B2C'}
                             size="small"
-                            color="info"
+                            color={isB2B ? 'info' : 'default'}
+                            variant={isB2B ? 'filled' : 'outlined'}
                           />
-                        ) : (
-                          <Chip label="B2C" size="small" variant="outlined" />
-                        )}
-                      </TableCell>
-                      <TableCell align="right">{order.totalAmount?.toLocaleString()}₮</TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="Буцаах">
-                          <IconButton
-                            color="error"
+                        </TableCell>
+                        <TableCell align="right">
+                          {Number(order.totalAmount).toLocaleString()}₮
+                        </TableCell>
+                        <TableCell align="center">
+                          <Chip
+                            label={isReturned ? 'Буцаагдсан' : 'Идэвхтэй'}
+                            color={isReturned ? 'default' : 'success'}
                             size="small"
-                            onClick={() => {
-                              setReturnOrderId(order.id);
-                              setReturnDialogOpen(true);
-                            }}
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Tooltip
+                            title={
+                              isB2B
+                                ? 'B2B баримт буцаалт хийх боломжгүй'
+                                : isReturned
+                                  ? 'Аль хэдийн буцаагдсан'
+                                  : 'eBarimt буцаах'
+                            }
                           >
-                            <ReturnIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            <span>
+                              <IconButton
+                                color="error"
+                                size="small"
+                                disabled={isReturned || isB2B || isProcessing}
+                                onClick={() => handleEbarimtReturn(order)}
+                              >
+                                {isProcessing ? <CircularProgress size={20} /> : <ReturnIcon />}
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -502,37 +507,17 @@ export default function EBarimtPage() {
         </CardContent>
       </Card>
 
-      {/* Return Dialog */}
-      <Dialog open={returnDialogOpen} onClose={() => setReturnDialogOpen(false)}>
-        <DialogTitle>И-баримт буцаах</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            Захиалга #{returnOrderId}-ийн и-баримтыг буцаахдаа итгэлтэй байна уу?
-          </Typography>
-          <TextField
-            label="Буцаах шалтгаан"
-            fullWidth
-            multiline
-            rows={2}
-            value={returnReason}
-            onChange={(e) => setReturnReason(e.target.value)}
-            placeholder="Жишээ: Бараа буцаалт"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setReturnDialogOpen(false)}>Цуцлах</Button>
-          <Button variant="contained" color="error" onClick={handleReturnOrder}>
-            Буцаах
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* E-Barimt Result Modal */}
-      <EBarimtResultModal
-        open={resultModalOpen}
-        onClose={() => setResultModalOpen(false)}
-        result={resultModalData}
-      />
+      {/* EbarimtPrintModal */}
+      {printOrder && (
+        <EbarimtPrintModal
+          order={printOrder}
+          onClose={() => setPrintOrder(null)}
+          onSuccess={() => {
+            setPrintOrder(null);
+            fetchOrders();
+          }}
+        />
+      )}
     </Box>
   );
 }

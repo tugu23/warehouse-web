@@ -54,15 +54,11 @@ export interface UpdateEmployeeRequest {
 export interface Product {
   id: number;
   nameMongolian: string;
-  nameKorean?: string;
-  nameEnglish: string;
   productCode: string;
   barcode?: string;
   classificationCode?: string; // БҮНА код
   categoryId?: number;
   category?: Category;
-  supplierId: number;
-  supplier?: Supplier;
   stockQuantity: number;
   unitsPerBox?: number; // Нэг хайрцагт байх тоо ширхэг
   netWeight?: number; // Цэвэр жин (kg)
@@ -79,13 +75,10 @@ export interface Product {
 
 export interface CreateProductRequest {
   nameMongolian: string;
-  nameKorean?: string;
-  nameEnglish: string;
   productCode: string;
   barcode?: string;
   classificationCode?: string;
   categoryId?: number;
-  supplierId: number;
   stockQuantity: number;
   unitsPerBox?: number;
   netWeight?: number;
@@ -98,13 +91,10 @@ export interface CreateProductRequest {
 
 export interface UpdateProductRequest {
   nameMongolian?: string;
-  nameKorean?: string;
-  nameEnglish?: string;
   productCode?: string;
   barcode?: string;
   classificationCode?: string;
   categoryId?: number;
-  supplierId?: number;
   stockQuantity?: number;
   unitsPerBox?: number;
   netWeight?: number;
@@ -130,8 +120,6 @@ export interface ProductBatch {
   quantity: number;
   receivedDate: string;
   expiryDate: string;
-  supplierId: number;
-  supplier?: Supplier;
   priceWholesale: number;
   priceRetail: number;
   createdAt?: string;
@@ -153,7 +141,6 @@ export interface CreateProductBatchRequest {
   quantity: number;
   receivedDate: string;
   expiryDate: string;
-  supplierId: number;
   priceWholesale: number;
   priceRetail: number;
 }
@@ -163,7 +150,6 @@ export interface UpdateProductBatchRequest {
   quantity?: number;
   receivedDate?: string;
   expiryDate?: string;
-  supplierId?: number;
   priceWholesale?: number;
   priceRetail?: number;
 }
@@ -181,51 +167,21 @@ export interface MonthlyInventory {
   adjusted: number;
 }
 
-// Supplier Types
-export interface Supplier {
-  id: number;
-  name: string;
-  contactPerson?: string;
-  phoneNumber?: string;
-  email?: string;
-  address?: string;
-  createdAt?: string;
-}
-
-export interface CreateSupplierRequest {
-  name: string;
-  contactPerson?: string;
-  phoneNumber?: string;
-  email?: string;
-  address?: string;
-}
-
-export interface UpdateSupplierRequest {
-  name?: string;
-  contactPerson?: string;
-  phoneNumber?: string;
-  email?: string;
-  address?: string;
-}
-
 // Category Types
 export interface Category {
   id: number;
   nameMongolian: string;
-  nameEnglish?: string;
   description?: string;
   createdAt?: string;
 }
 
 export interface CreateCategoryRequest {
   nameMongolian: string;
-  nameEnglish?: string;
   description?: string;
 }
 
 export interface UpdateCategoryRequest {
   nameMongolian?: string;
-  nameEnglish?: string;
   description?: string;
 }
 
@@ -336,6 +292,15 @@ export interface Order {
   eReceiptStatus?: 'pending' | 'printed' | 'failed'; // И-баримтын төлөв
   eReceiptUrl?: string; // И-баримт татах линк
   eReceiptPrintedAt?: string; // Хэвлэсэн огноо
+  ebarimtBillId?: string;
+  ebarimtId?: string;
+  ebarimtRegistered?: boolean;
+  ebarimtDate?: string;
+  ebarimtReturnId?: string;
+  ebarimtType?: string;
+  orderDate?: string;
+  agentId?: number;
+  agent?: { name: string; phoneNumber?: string };
 }
 
 export interface OrderItem {
@@ -349,7 +314,7 @@ export interface OrderItem {
 }
 
 export interface CreateOrderRequest {
-  customerId: number;
+  customerId?: number;
   distributorId?: number;
   orderType?: OrderType;
   paymentMethod: PaymentMethod;
@@ -670,12 +635,6 @@ export interface InventoryReportData {
   lowStockProducts: Product[];
   byCategory: Array<{
     category: string;
-    products: Product[];
-    totalStock: number;
-    totalValue: number;
-  }>;
-  bySupplier: Array<{
-    supplier: Supplier;
     products: Product[];
     totalStock: number;
     totalValue: number;

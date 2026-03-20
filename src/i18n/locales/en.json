@@ -94,8 +94,6 @@
     "productCode": "Product Code",
     "barcode": "Barcode",
     "nameMongolian": "Mongolian Name",
-    "nameEnglish": "English Name",
-    "nameKorean": "Korean Name",
     "category": "Category",
     "supplier": "Supplier",
     "stock": "Stock",
@@ -281,7 +279,6 @@
     "addCategory": "Add Category",
     "editCategory": "Edit Category",
     "nameMongolian": "Mongolian Name",
-    "nameEnglish": "English Name",
     "description": "Description",
     "deleteConfirm": "Are you sure you want to delete this category?"
   },

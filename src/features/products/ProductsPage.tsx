@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Chip, Badge, Typography } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Box, Button, Chip, Badge, Typography, Tooltip, IconButton } from '@mui/material';
+import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -34,24 +34,12 @@ export default function ProductsPage() {
     try {
       const response = await productsApi.getAll({
         limit: 'all',
-        include: 'supplier,category,batches,prices',
+        include: 'category,batches,prices',
       });
-      const products = response.data.data?.products || [];
-      console.log('📦 Fetched products:', products.length);
-      const firstProduct = products[0];
-      if (firstProduct) {
-        console.log('📦 First product:', {
-          id: firstProduct.id,
-          name: firstProduct.nameMongolian,
-          priceWholesale: firstProduct.priceWholesale,
-          priceRetail: firstProduct.priceRetail,
-          priceWholesaleType: typeof firstProduct.priceWholesale,
-          priceRetailType: typeof firstProduct.priceRetail,
-        });
-      }
-      setProducts(products);
+      setProducts(response.data.data?.products || []);
     } catch (error) {
       console.error('Error fetching products:', error);
+      toast.error('Бараа татахад алдаа гарлаа');
     } finally {
       setLoading(false);
     }
@@ -60,11 +48,12 @@ export default function ProductsPage() {
   const handleCreate = async (data: CreateProductRequest | UpdateProductRequest) => {
     try {
       await productsApi.create(data as CreateProductRequest);
-      toast.success('Product created successfully!');
+      toast.success('Бараа амжилттай нэмэгдлээ!');
       setEditModalOpen(false);
       fetchProducts();
     } catch (error) {
       console.error('Error creating product:', error);
+      toast.error('Бараа нэмэхэд алдаа гарлаа');
     }
   };
 
@@ -72,12 +61,13 @@ export default function ProductsPage() {
     if (!selectedProduct) return;
     try {
       await productsApi.update(selectedProduct.id, data as UpdateProductRequest);
-      toast.success('Product updated successfully!');
+      toast.success('Бараа амжилттай шинэчлэгдлээ!');
       setEditModalOpen(false);
       setSelectedProduct(null);
       fetchProducts();
     } catch (error) {
       console.error('Error updating product:', error);
+      toast.error('Бараа шинэчлэхэд алдаа гарлаа');
     }
   };
 
@@ -120,13 +110,13 @@ export default function ProductsPage() {
 
   const columns = [
     {
-      id: 'nameEnglish',
-      label: 'Name (EN)',
+      id: 'nameMongolian',
+      label: 'Нэр',
       minWidth: 150,
       format: (row: Product) => (
         <Box>
           <Typography variant="body2" fontWeight="medium">
-            {row.nameEnglish}
+            {row.nameMongolian}
           </Typography>
           {row.batches && row.batches.length > 0 && (
             <Box sx={{ mt: 0.5 }}>
@@ -137,15 +127,10 @@ export default function ProductsPage() {
       ),
     },
     {
-      id: 'nameMongolian',
-      label: 'Name (MN)',
-      minWidth: 150,
-    },
-    {
       id: 'category',
-      label: 'Category',
+      label: 'Ангилал',
       minWidth: 120,
-      format: (row: Product) => row.category?.nameMongolian || row.category?.nameEnglish || '-',
+      format: (row: Product) => row.category?.nameMongolian || '-',
     },
     {
       id: 'stockQuantity',
@@ -198,13 +183,13 @@ export default function ProductsPage() {
     },
     {
       id: 'priceWholesale',
-      label: 'Wholesale',
+      label: 'Бөөний үнэ',
       align: 'right' as const,
       format: (row: Product) => `₮${Number(row.priceWholesale).toLocaleString()}`,
     },
     {
       id: 'priceRetail',
-      label: 'Retail',
+      label: 'Жижиглэн үнэ',
       align: 'right' as const,
       format: (row: Product) => `₮${Number(row.priceRetail).toLocaleString()}`,
     },
@@ -222,25 +207,32 @@ export default function ProductsPage() {
   return (
     <Box>
       <DataTable
-        title="Products"
+        title="Бараа материал"
         columns={columns}
         data={products}
         searchable
-        searchPlaceholder="Search products..."
+        searchPlaceholder="Нэр, бар код, ангиллаар хайх..."
         onRowClick={handleRowClick}
         actions={
-          canCreate() && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setSelectedProduct(null);
-                setEditModalOpen(true);
-              }}
-            >
-              Add Product
-            </Button>
-          )
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Tooltip title="Шинэчлэх">
+              <IconButton onClick={fetchProducts} size="small">
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+            {canCreate() && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setSelectedProduct(null);
+                  setEditModalOpen(true);
+                }}
+              >
+                Бараа нэмэх
+              </Button>
+            )}
+          </Box>
         }
       />
 
@@ -248,7 +240,7 @@ export default function ProductsPage() {
       <Modal
         open={detailsModalOpen}
         onClose={handleCloseDetailsModal}
-        title={`Product Details: ${selectedProduct?.nameEnglish}`}
+        title={`Бараа дэлгэрэнгүй: ${selectedProduct?.nameMongolian}`}
         maxWidth="md"
       >
         <ProductDetailsModal
@@ -264,7 +256,7 @@ export default function ProductsPage() {
       <Modal
         open={editModalOpen}
         onClose={handleCloseEditModal}
-        title={selectedProduct ? 'Edit Product' : 'Add New Product'}
+        title={selectedProduct ? 'Бараа засах' : 'Шинэ бараа нэмэх'}
         maxWidth="md"
       >
         <ProductForm
@@ -278,7 +270,7 @@ export default function ProductsPage() {
       <Modal
         open={inventoryModalOpen}
         onClose={handleCloseInventoryModal}
-        title={`Adjust Inventory: ${selectedProduct?.nameEnglish}`}
+        title={`Үлдэгдэл засах: ${selectedProduct?.nameMongolian}`}
         maxWidth="sm"
       >
         <InventoryAdjustmentForm
@@ -295,7 +287,7 @@ export default function ProductsPage() {
       <Modal
         open={priceModalOpen}
         onClose={handleClosePriceModal}
-        title={`Үнэ удирдах: ${selectedProduct?.nameEnglish}`}
+        title={`Үнэ удирдах: ${selectedProduct?.nameMongolian}`}
         maxWidth="md"
       >
         {selectedProduct && (

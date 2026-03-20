@@ -250,9 +250,7 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
               {order.orderItems?.map((item, index) => (
                 <TableRow key={item.id}>
                   <TableCell align="center">{index + 1}</TableCell>
-                  <TableCell>
-                    {item.product?.nameMongolian || item.product?.nameEnglish || 'N/A'}
-                  </TableCell>
+                  <TableCell>{item.product?.nameMongolian || 'N/A'}</TableCell>
                   <TableCell sx={{ fontSize: '10px' }}>{item.product?.barcode || '-'}</TableCell>
                   <TableCell align="center">{item.quantity}</TableCell>
                   <TableCell align="right">{Number(item.unitPrice).toLocaleString()}</TableCell>

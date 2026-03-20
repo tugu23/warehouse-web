@@ -59,7 +59,7 @@ export default function CategoriesPage() {
 
   const handleAdd = () => {
     setSelectedCategory(null);
-    reset({ nameMongolian: '', nameEnglish: '', description: '' });
+    reset({ nameMongolian: '', description: '' });
     setFormOpen(true);
   };
 
@@ -72,7 +72,6 @@ export default function CategoriesPage() {
     setSelectedCategory(category);
     reset({
       nameMongolian: category.nameMongolian,
-      nameEnglish: category.nameEnglish || '',
       description: category.description || '',
     });
     setDetailsModalOpen(true);
@@ -113,21 +112,20 @@ export default function CategoriesPage() {
           <TableHead>
             <TableRow>
               <TableCell>ID</TableCell>
-              <TableCell>Mongolian Name</TableCell>
-              <TableCell>English Name</TableCell>
-              <TableCell>Description</TableCell>
+              <TableCell>Нэр (Монгол)</TableCell>
+              <TableCell>Тайлбар</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={3} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : categories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={3} align="center">
                   No categories found
                 </TableCell>
               </TableRow>
@@ -145,7 +143,6 @@ export default function CategoriesPage() {
                 >
                   <TableCell>{category.id}</TableCell>
                   <TableCell>{category.nameMongolian}</TableCell>
-                  <TableCell>{category.nameEnglish || '-'}</TableCell>
                   <TableCell>{category.description || '-'}</TableCell>
                 </TableRow>
               ))
@@ -184,13 +181,6 @@ export default function CategoriesPage() {
                 helperText={errors.nameMongolian?.message}
                 fullWidth
                 required
-              />
-              <TextField
-                label="English Name"
-                {...register('nameEnglish')}
-                error={!!errors.nameEnglish}
-                helperText={errors.nameEnglish?.message}
-                fullWidth
               />
               <TextField
                 label="Description"

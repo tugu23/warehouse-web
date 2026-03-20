@@ -96,8 +96,6 @@
     "productCode": "Барааны код",
     "barcode": "Баркод",
     "nameMongolian": "Монгол нэр",
-    "nameEnglish": "Англи нэр",
-    "nameKorean": "Солонгос нэр",
     "category": "Ангилал",
     "supplier": "Нийлүүлэгч",
     "stock": "Үлдэгдэл",
@@ -378,7 +376,6 @@
     "addCategory": "Ангилал нэмэх",
     "editCategory": "Ангилал засах",
     "nameMongolian": "Монгол нэр",
-    "nameEnglish": "Англи нэр",
     "description": "Тайлбар",
     "deleteConfirm": "Та энэ ангиллыг устгахдаа итгэлтэй байна уу?"
   },

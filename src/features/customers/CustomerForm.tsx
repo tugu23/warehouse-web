@@ -15,13 +15,15 @@ import {
   IconButton,
   CircularProgress,
   Alert,
+  Divider,
+  Typography,
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
 import { customerSchema } from '../../utils/validation';
-import { Customer, CreateCustomerRequest, UpdateCustomerRequest } from '../../types';
+import { Customer, CreateCustomerRequest, UpdateCustomerRequest, Employee } from '../../types';
 import { z } from 'zod';
 import MapPicker from '../../components/MapPicker';
-import { etaxApi } from '../../api';
+import { etaxApi, employeesApi } from '../../api';
 import { toast } from 'react-hot-toast';
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -35,6 +37,7 @@ interface CustomerFormProps {
 export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerFormProps) {
   const [searchingRegno, setSearchingRegno] = useState(false);
   const [regnoSearchResult, setRegnoSearchResult] = useState<string | null>(null);
+  const [agents, setAgents] = useState<Employee[]>([]);
 
   const {
     control,
@@ -63,6 +66,16 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
   });
 
   const registrationNumber = watch('registrationNumber');
+
+  useEffect(() => {
+    employeesApi
+      .getAll({ limit: 'all' })
+      .then((res) => {
+        const all = res.data.data?.employees || [];
+        setAgents(all.filter((e) => e.isActive));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (customer) {
@@ -372,23 +385,48 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
         </Grid>
 
         <Grid size={12}>
+          <Divider sx={{ mb: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Борлуулагч томилох
+            </Typography>
+          </Divider>
           <Controller
             name="assignedAgentId"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                label="Хариуцсан борлуулагч (Agent ID)"
-                type="number"
-                fullWidth
-                error={!!errors.assignedAgentId}
-                helperText={
-                  errors.assignedAgentId?.message || 'Борлуулагч томилохгүй бол хоосон үлдээнэ'
-                }
-                onChange={(e) =>
-                  field.onChange(e.target.value ? parseInt(e.target.value) : undefined)
-                }
-              />
+              <FormControl fullWidth error={!!errors.assignedAgentId}>
+                <InputLabel>Хариуцсан борлуулагч</InputLabel>
+                <Select
+                  {...field}
+                  label="Хариуцсан борлуулагч"
+                  value={field.value ?? ''}
+                  onChange={(e) =>
+                    field.onChange(e.target.value !== '' ? Number(e.target.value) : undefined)
+                  }
+                >
+                  <MenuItem value="">
+                    <em>Томилоогүй</em>
+                  </MenuItem>
+                  {agents.map((agent) => (
+                    <MenuItem key={agent.id} value={agent.id}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="body2">{agent.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {agent.role.name === 'SalesAgent'
+                            ? 'Борлуулагч'
+                            : agent.role.name === 'Manager'
+                              ? 'Менежер'
+                              : agent.role.name}
+                          {agent.phoneNumber ? ` · ${agent.phoneNumber}` : ''}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>
+                  {errors.assignedAgentId?.message || 'Борлуулагч томилохгүй бол хоосон үлдээнэ'}
+                </FormHelperText>
+              </FormControl>
             )}
           />
         </Grid>

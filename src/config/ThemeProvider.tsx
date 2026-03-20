@@ -12,6 +12,8 @@ const ThemeContext = createContext<ThemeContextType>({
   toggleTheme: () => {},
 });
 
+// Hook lives here with the provider; fast-refresh wants components-only in default export file.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTheme = () => useContext(ThemeContext);
 
 interface ThemeProviderProps {

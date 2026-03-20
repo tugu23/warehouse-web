@@ -13,30 +13,28 @@ import {
   Button,
   Divider,
   Grid,
-  Alert,
-  CircularProgress,
 } from '@mui/material';
 import {
-  Receipt as ReceiptIcon,
-  CheckCircle as CheckCircleIcon,
   Store as StoreIcon,
   Warehouse as WarehouseIcon,
-  PictureAsPdf as PdfIcon,
-  Download as DownloadIcon,
   Description as DescriptionIcon,
+  Receipt as ReceiptIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { Order } from '../../types';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import { posApi, EReceiptRequest, calculateVAT } from '../../api/posApi';
+import { calculateVAT } from '../../api/posApi';
 import { ordersApi } from '../../api';
 import { formatDateMN } from '../../utils/dateFormatter';
+import EbarimtPrintModal from './EbarimtPrintModal';
 
 interface OrderDetailsModalProps {
   order: Order | null;
   onUpdateStatus: (orderId: number, status: string) => void;
   canManage: boolean;
-  currentUserId?: number; // Add current user ID to check ownership
+  currentUserId?: number;
+  onRefresh?: () => void;
 }
 
 export default function OrderDetailsModal({
@@ -44,11 +42,11 @@ export default function OrderDetailsModal({
   onUpdateStatus,
   canManage,
   currentUserId,
+  onRefresh,
 }: OrderDetailsModalProps) {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<string>('');
-  const [printingEReceipt, setPrintingEReceipt] = useState(false);
-  const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [ebarimtPrintOpen, setEbarimtPrintOpen] = useState(false);
 
   if (!order) return null;
 
@@ -71,114 +69,16 @@ export default function OrderDetailsModal({
     return colors[status] || 'default';
   };
 
-  const handlePrintEReceipt = async () => {
-    if (!order.orderItems || order.orderItems.length === 0) {
-      toast.error('Захиалгын барааны мэдээлэл олдсонгүй');
-      return;
-    }
-
-    setPrintingEReceipt(true);
-
-    try {
-      const totalAmount = Number(order.totalAmount);
-      const vatAmount = order.orderType === 'Store' ? calculateVAT(totalAmount) : 0;
-
-      const eReceiptRequest: EReceiptRequest = {
-        orderId: order.id,
-        amount: totalAmount,
-        vatAmount: vatAmount,
-        customerTin: order.customer?.registrationNumber,
-        customerName: order.customer?.name || 'Customer',
-        items: order.orderItems.map((item) => ({
-          name: item.product?.nameEnglish || item.product?.nameMongolian || 'Product',
-          quantity: item.quantity,
-          unitPrice: Number(item.unitPrice),
-          totalPrice: Number(item.subtotal),
-          barCode: item.product?.barcode,
-        })),
-        paymentMethod: order.paymentMethod || 'Бэлэн',
-        cashierId: order.createdById,
-        cashierName: order.createdBy?.name || 'Cashier',
-      };
-
-      const response = await posApi.printEReceipt(eReceiptRequest);
-
-      if (response.success) {
-        toast.success(
-          <Box>
-            <Typography variant="body2" fontWeight="bold">
-              И-баримт амжилттай хэвлэгдлээ!
-            </Typography>
-            <Typography variant="caption">Дугаар: {response.receiptNumber}</Typography>
-            <Typography variant="caption" display="block">
-              Сугалааны дугаар: {response.lottery}
-            </Typography>
-          </Box>,
-          { duration: 5000 }
-        );
-
-        // TODO: Backend API-руу И-баримтын мэдээлэл хадгалах
-        // await ordersApi.updateEReceipt(order.id, {
-        //   eReceiptId: response.receiptId,
-        //   eReceiptNumber: response.receiptNumber,
-        //   eReceiptStatus: 'printed',
-        //   eReceiptUrl: response.receiptUrl,
-        //   eReceiptQrCode: response.qrCode,
-        //   eReceiptLottery: response.lottery,
-        //   eReceiptPrintedAt: response.timestamp,
-        // });
-      }
-    } catch (error) {
-      console.error('И-баримт хэвлэх алдаа:', error);
-      toast.error('И-баримт хэвлэхэд алдаа гарлаа. Дахин оролдоно уу.');
-    } finally {
-      setPrintingEReceipt(false);
-    }
-  };
-
-  const getEReceiptStatusChip = () => {
-    if (!order.eReceiptStatus) return null;
-
-    const statusConfig = {
-      pending: { label: 'Хүлээгдэж байна', color: 'warning' as const },
-      printed: { label: 'Хэвлэгдсэн', color: 'success' as const },
-      failed: { label: 'Алдаатай', color: 'error' as const },
-    };
-
-    const config = statusConfig[order.eReceiptStatus];
-    return <Chip label={config.label} color={config.color} size="small" />;
-  };
-
-  const handleViewReceiptPDF = async () => {
-    try {
-      await ordersApi.viewReceiptPDF(order.id, true); // With VAT
-    } catch (error) {
-      console.error('Error viewing PDF:', error);
-      toast.error('Failed to open PDF receipt');
-    }
-  };
-
   const handleViewNonVatReceipt = async () => {
     try {
-      await ordersApi.viewNonVatReceiptPDF(order.id); // НӨАТ-гүй падаан
+      await ordersApi.viewNonVatReceiptPDF(order.id);
     } catch (error) {
       console.error('Error viewing non-VAT receipt:', error);
-      toast.error('Failed to open receipt');
+      toast.error('Падаан нээхэд алдаа гарлаа');
     }
   };
 
-  const handleDownloadReceiptPDF = async () => {
-    setDownloadingPDF(true);
-    try {
-      await ordersApi.downloadReceiptPDF(order.id);
-      toast.success('PDF receipt downloaded successfully');
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      toast.error('Failed to download PDF receipt');
-    } finally {
-      setDownloadingPDF(false);
-    }
-  };
+  const canPrintEbarimt = order.status === 'Fulfilled' && !order.ebarimtRegistered;
 
   return (
     <Box>
@@ -228,36 +128,30 @@ export default function OrderDetailsModal({
           <Typography variant="body1">{formatDateMN(order.createdAt)}</Typography>
         </Grid>
 
-        {order.eReceiptNumber && (
-          <>
-            <Grid size={6}>
-              <Typography variant="body2" color="text.secondary">
-                И-баримтын дугаар
-              </Typography>
-              <Typography variant="body1" fontWeight="bold" color="primary">
-                {order.eReceiptNumber}
-              </Typography>
-            </Grid>
-            <Grid size={6}>
-              <Typography variant="body2" color="text.secondary">
-                И-баримтын төлөв
-              </Typography>
-              {getEReceiptStatusChip()}
-            </Grid>
-          </>
-        )}
-      </Grid>
-
-      {order.eReceiptNumber && order.eReceiptUrl && (
-        <Alert severity="success" sx={{ mb: 2 }} icon={<CheckCircleIcon />}>
-          <Typography variant="body2">
-            И-баримт хэвлэгдсэн.
-            <Button size="small" href={order.eReceiptUrl} target="_blank" sx={{ ml: 1 }}>
-              Татаж авах
-            </Button>
+        {/* eBarimt төлөв */}
+        <Grid size={6}>
+          <Typography variant="body2" color="text.secondary">
+            eBarimt
           </Typography>
-        </Alert>
-      )}
+          {order.ebarimtRegistered ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <CheckCircleIcon color="success" fontSize="small" />
+              <Typography variant="body2" color="success.main" fontWeight="bold">
+                Бүртгэгдсэн
+              </Typography>
+              {order.ebarimtBillId && (
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                  ({order.ebarimtBillId.slice(-8)})
+                </Typography>
+              )}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              —
+            </Typography>
+          )}
+        </Grid>
+      </Grid>
 
       <Divider sx={{ my: 2 }} />
 
@@ -278,7 +172,7 @@ export default function OrderDetailsModal({
           <TableBody>
             {order.orderItems?.map((item) => (
               <TableRow key={item.id}>
-                <TableCell>{item.product?.nameEnglish || 'Тодорхойгүй'}</TableCell>
+                <TableCell>{item.product?.nameMongolian || 'Тодорхойгүй'}</TableCell>
                 <TableCell align="center">{item.quantity}</TableCell>
                 <TableCell align="right">₮{Number(item.unitPrice).toLocaleString()}</TableCell>
                 <TableCell align="right">₮{Number(item.subtotal).toLocaleString()}</TableCell>
@@ -331,16 +225,16 @@ export default function OrderDetailsModal({
         </Table>
       </TableContainer>
 
-      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-        {/* PDF Receipt Buttons - Available for all orders */}
-        <Button
-          variant="outlined"
-          color="primary"
-          startIcon={<PdfIcon />}
-          onClick={handleViewReceiptPDF}
-        >
-          View Receipt (PDF)
-        </Button>
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 2,
+          justifyContent: 'flex-end',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}
+      >
+        {/* Падаан харах */}
         <Button
           variant="outlined"
           color="warning"
@@ -349,44 +243,20 @@ export default function OrderDetailsModal({
         >
           Падаан харах
         </Button>
-        <Button
-          variant="outlined"
-          color="success"
-          startIcon={downloadingPDF ? <CircularProgress size={20} /> : <DownloadIcon />}
-          onClick={handleDownloadReceiptPDF}
-          disabled={downloadingPDF}
-        >
-          {downloadingPDF ? 'Downloading...' : 'Download Receipt'}
-        </Button>
 
-        {/* И-баримт хэвлэх товч - зөвхөн дэлгүүрийн захиалгад */}
-        {order.orderType === 'Store' && (
-          <>
-            {!order.eReceiptNumber && (
-              <Alert severity="info" sx={{ flex: 1, mr: 'auto' }}>
-                <Typography variant="body2">
-                  Дэлгүүрийн захиалга - И-баримт хэвлэх шаардлагатай
-                </Typography>
-              </Alert>
-            )}
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={printingEReceipt ? <CircularProgress size={20} /> : <ReceiptIcon />}
-              onClick={handlePrintEReceipt}
-              disabled={printingEReceipt || order.status === 'Cancelled'}
-            >
-              {printingEReceipt
-                ? 'Хэвлэж байна...'
-                : order.eReceiptNumber
-                  ? 'Дахин хэвлэх'
-                  : 'И-баримт хэвлэх'}
-            </Button>
-          </>
+        {/* eBarimt хэвлэх — зөвхөн Fulfilled, хэвлэгдээгүй тохиолдолд */}
+        {canPrintEbarimt && (
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<ReceiptIcon />}
+            onClick={() => setEbarimtPrintOpen(true)}
+          >
+            eBarimt хэвлэх
+          </Button>
         )}
 
-        {/* Төлөв өөрчлөх товчнууд */}
-        {/* Allow admins/managers OR agents to update their own orders */}
+        {/* Төлөв өөрчлөх */}
         {(canManage || (currentUserId && order.createdById === currentUserId)) &&
           order.status === 'Pending' && (
             <>
@@ -416,6 +286,17 @@ export default function OrderDetailsModal({
         message={`Та захиалгын төлвийг "${newStatus}" болгохыг зөвшөөрч байна уу?`}
         danger={newStatus === 'Cancelled'}
       />
+
+      {ebarimtPrintOpen && (
+        <EbarimtPrintModal
+          order={order}
+          onClose={() => setEbarimtPrintOpen(false)}
+          onSuccess={() => {
+            setEbarimtPrintOpen(false);
+            onRefresh?.();
+          }}
+        />
+      )}
     </Box>
   );
 }

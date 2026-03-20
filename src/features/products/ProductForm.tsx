@@ -40,19 +40,16 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     resolver: zodResolver(productSchema),
     defaultValues: {
       nameMongolian: '',
-      nameKorean: '',
-      nameEnglish: '',
       productCode: '',
       barcode: '',
       classificationCode: '',
       categoryId: undefined,
-      supplierId: 1,
       stockQuantity: 0,
       unitsPerBox: 1,
       netWeight: 0,
       grossWeight: 0,
-      priceWholesale: 0,
-      priceRetail: 0,
+      priceWholesale: undefined,
+      priceRetail: undefined,
       pricePerBox: 0,
       isActive: true,
     },
@@ -79,13 +76,10 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     if (product) {
       reset({
         nameMongolian: product.nameMongolian,
-        nameKorean: product.nameKorean || '',
-        nameEnglish: product.nameEnglish,
         productCode: product.productCode,
         barcode: product.barcode || '',
         classificationCode: product.classificationCode || '',
         categoryId: product.categoryId || undefined,
-        supplierId: product.supplierId,
         stockQuantity: product.stockQuantity,
         unitsPerBox: product.unitsPerBox || 1,
         netWeight: product.netWeight || 0,
@@ -109,7 +103,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           // If found and it's not the current product being edited
           if (existingProduct && existingProduct.id !== product?.id) {
             setBarcodeWarning(
-              `⚠️ Энэ barcode "${existingProduct.nameEnglish}" барааны кодонд бүртгэлтэй байна. Давхардсан barcode зөвшөөрөгдөнө.`
+              `⚠️ Энэ barcode "${existingProduct.nameMongolian}" барааны кодонд бүртгэлтэй байна. Давхардсан barcode зөвшөөрөгдөнө.`
             );
           } else {
             setBarcodeWarning(null);
@@ -140,22 +134,6 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
-            name="nameEnglish"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Нэр (Англи) *"
-                fullWidth
-                error={!!errors.nameEnglish}
-                helperText={errors.nameEnglish?.message}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <Controller
             name="nameMongolian"
             control={control}
             render={({ field }) => (
@@ -165,22 +143,6 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
                 fullWidth
                 error={!!errors.nameMongolian}
                 helperText={errors.nameMongolian?.message}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <Controller
-            name="nameKorean"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Нэр (Солонгос)"
-                fullWidth
-                error={!!errors.nameKorean}
-                helperText={errors.nameKorean?.message}
               />
             )}
           />
@@ -256,29 +218,10 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
                 </MenuItem>
                 {categories.map((category) => (
                   <MenuItem key={category.id} value={category.id}>
-                    {category.nameMongolian}{' '}
-                    {category.nameEnglish ? `(${category.nameEnglish})` : ''}
+                    {category.nameMongolian}
                   </MenuItem>
                 ))}
               </TextField>
-            )}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <Controller
-            name="supplierId"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Нийлүүлэгч ID *"
-                type="number"
-                fullWidth
-                error={!!errors.supplierId}
-                helperText={errors.supplierId?.message}
-                onChange={(e) => field.onChange(parseInt(e.target.value))}
-              />
             )}
           />
         </Grid>
@@ -364,12 +307,16 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             render={({ field }) => (
               <TextField
                 {...field}
+                value={field.value ?? ''}
                 label="Бөөний үнэ (₮) *"
                 type="number"
                 fullWidth
                 error={!!errors.priceWholesale}
                 helperText={errors.priceWholesale?.message}
-                onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  field.onChange(isNaN(val) ? undefined : val);
+                }}
               />
             )}
           />
@@ -382,12 +329,16 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             render={({ field }) => (
               <TextField
                 {...field}
+                value={field.value ?? ''}
                 label="Жижиглэн үнэ (₮) *"
                 type="number"
                 fullWidth
                 error={!!errors.priceRetail}
                 helperText={errors.priceRetail?.message}
-                onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  field.onChange(isNaN(val) ? undefined : val);
+                }}
               />
             )}
           />

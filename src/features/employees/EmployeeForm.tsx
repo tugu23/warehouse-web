@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -11,7 +11,16 @@ import {
   Select,
   MenuItem,
   FormHelperText,
+  InputAdornment,
+  IconButton,
+  Chip,
+  Divider,
+  Typography,
 } from '@mui/material';
+import {
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
+} from '@mui/icons-material';
 import { employeeSchema } from '../../utils/validation';
 import { Employee, CreateEmployeeRequest, UpdateEmployeeRequest } from '../../types';
 import { z } from 'zod';
@@ -24,7 +33,15 @@ interface EmployeeFormProps {
   onCancel: () => void;
 }
 
+const ROLE_OPTIONS = [
+  { value: 'Admin', label: 'Админ', color: 'error' as const, desc: 'Бүх эрхтэй' },
+  { value: 'Manager', label: 'Менежер', color: 'warning' as const, desc: 'Удирдах эрхтэй' },
+  { value: 'SalesAgent', label: 'Борлуулагч', color: 'info' as const, desc: 'Борлуулалтын эрхтэй' },
+];
+
 export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps) {
+  const [showPassword, setShowPassword] = useState(false);
+
   const {
     control,
     handleSubmit,
@@ -55,6 +72,25 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
 
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+      {employee && (
+        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            Одоогийн эрх:
+          </Typography>
+          {ROLE_OPTIONS.map((r) =>
+            r.value === employee.role.name ? (
+              <Chip key={r.value} label={r.label} color={r.color} size="small" />
+            ) : null
+          )}
+          <Chip
+            label={employee.isActive ? 'Идэвхтэй' : 'Идэвхгүй'}
+            color={employee.isActive ? 'success' : 'default'}
+            size="small"
+            sx={{ ml: 1 }}
+          />
+        </Box>
+      )}
+
       <Grid container spacing={2}>
         <Grid size={12}>
           <Controller
@@ -63,10 +99,11 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Full Name"
+                label="Бүтэн нэр *"
                 fullWidth
                 error={!!errors.name}
                 helperText={errors.name?.message}
+                placeholder="Жишээ: Батбаяр Дорж"
               />
             )}
           />
@@ -79,12 +116,16 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Email"
+                label="И-мэйл хаяг *"
                 type="email"
                 fullWidth
                 error={!!errors.email}
-                helperText={errors.email?.message}
+                helperText={
+                  errors.email?.message ||
+                  (employee ? 'И-мэйл хаягийг өөрчлөх боломжгүй' : undefined)
+                }
                 disabled={!!employee}
+                placeholder="example@company.mn"
               />
             )}
           />
@@ -97,33 +138,68 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Phone Number"
+                label="Утасны дугаар *"
                 fullWidth
                 error={!!errors.phoneNumber}
                 helperText={errors.phoneNumber?.message}
+                placeholder="99xxxxxx"
               />
             )}
           />
         </Grid>
 
         {!employee && (
-          <Grid size={12}>
-            <Controller
-              name="password"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Password"
-                  type="password"
-                  fullWidth
-                  error={!!errors.password}
-                  helperText={errors.password?.message}
-                />
-              )}
-            />
-          </Grid>
+          <>
+            <Grid size={12}>
+              <Divider>
+                <Typography variant="caption" color="text.secondary">
+                  Нэвтрэх мэдээлэл
+                </Typography>
+              </Divider>
+            </Grid>
+            <Grid size={12}>
+              <Controller
+                name="password"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Нууц үг *"
+                    type={showPassword ? 'text' : 'password'}
+                    fullWidth
+                    error={!!errors.password}
+                    helperText={errors.password?.message || 'Хамгийн багадаа 6 тэмдэгт'}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={() => setShowPassword((v) => !v)}
+                            edge="end"
+                            size="small"
+                          >
+                            {showPassword ? (
+                              <VisibilityOffIcon fontSize="small" />
+                            ) : (
+                              <VisibilityIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                )}
+              />
+            </Grid>
+          </>
         )}
+
+        <Grid size={12}>
+          <Divider>
+            <Typography variant="caption" color="text.secondary">
+              Эрх тохиргоо
+            </Typography>
+          </Divider>
+        </Grid>
 
         <Grid size={12}>
           <Controller
@@ -131,11 +207,18 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
             control={control}
             render={({ field }) => (
               <FormControl fullWidth error={!!errors.roleName}>
-                <InputLabel>Role *</InputLabel>
-                <Select {...field} label="Role *">
-                  <MenuItem value="Admin">Admin</MenuItem>
-                  <MenuItem value="Manager">Manager</MenuItem>
-                  <MenuItem value="SalesAgent">Sales Agent</MenuItem>
+                <InputLabel>Эрх *</InputLabel>
+                <Select {...field} label="Эрх *">
+                  {ROLE_OPTIONS.map((r) => (
+                    <MenuItem key={r.value} value={r.value}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip label={r.label} color={r.color} size="small" sx={{ minWidth: 80 }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {r.desc}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
                 </Select>
                 {errors.roleName && <FormHelperText>{errors.roleName.message}</FormHelperText>}
               </FormControl>
@@ -146,10 +229,10 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
 
       <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
         <Button onClick={onCancel} disabled={isSubmitting}>
-          Cancel
+          Болих
         </Button>
         <Button type="submit" variant="contained" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : employee ? 'Update' : 'Create'}
+          {isSubmitting ? 'Хадгалж байна...' : employee ? 'Шинэчлэх' : 'Үүсгэх'}
         </Button>
       </Box>
     </Box>

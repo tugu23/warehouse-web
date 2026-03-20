@@ -51,7 +51,7 @@ export default function MonthlyInventoryPage() {
       id: 'product',
       label: 'Бараа',
       minWidth: 200,
-      format: (row: MonthlyInventory) => row.product?.nameEnglish || 'N/A',
+      format: (row: MonthlyInventory) => row.product?.nameMongolian || 'N/A',
     },
     {
       id: 'openingStock',
@@ -94,14 +94,17 @@ export default function MonthlyInventoryPage() {
     },
   ];
 
-  const totals = inventory.length > 0 ? {
-    openingStock: inventory.reduce((sum, item) => sum + item.openingStock, 0),
-    received: inventory.reduce((sum, item) => sum + item.received, 0),
-    sold: inventory.reduce((sum, item) => sum + item.sold, 0),
-    returned: inventory.reduce((sum, item) => sum + item.returned, 0),
-    adjusted: inventory.reduce((sum, item) => sum + item.adjusted, 0),
-    closingStock: inventory.reduce((sum, item) => sum + item.closingStock, 0),
-  } : null;
+  const totals =
+    inventory.length > 0
+      ? {
+          openingStock: inventory.reduce((sum, item) => sum + item.openingStock, 0),
+          received: inventory.reduce((sum, item) => sum + item.received, 0),
+          sold: inventory.reduce((sum, item) => sum + item.sold, 0),
+          returned: inventory.reduce((sum, item) => sum + item.returned, 0),
+          adjusted: inventory.reduce((sum, item) => sum + item.adjusted, 0),
+          closingStock: inventory.reduce((sum, item) => sum + item.closingStock, 0),
+        }
+      : null;
 
   return (
     <Box>
@@ -110,7 +113,8 @@ export default function MonthlyInventoryPage() {
       </Typography>
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        Сонгосон сарын барааны эхлэх болон эцсийн үлдэгдэл, хөдөлгөөний дэлгэрэнгүй мэдээллийг харуулна.
+        Сонгосон сарын барааны эхлэх болон эцсийн үлдэгдэл, хөдөлгөөний дэлгэрэнгүй мэдээллийг
+        харуулна.
       </Alert>
 
       <Card sx={{ mb: 3 }}>
@@ -147,24 +151,36 @@ export default function MonthlyInventoryPage() {
             </Typography>
             <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               <Box>
-                <Typography variant="body2" color="text.secondary">Эхлэх үлдэгдэл</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Эхлэх үлдэгдэл
+                </Typography>
                 <Typography variant="h6">{totals.openingStock}</Typography>
               </Box>
               <Box>
-                <Typography variant="body2" color="text.secondary">Орлого</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Орлого
+                </Typography>
                 <Typography variant="h6">{totals.received}</Typography>
               </Box>
               <Box>
-                <Typography variant="body2" color="text.secondary">Зарагдсан</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Зарагдсан
+                </Typography>
                 <Typography variant="h6">{totals.sold}</Typography>
               </Box>
               <Box>
-                <Typography variant="body2" color="text.secondary">Буцаалт</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Буцаалт
+                </Typography>
                 <Typography variant="h6">{totals.returned}</Typography>
               </Box>
               <Box>
-                <Typography variant="body2" color="text.secondary">Эцсийн үлдэгдэл</Typography>
-                <Typography variant="h6" fontWeight="bold">{totals.closingStock}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Эцсийн үлдэгдэл
+                </Typography>
+                <Typography variant="h6" fontWeight="bold">
+                  {totals.closingStock}
+                </Typography>
               </Box>
             </Box>
           </CardContent>
@@ -185,4 +201,3 @@ export default function MonthlyInventoryPage() {
     </Box>
   );
 }
-

@@ -68,29 +68,15 @@ export default function ProductDetailsModal({
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Name (English)
-                </Typography>
-                <Typography variant="body1">{product.nameEnglish}</Typography>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Name (Mongolian)
+                  Нэр (Монгол)
                 </Typography>
                 <Typography variant="body1">{product.nameMongolian}</Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Name (Korean)
+                  Ангилал
                 </Typography>
-                <Typography variant="body1">{product.nameKorean || '-'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Category
-                </Typography>
-                <Typography variant="body1">
-                  {product.category?.nameMongolian || product.category?.nameEnglish || '-'}
-                </Typography>
+                <Typography variant="body1">{product.category?.nameMongolian || '-'}</Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">

@@ -14,21 +14,18 @@ export const employeeSchema = z.object({
 });
 
 export const productSchema = z.object({
-  nameMongolian: z.string().min(1, 'Mongolian name is required'),
-  nameKorean: z.string().optional(),
-  nameEnglish: z.string().min(1, 'English name is required'),
-  productCode: z.string().min(1, 'Product code is required'),
+  nameMongolian: z.string().min(1, 'Монгол нэр оруулна уу'),
+  productCode: z.string().optional(),
   barcode: z.string().optional(),
   classificationCode: z.string().optional(),
   categoryId: z.number().optional(),
-  supplierId: z.number().min(1, 'Supplier is required'),
-  stockQuantity: z.number().min(0, 'Stock quantity must be non-negative'),
-  unitsPerBox: z.number().min(1, 'Units per box must be at least 1').optional(),
-  netWeight: z.number().min(0, 'Net weight must be non-negative').optional(),
-  grossWeight: z.number().min(0, 'Gross weight must be non-negative').optional(),
-  priceWholesale: z.number().min(0, 'Wholesale price must be non-negative'),
-  priceRetail: z.number().min(0, 'Retail price must be non-negative'),
-  pricePerBox: z.number().min(0, 'Box price must be non-negative').optional(),
+  stockQuantity: z.number().min(0, 'Үлдэгдэл тоо хэрхэн байна').int('Бүхэл тоо оруулна уу'),
+  unitsPerBox: z.number().min(1, 'Хамгийн багадаа 1 байх ёстой').optional(),
+  netWeight: z.number().min(0, 'Жин 0-с их байна').optional(),
+  grossWeight: z.number().min(0, 'Жин 0-с их байна').optional(),
+  priceWholesale: z.number().min(1, 'Бөөний үнэ оруулна уу'),
+  priceRetail: z.number().min(1, 'Жижиглэн үнэ оруулна уу'),
+  pricePerBox: z.number().min(0).optional(),
   isActive: z.boolean().optional(),
 });
 

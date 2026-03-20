@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, IconButton, Chip } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Box, Button, IconButton, Chip, Tooltip } from '@mui/material';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Refresh as RefreshIcon,
+} from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -28,6 +33,7 @@ export default function EmployeesPage() {
       setEmployees(response.data.data?.employees || []);
     } catch (error) {
       console.error('Error fetching employees:', error);
+      toast.error('Ажилтан татахад алдаа гарлаа');
     } finally {
       setLoading(false);
     }
@@ -36,11 +42,12 @@ export default function EmployeesPage() {
   const handleCreate = async (data: CreateEmployeeRequest | UpdateEmployeeRequest) => {
     try {
       await employeesApi.create(data as CreateEmployeeRequest);
-      toast.success('Employee created successfully!');
+      toast.success('Ажилтан амжилттай нэмэгдлээ!');
       setModalOpen(false);
       fetchEmployees();
     } catch (error) {
       console.error('Error creating employee:', error);
+      toast.error('Ажилтан нэмэхэд алдаа гарлаа');
     }
   };
 
@@ -48,12 +55,13 @@ export default function EmployeesPage() {
     if (!selectedEmployee) return;
     try {
       await employeesApi.update(selectedEmployee.id, data as UpdateEmployeeRequest);
-      toast.success('Employee updated successfully!');
+      toast.success('Ажилтан амжилттай шинэчлэгдлээ!');
       setModalOpen(false);
       setSelectedEmployee(null);
       fetchEmployees();
     } catch (error) {
       console.error('Error updating employee:', error);
+      toast.error('Ажилтан шинэчлэхэд алдаа гарлаа');
     }
   };
 
@@ -61,11 +69,12 @@ export default function EmployeesPage() {
     if (!selectedEmployee) return;
     try {
       await employeesApi.delete(selectedEmployee.id);
-      toast.success('Employee deactivated successfully!');
+      toast.success('Ажилтан идэвхгүй болгогдлоо!');
       setSelectedEmployee(null);
       fetchEmployees();
     } catch (error) {
       console.error('Error deleting employee:', error);
+      toast.error('Ажилтан устгахад алдаа гарлаа');
     }
   };
 
@@ -84,25 +93,31 @@ export default function EmployeesPage() {
     setSelectedEmployee(null);
   };
 
+  const roleLabels: Record<string, string> = {
+    Admin: 'Админ',
+    Manager: 'Менежер',
+    SalesAgent: 'Борлуулагч',
+  };
+
   const columns = [
     {
       id: 'name',
-      label: 'Name',
+      label: 'Нэр',
       minWidth: 150,
     },
     {
       id: 'email',
-      label: 'Email',
+      label: 'И-мэйл',
       minWidth: 180,
     },
     {
       id: 'phoneNumber',
-      label: 'Phone',
+      label: 'Утас',
       minWidth: 130,
     },
     {
       id: 'role',
-      label: 'Role',
+      label: 'Эрх',
       align: 'center' as const,
       format: (row: Employee) => {
         const colors: Record<string, 'error' | 'warning' | 'info' | 'default'> = {
@@ -110,16 +125,22 @@ export default function EmployeesPage() {
           Manager: 'warning',
           SalesAgent: 'info',
         };
-        return <Chip label={row.role.name} color={colors[row.role.name]} size="small" />;
+        return (
+          <Chip
+            label={roleLabels[row.role.name] || row.role.name}
+            color={colors[row.role.name] || 'default'}
+            size="small"
+          />
+        );
       },
     },
     {
       id: 'isActive',
-      label: 'Status',
+      label: 'Төлөв',
       align: 'center' as const,
       format: (row: Employee) => (
         <Chip
-          label={row.isActive ? 'Active' : 'Inactive'}
+          label={row.isActive ? 'Идэвхтэй' : 'Идэвхгүй'}
           color={row.isActive ? 'success' : 'default'}
           size="small"
         />
@@ -127,36 +148,45 @@ export default function EmployeesPage() {
     },
     {
       id: 'createdAt',
-      label: 'Created At',
-      minWidth: 170,
-      format: (row: Employee) => new Date(row.createdAt).toLocaleDateString(),
+      label: 'Бүртгүүлсэн',
+      minWidth: 130,
+      format: (row: Employee) =>
+        new Date(row.createdAt).toLocaleDateString('mn-MN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }),
     },
     {
       id: 'actions',
-      label: 'Actions',
+      label: 'Үйлдэл',
       align: 'center' as const,
       format: (row: Employee) => (
         <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-          <IconButton
-            size="small"
-            color="primary"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpenEdit(row);
-            }}
-          >
-            <EditIcon fontSize="small" />
-          </IconButton>
-          <IconButton
-            size="small"
-            color="error"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpenDelete(row);
-            }}
-          >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
+          <Tooltip title="Засах">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenEdit(row);
+              }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={row.isActive ? 'Идэвхгүй болгох' : 'Идэвхтэй болгох'}>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenDelete(row);
+              }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
       ),
     },
@@ -169,22 +199,29 @@ export default function EmployeesPage() {
   return (
     <Box>
       <DataTable
-        title="Employees"
+        title="Ажилтнууд"
         columns={columns}
         data={employees}
         searchable
-        searchPlaceholder="Search employees..."
+        searchPlaceholder="Нэр, и-мэйл, утасаар хайх..."
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setModalOpen(true)}>
-            Add Employee
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Tooltip title="Шинэчлэх">
+              <IconButton onClick={fetchEmployees} size="small">
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setModalOpen(true)}>
+              Ажилтан нэмэх
+            </Button>
+          </Box>
         }
       />
 
       <Modal
         open={modalOpen}
         onClose={handleCloseModal}
-        title={selectedEmployee ? 'Edit Employee' : 'Add New Employee'}
+        title={selectedEmployee ? 'Ажилтан засах' : 'Шинэ ажилтан нэмэх'}
         maxWidth="md"
       >
         <EmployeeForm
@@ -201,8 +238,8 @@ export default function EmployeesPage() {
           setSelectedEmployee(null);
         }}
         onConfirm={handleDelete}
-        title="Deactivate Employee"
-        message={`Are you sure you want to deactivate ${selectedEmployee?.name}? This will set their status to inactive.`}
+        title="Ажилтан идэвхгүй болгох"
+        message={`${selectedEmployee?.name}-ийг идэвхгүй болгох уу? Тухайн ажилтан системд нэвтрэх боломжгүй болно.`}
         danger
       />
     </Box>

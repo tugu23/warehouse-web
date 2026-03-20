@@ -134,7 +134,7 @@ export default function ProductBatchesPage() {
       id: 'product',
       label: 'Бараа',
       minWidth: 180,
-      format: (row: ProductBatch) => row.product?.nameEnglish || 'N/A',
+      format: (row: ProductBatch) => row.product?.nameMongolian || 'N/A',
     },
     {
       id: 'quantity',
@@ -163,12 +163,6 @@ export default function ProductBatchesPage() {
           </Box>
         );
       },
-    },
-    {
-      id: 'supplier',
-      label: 'Нийлүүлэгч',
-      minWidth: 150,
-      format: (row: ProductBatch) => row.supplier?.name || 'N/A',
     },
     ...(canManage()
       ? [

@@ -1,6 +1,5 @@
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
-import { Product } from '../types';
 
 export interface ReceiptEbarimtData {
   id: string;
@@ -10,6 +9,13 @@ export interface ReceiptEbarimtData {
   totalAmount: number;
   totalVAT: number;
   totalCityTax?: number;
+}
+
+export interface ReceiptProduct {
+  id: number;
+  name: string;
+  price: number;
+  barCode: string;
 }
 
 export interface ReceiptOrderItem {
@@ -25,7 +31,7 @@ export interface ReceiptCustomerInfo {
 export async function generateReceiptPDF(
   ebarimtData: ReceiptEbarimtData,
   orderItems: ReceiptOrderItem[],
-  products: Product[],
+  products: ReceiptProduct[],
   customerInfo?: ReceiptCustomerInfo,
   paymentMethod?: string
 ): Promise<void> {
@@ -44,12 +50,6 @@ export async function generateReceiptPDF(
     doc.setDrawColor(0);
     doc.setLineWidth(thickness);
     doc.line(10, yPos, width - 10, yPos);
-  };
-
-  const getProductPrice = (product: Product): number => {
-    const firstPrice = product.prices && product.prices.length > 0 ? product.prices[0] : undefined;
-    if (firstPrice) return Number(firstPrice.price);
-    return Number(product.priceRetail) || Number(product.priceWholesale) || 0;
   };
 
   // 1. Date
@@ -117,14 +117,12 @@ export async function generateReceiptPDF(
   orderItems.forEach((item, index) => {
     const product = products.find((p) => p.id === item.productId);
     if (product) {
-      const price = getProductPrice(product);
-      const name = product.nameEnglish || product.nameMongolian || `Product ${item.productId}`;
       doc.text(`${index + 1}`, 10, y);
-      doc.text(name.substring(0, 30), 20, y);
-      doc.text(product.barcode || '', 75, y);
+      doc.text(product.name.substring(0, 30), 20, y);
+      doc.text(product.barCode || '', 75, y);
       doc.text(`${item.quantity}`, 115, y, { align: 'center' });
-      doc.text(`${price.toLocaleString()}`, 145, y, { align: 'right' });
-      doc.text(`${(price * item.quantity).toLocaleString()}`, 185, y, { align: 'right' });
+      doc.text(`${product.price.toLocaleString()}`, 145, y, { align: 'right' });
+      doc.text(`${(product.price * item.quantity).toLocaleString()}`, 185, y, { align: 'right' });
       y += 8;
     }
   });
@@ -178,9 +176,7 @@ export async function generateReceiptPDF(
   y += 7;
   doc.setFont(boldFont, 'bold');
   doc.text('GRAND TOTAL:', totalX, y);
-  const grandTotal =
-    ebarimtData.totalAmount + ebarimtData.totalVAT + (ebarimtData.totalCityTax || 0);
-  doc.text(`${grandTotal.toLocaleString()}`, 185, y, { align: 'right' });
+  doc.text(`${ebarimtData.totalAmount.toLocaleString()}`, 185, y, { align: 'right' });
 
   y += 35;
 

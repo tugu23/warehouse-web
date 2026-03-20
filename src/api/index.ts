@@ -13,9 +13,6 @@ import {
   CreateProductBatchRequest,
   UpdateProductBatchRequest,
   MonthlyInventory,
-  Supplier,
-  CreateSupplierRequest,
-  UpdateSupplierRequest,
   Category,
   CreateCategoryRequest,
   UpdateCategoryRequest,
@@ -87,7 +84,6 @@ export const employeesApi = {
 export const productsApi = {
   getAll: (params?: {
     search?: string;
-    supplierId?: number;
     categoryId?: number;
     limit?: number | string;
     page?: number;
@@ -229,6 +225,25 @@ export const ordersApi = {
       throw error;
     }
   },
+  createEbarimtDirect: (data: {
+    customerId?: number;
+    items: { productId: number; quantity: number; unitPrice: number }[];
+    totalAmount: number;
+    paymentMethod?: string;
+    ebarimtBillId: string;
+    ebarimtDate: string;
+    ebarimtId?: string;
+  }) => api.post<ApiResponse<{ order: Order }>>('/api/orders/ebarimt-direct', data),
+  markEbarimt: (
+    id: number,
+    data: { ebarimtBillId: string; ebarimtDate: string; ebarimtId?: string; ebarimtType?: string }
+  ) => api.post<ApiResponse<void>>(`/api/orders/${id}/mark-ebarimt`, data),
+  ebarimtReturn: (id: number) =>
+    api.post<ApiResponse<{ ebarimtBillId: string; ebarimtDate: string; orderId: number }>>(
+      `/api/orders/${id}/ebarimt-return`
+    ),
+  ebarimtReturnDone: (id: number, returnId: string) =>
+    api.post<ApiResponse<void>>(`/api/orders/${id}/ebarimt-return-done`, { returnId }),
   downloadReceiptPDF: async (id: number, showVat: boolean = true) => {
     try {
       const response = await api.get(
@@ -337,18 +352,6 @@ export const categoriesApi = {
   delete: (id: number) => api.delete<ApiResponse<void>>(`/api/categories/${id}`),
 };
 
-// Suppliers API
-export const suppliersApi = {
-  getAll: (params?: { limit?: number; page?: number }) =>
-    api.get<ApiResponse<{ suppliers: Supplier[] }>>('/api/suppliers', { params }),
-  getById: (id: number) => api.get<ApiResponse<{ supplier: Supplier }>>(`/api/suppliers/${id}`),
-  create: (data: CreateSupplierRequest) =>
-    api.post<ApiResponse<{ supplier: Supplier }>>('/api/suppliers', data),
-  update: (id: number, data: UpdateSupplierRequest) =>
-    api.put<ApiResponse<{ supplier: Supplier }>>(`/api/suppliers/${id}`, data),
-  delete: (id: number) => api.delete<ApiResponse<void>>(`/api/suppliers/${id}`),
-};
-
 // e-Tax API
 export const etaxApi = {
   getOrganizationByRegno: (regno: string) =>
@@ -443,7 +446,7 @@ export const reportsApi = {
   }) => api.get<ApiResponse<SalesReportGrouped>>('/api/reports/sales/grouped', { params }),
   getCreditStatus: (params?: { customerId?: number; agentId?: number }) =>
     api.get<ApiResponse<CreditStatusReport>>('/api/reports/credit-status', { params }),
-  getInventoryReport: (params?: { categoryId?: number; supplierId?: number; lowStock?: boolean }) =>
+  getInventoryReport: (params?: { categoryId?: number; lowStock?: boolean }) =>
     api.get<ApiResponse<InventoryReportData>>('/api/reports/inventory', { params }),
   getDeliverySchedule: (params: {
     startDate: string;
@@ -468,9 +471,9 @@ export const reportsApi = {
   }) => api.get('/api/reports/orders/export', { params, responseType: 'blob' }),
   exportCustomers: (params?: { district?: string; customerTypeId?: number; agentId?: number }) =>
     api.get('/api/reports/customers/export', { params, responseType: 'blob' }),
-  exportProducts: (params?: { categoryId?: number; supplierId?: number }) =>
+  exportProducts: (params?: { categoryId?: number }) =>
     api.get('/api/reports/products/export', { params, responseType: 'blob' }),
-  exportInventory: (params?: { categoryId?: number; supplierId?: number; lowStock?: boolean }) =>
+  exportInventory: (params?: { categoryId?: number; lowStock?: boolean }) =>
     api.get('/api/reports/inventory/export', { params, responseType: 'blob' }),
 };
 
@@ -489,7 +492,6 @@ export default {
   workTasks: workTasksApi,
   salesTargets: salesTargetsApi,
   categories: categoriesApi,
-  suppliers: suppliersApi,
   deliveryPlans: deliveryPlansApi,
   reports: reportsApi,
   analytics: analyticsApi,

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Box, Button, Chip } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../hooks/useAuth';
 import { ordersApi } from '../../api';
-import { Order, CreateOrderRequest } from '../../types';
-import OrderForm from './OrderForm';
+import { Order } from '../../types';
+import OrderForm2 from './OrderForm2';
 import OrderDetailsModal from './OrderDetailsModal';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 import { formatDateTimeMN } from '../../utils/dateFormatter';
@@ -38,29 +38,6 @@ export default function OrdersPage() {
       console.error('Error fetching orders:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCreate = async (data: CreateOrderRequest): Promise<Order> => {
-    try {
-      // AFTER:
-      const response = await ordersApi.create(data);
-      const order = response.data?.data?.order;
-      if (!order) throw new Error('Order creation returned no data');
-      toast.success('Захиалга амжилттай үүслээ!');
-      setCreateModalOpen(false);
-      fetchOrders();
-      return order;
-    } catch (error) {
-      const err = error as Record<string, unknown>;
-      const response = err?.response as Record<string, unknown> | undefined;
-      console.error('Error creating order:', {
-        message: err?.message,
-        status: response?.status,
-        data: response?.data,
-        payload: data,
-      });
-      throw error;
     }
   };
 
@@ -151,24 +128,27 @@ export default function OrdersPage() {
         searchPlaceholder="Search orders..."
         onRowClick={handleRowClick}
         actions={
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setCreateModalOpen(true)}
-          >
-            Create Order
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={fetchOrders}
+              disabled={loading}
+            >
+              Шинэчлэх
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateModalOpen(true)}
+            >
+              Create Order
+            </Button>
+          </Box>
         }
       />
 
-      <Modal
-        open={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        title="Create New Order"
-        maxWidth="lg"
-      >
-        <OrderForm onSubmit={handleCreate} onCancel={() => setCreateModalOpen(false)} />
-      </Modal>
+      {createModalOpen && <OrderForm2 onClose={() => setCreateModalOpen(false)} />}
 
       <Modal
         open={detailsModalOpen}
@@ -181,6 +161,17 @@ export default function OrdersPage() {
           onUpdateStatus={handleUpdateStatus}
           canManage={canManage()}
           currentUserId={user?.id}
+          onRefresh={() => {
+            fetchOrders();
+            if (selectedOrder) {
+              ordersApi
+                .getById(selectedOrder.id)
+                .then((r) => {
+                  setSelectedOrder(r.data.data?.order || null);
+                })
+                .catch(() => {});
+            }
+          }}
         />
       </Modal>
     </Box>

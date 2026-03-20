@@ -17,11 +17,7 @@ const InventoryForecastPage = lazy(() => import('../features/analytics/Inventory
 const SalesByPeriodPage = lazy(() => import('../features/analytics/SalesByPeriodPage'));
 const CustomersPage = lazy(() => import('../features/customers/CustomersPage'));
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'));
-const ReturnsPage = lazy(() => import('../features/returns/ReturnsPage'));
 const EmployeesPage = lazy(() => import('../features/employees/EmployeesPage'));
-const EmployeeLocationTrackingPage = lazy(
-  () => import('../features/employees/EmployeeLocationTrackingPage')
-);
 const AgentsPage = lazy(() => import('../features/agents/AgentsPage'));
 const VisitPlansPage = lazy(() => import('../features/workplan/VisitPlansPage'));
 const WorkTasksPage = lazy(() => import('../features/workplan/WorkTasksPage'));
@@ -103,12 +99,7 @@ export default function AppRoutes() {
 
               {/* Manager and Admin only */}
               <Route element={<ProtectedRoute allowedRoles={['Admin', 'Manager']} />}>
-                <Route path="/returns" element={<ReturnsPage />} />
                 <Route path="/agents" element={<AgentsPage />} />
-                <Route
-                  path="/employees/location-tracking"
-                  element={<EmployeeLocationTrackingPage />}
-                />
               </Route>
 
               {/* Admin only */}

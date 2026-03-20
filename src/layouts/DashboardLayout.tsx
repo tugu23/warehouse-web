@@ -26,7 +26,6 @@ import {
   Inventory as InventoryIcon,
   People as PeopleIcon,
   ShoppingCart as ShoppingCartIcon,
-  AssignmentReturn as ReturnIcon,
   Group as GroupIcon,
   MyLocation as LocationIcon,
   Brightness4,
@@ -36,7 +35,6 @@ import {
   Event as EventIcon,
   Assessment as ReportIcon,
   Analytics as AnalyticsIcon,
-  Place as PlaceIcon,
   Receipt as ReceiptIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
@@ -81,12 +79,6 @@ const menuItems: MenuItem[] = [
   { text: 'Тайлан', icon: <ReportIcon />, path: '/reports/sales' },
   { text: 'Ажилчид', icon: <GroupIcon />, path: '/employees', roles: ['Admin'] },
   { text: 'Агент хяналт', icon: <LocationIcon />, path: '/agents', roles: ['Admin', 'Manager'] },
-  {
-    text: 'Байршил хяналт',
-    icon: <PlaceIcon />,
-    path: '/employees/location-tracking',
-    roles: ['Admin', 'Manager'],
-  },
   {
     text: 'И-Баримт',
     icon: <ReceiptIcon />,

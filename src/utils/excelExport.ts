@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
-import { Product, Customer, Order, Return, ProductBatch, MonthlyInventory } from '../types';
+import { Product, Customer, Order, ProductBatch, MonthlyInventory } from '../types';
 
 /**
  * Common Excel export utility functions
@@ -175,43 +175,6 @@ export const exportOrdersToExcel = async (orders: Order[]) => {
 
   autoFitColumns(worksheet);
   await downloadExcel(workbook, 'orders');
-};
-
-/**
- * Export Returns to Excel
- */
-export const exportReturnsToExcel = async (returns: Return[]) => {
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Буцаалт');
-
-  worksheet.columns = [
-    { header: 'ID', key: 'id', width: 8 },
-    { header: 'Захиалгын дугаар', key: 'orderId', width: 15 },
-    { header: 'Бараа', key: 'product', width: 25 },
-    { header: 'Тоо ширхэг', key: 'quantity', width: 12 },
-    { header: 'Шалтгаан', key: 'reason', width: 30 },
-    { header: 'Үүсгэсэн', key: 'createdBy', width: 20 },
-    { header: 'Огноо', key: 'createdAt', width: 20 },
-  ];
-
-  worksheet.getRow(1).eachCell((cell) => {
-    cell.style = headerStyle;
-  });
-
-  returns.forEach((returnItem) => {
-    worksheet.addRow({
-      id: returnItem.id,
-      orderId: returnItem.orderId,
-      product: returnItem.product?.nameMongolian || 'N/A',
-      quantity: returnItem.quantity,
-      reason: returnItem.reason,
-      createdBy: returnItem.createdBy?.name || 'N/A',
-      createdAt: format(new Date(returnItem.createdAt), 'yyyy-MM-dd HH:mm'),
-    });
-  });
-
-  autoFitColumns(worksheet);
-  await downloadExcel(workbook, 'returns');
 };
 
 /**

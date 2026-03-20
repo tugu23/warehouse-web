@@ -89,17 +89,6 @@ export const orderSchema = z
     }
   );
 
-export const returnSchema = z.object({
-  orderId: z.number().min(1, 'Order is required'),
-  productId: z.number().min(1, 'Product is required'),
-  quantity: z.number().min(1, 'Quantity must be at least 1'),
-  reason: z.string().min(5, 'Reason must be at least 5 characters'),
-  customerId: z.number().optional(),
-  unitPrice: z.number().min(0, 'Unit price must be non-negative').optional(),
-  expiryDate: z.string().optional(),
-  notes: z.string().optional(),
-});
-
 export const inventoryAdjustmentSchema = z.object({
   productId: z.number().min(1, 'Product is required'),
   adjustment: z.number().refine((val) => val !== 0, 'Adjustment cannot be zero'),

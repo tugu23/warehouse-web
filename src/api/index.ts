@@ -61,6 +61,13 @@ import {
   ProductPrice,
   CreateProductPriceRequest,
   UpdateProductPriceRequest,
+  AgentKpiSummaryData,
+  AgentKpiProductRow,
+  AgentKpiMultiAgentRow,
+  AgentKpiTarget,
+  CreateAgentKpiTargetRequest,
+  UpdateAgentKpiTargetRequest,
+  AgentKpiGranularity,
 } from '../types';
 
 // Authentication API
@@ -478,6 +485,33 @@ export const reportsApi = {
     api.get('/api/reports/inventory/export', { params, responseType: 'blob' }),
 };
 
+export const agentKpiApi = {
+  getSummary: (params: {
+    from: string;
+    to: string;
+    agentId?: number;
+    granularity?: AgentKpiGranularity;
+  }) => api.get<ApiResponse<AgentKpiSummaryData>>('/api/agent-kpi/summary', { params }),
+  getByProduct: (params: { from: string; to: string; agentId?: number }) =>
+    api.get<ApiResponse<{ products: AgentKpiProductRow[] }>>('/api/agent-kpi/by-product', {
+      params,
+    }),
+  getMultiAgentDaily: (params: { date: string }) =>
+    api.get<ApiResponse<{ date: string; agents: AgentKpiMultiAgentRow[] }>>(
+      '/api/agent-kpi/multi-agent-daily',
+      { params }
+    ),
+  getTargets: (employeeId: number) =>
+    api.get<ApiResponse<{ targets: AgentKpiTarget[] }>>('/api/agent-kpi/targets', {
+      params: { employeeId },
+    }),
+  createTarget: (data: CreateAgentKpiTargetRequest) =>
+    api.post<ApiResponse<{ target: AgentKpiTarget }>>('/api/agent-kpi/targets', data),
+  updateTarget: (id: number, data: UpdateAgentKpiTargetRequest) =>
+    api.patch<ApiResponse<{ target: AgentKpiTarget }>>(`/api/agent-kpi/targets/${id}`, data),
+  deleteTarget: (id: number) => api.delete<ApiResponse<null>>(`/api/agent-kpi/targets/${id}`),
+};
+
 import { ebarimtApi } from './ebarimtApi';
 
 export default {
@@ -498,4 +532,5 @@ export default {
   analytics: analyticsApi,
   etax: etaxApi,
   ebarimt: ebarimtApi,
+  agentKpi: agentKpiApi,
 };

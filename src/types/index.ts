@@ -3,7 +3,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'Admin' | 'Manager' | 'SalesAgent';
+  role: 'Admin' | 'Manager' | 'SalesAgent' | 'MarketSalesperson' | 'StoreSalesperson';
   phoneNumber?: string;
   isActive?: boolean;
 }
@@ -29,7 +29,7 @@ export interface Employee {
   phoneNumber: string;
   role: {
     id: number;
-    name: 'Admin' | 'Manager' | 'SalesAgent';
+    name: 'Admin' | 'Manager' | 'SalesAgent' | 'MarketSalesperson' | 'StoreSalesperson';
   };
   isActive: boolean;
   createdAt: string;
@@ -40,13 +40,13 @@ export interface CreateEmployeeRequest {
   email: string;
   phoneNumber: string;
   password: string;
-  roleName: 'Admin' | 'Manager' | 'SalesAgent';
+  roleName: 'Admin' | 'Manager' | 'SalesAgent' | 'MarketSalesperson' | 'StoreSalesperson';
 }
 
 export interface UpdateEmployeeRequest {
   name?: string;
   phoneNumber?: string;
-  roleName?: 'Admin' | 'Manager' | 'SalesAgent';
+  roleName?: 'Admin' | 'Manager' | 'SalesAgent' | 'MarketSalesperson' | 'StoreSalesperson';
   isActive?: boolean;
 }
 
@@ -833,4 +833,76 @@ export interface CreateProductPriceRequest {
 export interface UpdateProductPriceRequest {
   price?: number;
   customerTypeId?: number;
+}
+
+// Agent KPI
+export type AgentKpiGranularity = 'day' | 'month' | 'year';
+
+export interface AgentKpiSummaryRow {
+  bucket: string;
+  bucketDate: string;
+  actualAmount: number;
+  actualBoxes: number;
+  actualUnits: number;
+  targetAmount: number | null;
+  targetBoxQty: number | null;
+  achievementPercent: number | null;
+  runningAvgPercent: number | null;
+}
+
+export interface AgentKpiSummaryData {
+  timezone: string;
+  granularity: AgentKpiGranularity;
+  agentId: number;
+  from: string;
+  to: string;
+  rows: AgentKpiSummaryRow[];
+  totals: {
+    sumActualAmount: number;
+    sumTargetAmount: number;
+    sumActualBoxes: number;
+    sumTargetBoxQty: number | null;
+    overallAchievementPercent: number | null;
+  };
+}
+
+export interface AgentKpiProductRow {
+  productId: number;
+  productName: string;
+  categoryName: string | null;
+  units: number;
+  boxes: number;
+  amount: number;
+}
+
+export interface AgentKpiMultiAgentRow {
+  agentId: number;
+  agentName: string;
+  amount: number;
+  boxes: number;
+  units: number;
+}
+
+export interface AgentKpiTarget {
+  id: number;
+  employeeId: number;
+  periodType: 'DAY' | 'MONTH' | 'YEAR';
+  periodStart: string;
+  targetAmount: string;
+  targetBoxQty: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAgentKpiTargetRequest {
+  employeeId: number;
+  periodType: 'DAY' | 'MONTH' | 'YEAR';
+  periodStart: string;
+  targetAmount: string | number;
+  targetBoxQty?: string | number | null;
+}
+
+export interface UpdateAgentKpiTargetRequest {
+  targetAmount?: string | number;
+  targetBoxQty?: string | number | null;
 }

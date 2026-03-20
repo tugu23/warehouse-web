@@ -70,8 +70,27 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
     }
   }, [employee, reset]);
 
+  const submitAdapter = async (data: EmployeeFormData) => {
+    if (employee) {
+      await onSubmit({
+        name: data.name,
+        phoneNumber: data.phoneNumber,
+        roleName: data.roleName,
+      });
+      return;
+    }
+    if (!data.password) return;
+    await onSubmit({
+      name: data.name,
+      email: data.email,
+      phoneNumber: data.phoneNumber,
+      password: data.password,
+      roleName: data.roleName,
+    });
+  };
+
   return (
-    <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+    <Box component="form" onSubmit={handleSubmit(submitAdapter)}>
       {employee && (
         <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="body2" color="text.secondary">

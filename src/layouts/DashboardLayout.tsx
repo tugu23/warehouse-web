@@ -36,6 +36,7 @@ import {
   Assessment as ReportIcon,
   Analytics as AnalyticsIcon,
   Receipt as ReceiptIcon,
+  AssignmentReturn as ReturnIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../config/ThemeProvider';
@@ -77,6 +78,12 @@ const menuItems: MenuItem[] = [
   { text: 'Буцаалт', icon: <ReturnIcon />, path: '/returns', roles: ['Admin', 'Manager'] },
   { text: 'Ажлын төлөвлөгөө', icon: <EventIcon />, path: '/work-plans/visits' },
   { text: 'Тайлан', icon: <ReportIcon />, path: '/reports/sales' },
+  {
+    text: 'Агент KPI',
+    icon: <ReportIcon />,
+    path: '/reports/agent-kpi',
+    roles: ['Admin', 'Manager', 'SalesAgent', 'MarketSalesperson', 'StoreSalesperson'],
+  },
   { text: 'Ажилчид', icon: <GroupIcon />, path: '/employees', roles: ['Admin'] },
   { text: 'Агент хяналт', icon: <LocationIcon />, path: '/agents', roles: ['Admin', 'Manager'] },
   {

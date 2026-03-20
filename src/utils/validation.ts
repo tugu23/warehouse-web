@@ -10,7 +10,7 @@ export const employeeSchema = z.object({
   email: z.string().email('Invalid email address'),
   phoneNumber: z.string().min(8, 'Phone number must be at least 8 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters').optional(),
-  roleName: z.enum(['Admin', 'Manager', 'SalesAgent']),
+  roleName: z.enum(['Admin', 'Manager', 'SalesAgent', 'MarketSalesperson', 'StoreSalesperson']),
 });
 
 export const productSchema = z.object({

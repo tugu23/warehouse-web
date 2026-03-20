@@ -25,6 +25,7 @@ const SalesTargetsPage = lazy(() => import('../features/workplan/SalesTargetsPag
 const PosIntegrationPage = lazy(() => import('../features/pos/PosIntegrationPage'));
 const EBarimtPage = lazy(() => import('../features/pos/EBarimtPage'));
 const SalesReportPage = lazy(() => import('../features/reports/SalesReportPage'));
+const AgentKpiPage = lazy(() => import('../features/reports/AgentKpiPage'));
 const CreditStatusReportPage = lazy(() => import('../features/reports/CreditStatusReportPage'));
 const CategoriesPage = lazy(() => import('../features/categories/CategoriesPage'));
 const DeliveryPlansPage = lazy(() => import('../features/delivery/DeliveryPlansPage'));
@@ -88,6 +89,21 @@ export default function AppRoutes() {
               {/* Reports */}
               <Route path="/reports/sales" element={<SalesReportPage />} />
               <Route path="/reports/credit-status" element={<CreditStatusReportPage />} />
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      'Admin',
+                      'Manager',
+                      'SalesAgent',
+                      'MarketSalesperson',
+                      'StoreSalesperson',
+                    ]}
+                  />
+                }
+              >
+                <Route path="/reports/agent-kpi" element={<AgentKpiPage />} />
+              </Route>
 
               {/* PosAPI Integration */}
               <Route path="/pos-integration" element={<PosIntegrationPage />} />

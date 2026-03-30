@@ -10,7 +10,7 @@ import { RobotoRegular } from '../../fonts/Roboto-Regular';
 import { RobotoBold } from '../../fonts/Roboto-Bold';
 
 const COMPANY = {
-  name: 'GLF LLC OASIS Боонь тов',
+  name: 'GLF LLC OASIS Бөөний төв',
   address: 'Монгол, Улаанбаатар, Сүхбаатар дүүрэг, 6-р хороо, 27-49',
   phones: '70121128, 88048350, 89741277',
   tin: '5317878',

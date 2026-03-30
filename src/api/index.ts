@@ -9,9 +9,6 @@ import {
   CreateProductRequest,
   UpdateProductRequest,
   InventoryAdjustmentRequest,
-  ProductBatch,
-  CreateProductBatchRequest,
-  UpdateProductBatchRequest,
   MonthlyInventory,
   Category,
   CreateCategoryRequest,
@@ -108,14 +105,6 @@ export const productsApi = {
     api.put<ApiResponse<{ product: Product }>>(`/api/products/${id}`, data),
   adjustInventory: (data: InventoryAdjustmentRequest) =>
     api.post<ApiResponse<{ product: Product }>>('/api/products/inventory/adjust', data),
-  // Batch management
-  getBatches: (productId: number) =>
-    api.get<ApiResponse<{ batches: ProductBatch[] }>>(`/api/products/${productId}/batches`),
-  createBatch: (data: CreateProductBatchRequest) =>
-    api.post<ApiResponse<{ batch: ProductBatch }>>(`/api/products/${data.productId}/batches`, data),
-  updateBatch: (id: number, data: UpdateProductBatchRequest) =>
-    api.put<ApiResponse<{ batch: ProductBatch }>>(`/api/products/batches/${id}`, data),
-  deleteBatch: (id: number) => api.delete<ApiResponse<void>>(`/api/products/batches/${id}`),
   getMonthlyInventory: (month: string) =>
     api.get<ApiResponse<{ inventory: MonthlyInventory[] }>>('/api/products/inventory/monthly', {
       params: { month },

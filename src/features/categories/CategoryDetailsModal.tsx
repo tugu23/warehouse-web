@@ -43,9 +43,20 @@ export default function CategoryDetailsModal({
                   {category.nameMongolian}
                 </Typography>
               </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="caption" color="text.secondary">
+                  БҮНА код (И-Баримт)
+                </Typography>
+                <Typography
+                  variant="body1"
+                  fontWeight={category.classificationCode ? 'bold' : 'normal'}
+                >
+                  {category.classificationCode || '—'}
+                </Typography>
+              </Grid>
               <Grid size={12}>
                 <Typography variant="caption" color="text.secondary">
-                  Description
+                  Тайлбар
                 </Typography>
                 <Typography variant="body1">{category.description || '-'}</Typography>
               </Grid>

@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
-import { Product, Customer, Order, ProductBatch, MonthlyInventory } from '../types';
+import { Product, Customer, Order, MonthlyInventory } from '../types';
 
 /**
  * Common Excel export utility functions
@@ -175,43 +175,6 @@ export const exportOrdersToExcel = async (orders: Order[]) => {
 
   autoFitColumns(worksheet);
   await downloadExcel(workbook, 'orders');
-};
-
-/**
- * Export Product Batches to Excel
- */
-export const exportProductBatchesToExcel = async (batches: ProductBatch[]) => {
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Барааны багц');
-
-  worksheet.columns = [
-    { header: 'Багцын дугаар', key: 'batchNumber', width: 15 },
-    { header: 'Бараа', key: 'product', width: 25 },
-    { header: 'Тоо ширхэг', key: 'quantity', width: 12 },
-    { header: 'Ирсэн огноо', key: 'receivedDate', width: 15 },
-    { header: 'Дуусах хугацаа', key: 'expiryDate', width: 15 },
-    { header: 'Бөөний үнэ', key: 'priceWholesale', width: 15 },
-    { header: 'Жижиглэн үнэ', key: 'priceRetail', width: 15 },
-  ];
-
-  worksheet.getRow(1).eachCell((cell) => {
-    cell.style = headerStyle;
-  });
-
-  batches.forEach((batch) => {
-    worksheet.addRow({
-      batchNumber: batch.batchNumber,
-      product: batch.product?.nameMongolian || 'N/A',
-      quantity: batch.quantity,
-      receivedDate: format(new Date(batch.receivedDate), 'yyyy-MM-dd'),
-      expiryDate: format(new Date(batch.expiryDate), 'yyyy-MM-dd'),
-      priceWholesale: batch.priceWholesale,
-      priceRetail: batch.priceRetail,
-    });
-  });
-
-  autoFitColumns(worksheet);
-  await downloadExcel(workbook, 'product_batches');
 };
 
 /**

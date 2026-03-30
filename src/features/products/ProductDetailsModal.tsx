@@ -8,29 +8,14 @@ import {
   Grid,
   Stack,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
 } from '@mui/material';
-import {
-  Edit as EditIcon,
-  Inventory2 as InventoryIcon,
-  AttachMoney as MoneyIcon,
-} from '@mui/icons-material';
+import { Edit as EditIcon, Inventory2 as InventoryIcon } from '@mui/icons-material';
 import { Product } from '../../types';
-import ExpiryBadge from '../../components/ExpiryBadge';
-import PriceList from '../../components/PriceList';
-import { formatExpiryDate } from '../../utils/expiry.utils';
 
 interface ProductDetailsModalProps {
   product: Product | null;
   onEdit: () => void;
   onManageInventory: () => void;
-  onManagePrices: () => void;
   canManage: boolean;
 }
 
@@ -38,7 +23,6 @@ export default function ProductDetailsModal({
   product,
   onEdit,
   onManageInventory,
-  onManagePrices,
   canManage,
 }: ProductDetailsModalProps) {
   if (!product) return null;
@@ -46,23 +30,23 @@ export default function ProductDetailsModal({
   return (
     <Box>
       <Stack spacing={3}>
-        {/* Basic Information */}
+        {/* Үндсэн мэдээлэл */}
         <Card variant="outlined">
           <CardContent>
             <Typography variant="h6" gutterBottom color="primary">
-              Basic Information
+              Үндсэн мэдээлэл
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Product Code
+                  Бараа код
                 </Typography>
                 <Typography variant="body1">{product.productCode || '-'}</Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Barcode
+                  Бар код
                 </Typography>
                 <Typography variant="body1">{product.barcode || '-'}</Typography>
               </Grid>
@@ -80,11 +64,11 @@ export default function ProductDetailsModal({
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Status
+                  Төлөв
                 </Typography>
                 <Box sx={{ mt: 0.5 }}>
                   <Chip
-                    label={product.isActive ? 'Active' : 'Inactive'}
+                    label={product.isActive ? 'Идэвхтэй' : 'Идэвхгүй'}
                     color={product.isActive ? 'success' : 'default'}
                     size="small"
                   />
@@ -94,17 +78,17 @@ export default function ProductDetailsModal({
           </CardContent>
         </Card>
 
-        {/* Inventory Information */}
+        {/* Агуулахын мэдээлэл */}
         <Card variant="outlined">
           <CardContent>
             <Typography variant="h6" gutterBottom color="primary">
-              Inventory Information
+              Агуулахын мэдээлэл
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Stock Quantity
+                  Үлдэгдэл
                 </Typography>
                 <Box sx={{ mt: 1 }}>
                   <Chip
@@ -122,101 +106,41 @@ export default function ProductDetailsModal({
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Units Per Box
+                  Хайрцагт ширхэг
                 </Typography>
                 <Typography variant="body1">{product.unitsPerBox || '-'}</Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Net Weight
+                  Цэвэр жин
                 </Typography>
                 <Typography variant="body1">
-                  {product.netWeight ? `${product.netWeight} kg` : '-'}
+                  {product.netWeight ? `${product.netWeight} кг` : '-'}
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Gross Weight
+                  Бохир жин
                 </Typography>
                 <Typography variant="body1">
-                  {product.grossWeight ? `${product.grossWeight} kg` : '-'}
+                  {product.grossWeight ? `${product.grossWeight} кг` : '-'}
                 </Typography>
               </Grid>
             </Grid>
           </CardContent>
         </Card>
 
-        {/* Price Information */}
-        {product.prices && product.prices.length > 0 && <PriceList prices={product.prices} />}
-
-        {/* Batch Information */}
-        {product.batches && product.batches.length > 0 && (
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="h6" gutterBottom color="primary">
-                Багцын мэдээлэл
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Багцын дугаар</TableCell>
-                      <TableCell align="center">Тоо ширхэг</TableCell>
-                      <TableCell>Ирсэн огноо</TableCell>
-                      <TableCell>Дуусах огноо</TableCell>
-                      <TableCell>Статус</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {product.batches.map((batch) => (
-                      <TableRow key={batch.id}>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="medium">
-                            {batch.batchNumber}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip label={batch.quantity} size="small" color="primary" />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {formatExpiryDate(batch.receivedDate)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {formatExpiryDate(batch.expiryDate)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <ExpiryBadge batch={batch} showDate={false} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Нийт {product.batches.length} багц бүртгэлтэй
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Pricing Information */}
+        {/* Үнийн мэдээлэл */}
         <Card variant="outlined">
           <CardContent>
             <Typography variant="h6" gutterBottom color="primary">
-              Pricing Information
+              💰 Үнийн мэдээлэл
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Wholesale Price
+                  Бөөний үнэ
                 </Typography>
                 <Typography variant="h6" color="primary">
                   ₮{Number(product.priceWholesale).toLocaleString()}
@@ -224,30 +148,32 @@ export default function ProductDetailsModal({
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Retail Price
+                  Жижиглэн үнэ
                 </Typography>
                 <Typography variant="h6" color="secondary">
                   ₮{Number(product.priceRetail).toLocaleString()}
                 </Typography>
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Price Per Box
-                </Typography>
-                <Typography variant="h6" color="text.secondary">
-                  ₮{product.pricePerBox ? Number(product.pricePerBox).toLocaleString() : '-'}
-                </Typography>
-              </Grid>
+              {product.pricePerBox && (
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Хайрцагны үнэ
+                  </Typography>
+                  <Typography variant="h6" color="text.secondary">
+                    ₮{Number(product.pricePerBox).toLocaleString()}
+                  </Typography>
+                </Grid>
+              )}
             </Grid>
           </CardContent>
         </Card>
 
-        {/* Actions */}
+        {/* Үйлдлүүд */}
         {canManage && (
           <Card variant="outlined" sx={{ bgcolor: 'action.hover' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom color="primary">
-                Actions
+                Үйлдлүүд
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Stack direction="row" spacing={2} flexWrap="wrap">
@@ -257,7 +183,7 @@ export default function ProductDetailsModal({
                   startIcon={<EditIcon />}
                   onClick={onEdit}
                 >
-                  Edit Product
+                  Засах
                 </Button>
                 <Button
                   variant="contained"
@@ -265,15 +191,7 @@ export default function ProductDetailsModal({
                   startIcon={<InventoryIcon />}
                   onClick={onManageInventory}
                 >
-                  Adjust Inventory
-                </Button>
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={<MoneyIcon />}
-                  onClick={onManagePrices}
-                >
-                  Manage Prices
+                  Үлдэгдэл засах
                 </Button>
               </Stack>
             </CardContent>

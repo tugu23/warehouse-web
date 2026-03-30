@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Chip, Badge, Typography, Tooltip, IconButton } from '@mui/material';
+import { Box, Button, Chip, Typography, Tooltip, IconButton } from '@mui/material';
 import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
@@ -10,9 +10,6 @@ import { Product, CreateProductRequest, UpdateProductRequest } from '../../types
 import ProductForm from './ProductForm';
 import ProductDetailsModal from './ProductDetailsModal';
 import InventoryAdjustmentForm from './InventoryAdjustmentForm';
-import PriceManagement from './PriceManagement';
-import ExpiryBadge from '../../components/ExpiryBadge';
-import PriceBadge from '../../components/PriceBadge';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 
 export default function ProductsPage() {
@@ -22,7 +19,6 @@ export default function ProductsPage() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
-  const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -34,7 +30,7 @@ export default function ProductsPage() {
     try {
       const response = await productsApi.getAll({
         limit: 'all',
-        include: 'category,batches,prices',
+        include: 'category',
       });
       setProducts(response.data.data?.products || []);
     } catch (error) {
@@ -81,11 +77,6 @@ export default function ProductsPage() {
     setInventoryModalOpen(true);
   };
 
-  const handleOpenPrices = () => {
-    setDetailsModalOpen(false);
-    setPriceModalOpen(true);
-  };
-
   const handleCloseDetailsModal = () => {
     setDetailsModalOpen(false);
     setSelectedProduct(null);
@@ -103,34 +94,15 @@ export default function ProductsPage() {
     setDetailsModalOpen(true);
   };
 
-  const handleClosePriceModal = () => {
-    setPriceModalOpen(false);
-    setDetailsModalOpen(true);
-  };
-
-  const getDisplayBatch = (batches: Product['batches']) => {
-    if (!batches || batches.length === 0) return undefined;
-    const now = new Date();
-    const nonExpired = batches.filter((b) => !b.expiryDate || new Date(b.expiryDate) >= now);
-    return nonExpired.length > 0 ? nonExpired[0] : batches[0];
-  };
-
   const columns = [
     {
       id: 'nameMongolian',
       label: 'Нэр',
       minWidth: 150,
       format: (row: Product) => (
-        <Box>
-          <Typography variant="body2" fontWeight="medium">
-            {row.nameMongolian}
-          </Typography>
-          {row.batches && row.batches.length > 0 && (
-            <Box sx={{ mt: 0.5 }}>
-              <ExpiryBadge batch={getDisplayBatch(row.batches)} />
-            </Box>
-          )}
-        </Box>
+        <Typography variant="body2" fontWeight="medium">
+          {row.nameMongolian}
+        </Typography>
       ),
     },
     {
@@ -141,53 +113,15 @@ export default function ProductsPage() {
     },
     {
       id: 'stockQuantity',
-      label: 'Stock',
+      label: 'Үлдэгдэл',
       align: 'center' as const,
       format: (row: Product) => (
-        <Box>
-          <Chip
-            label={row.stockQuantity}
-            color={
-              row.stockQuantity < 10 ? 'error' : row.stockQuantity < 20 ? 'warning' : 'success'
-            }
-            size="small"
-          />
-          {row.batches && row.batches.length > 0 && (
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-              {row.batches.length} багц
-            </Typography>
-          )}
-        </Box>
+        <Chip
+          label={row.stockQuantity}
+          color={row.stockQuantity < 10 ? 'error' : row.stockQuantity < 20 ? 'warning' : 'success'}
+          size="small"
+        />
       ),
-    },
-    {
-      id: 'expiryStatus',
-      label: 'Хугацаа',
-      align: 'center' as const,
-      format: (row: Product) => {
-        if (!row.batches || row.batches.length === 0) {
-          return (
-            <Typography variant="caption" color="text.secondary">
-              Багц байхгүй
-            </Typography>
-          );
-        }
-        const displayBatch = getDisplayBatch(row.batches);
-        if (row.batches.length === 1) {
-          return <ExpiryBadge batch={displayBatch} showDate={false} />;
-        }
-        return (
-          <Badge badgeContent={row.batches.length} color="primary">
-            <ExpiryBadge batch={displayBatch} showDate={false} />
-          </Badge>
-        );
-      },
-    },
-    {
-      id: 'prices',
-      label: 'Үнэ',
-      align: 'center' as const,
-      format: (row: Product) => <PriceBadge prices={row.prices} />,
     },
     {
       id: 'priceWholesale',
@@ -255,7 +189,6 @@ export default function ProductsPage() {
           product={selectedProduct}
           onEdit={handleOpenEdit}
           onManageInventory={handleOpenInventory}
-          onManagePrices={handleOpenPrices}
           canManage={canManage()}
         />
       </Modal>
@@ -289,23 +222,6 @@ export default function ProductsPage() {
           }}
           onCancel={handleCloseInventoryModal}
         />
-      </Modal>
-
-      {/* Price Modal */}
-      <Modal
-        open={priceModalOpen}
-        onClose={handleClosePriceModal}
-        title={`Үнэ удирдах: ${selectedProduct?.nameMongolian}`}
-        maxWidth="md"
-      >
-        {selectedProduct && (
-          <PriceManagement
-            productId={selectedProduct.id}
-            onUpdate={() => {
-              fetchProducts();
-            }}
-          />
-        )}
       </Modal>
     </Box>
   );

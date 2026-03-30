@@ -8,7 +8,6 @@ import DashboardLayout from '../layouts/DashboardLayout';
 const LoginPage = lazy(() => import('../features/auth/LoginPage'));
 const DashboardPage = lazy(() => import('../features/dashboard/DashboardPage'));
 const ProductsPage = lazy(() => import('../features/products/ProductsPage'));
-const ProductBatchesPage = lazy(() => import('../features/products/ProductBatchesPage'));
 const MonthlyInventoryPage = lazy(() => import('../features/products/MonthlyInventoryPage'));
 const CustomersPage = lazy(() => import('../features/customers/CustomersPage'));
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'));
@@ -56,7 +55,6 @@ export default function AppRoutes() {
 
               {/* Products & Inventory */}
               <Route path="/products" element={<ProductsPage />} />
-              <Route path="/products/batches" element={<ProductBatchesPage />} />
               <Route path="/products/inventory/monthly" element={<MonthlyInventoryPage />} />
 
               {/* Categories */}

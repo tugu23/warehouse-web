@@ -17,7 +17,6 @@ export const productSchema = z.object({
   nameMongolian: z.string().min(1, 'Монгол нэр оруулна уу'),
   productCode: z.string().optional(),
   barcode: z.string().optional(),
-  classificationCode: z.string().optional(),
   categoryId: z.number().optional(),
   stockQuantity: z.number().min(0, 'Үлдэгдэл тоо хэрхэн байна').int('Бүхэл тоо оруулна уу'),
   unitsPerBox: z.number().min(1, 'Хамгийн багадаа 1 байх ёстой').optional(),

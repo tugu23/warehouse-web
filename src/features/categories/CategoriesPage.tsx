@@ -59,7 +59,7 @@ export default function CategoriesPage() {
 
   const handleAdd = () => {
     setSelectedCategory(null);
-    reset({ nameMongolian: '', description: '' });
+    reset({ nameMongolian: '', description: '', classificationCode: '' });
     setFormOpen(true);
   };
 
@@ -73,6 +73,7 @@ export default function CategoriesPage() {
     reset({
       nameMongolian: category.nameMongolian,
       description: category.description || '',
+      classificationCode: category.classificationCode || '',
     });
     setDetailsModalOpen(true);
   };
@@ -113,19 +114,20 @@ export default function CategoriesPage() {
             <TableRow>
               <TableCell>ID</TableCell>
               <TableCell>Нэр (Монгол)</TableCell>
+              <TableCell>БҮНА код</TableCell>
               <TableCell>Тайлбар</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={3} align="center">
+                <TableCell colSpan={4} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : categories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} align="center">
+                <TableCell colSpan={4} align="center">
                   No categories found
                 </TableCell>
               </TableRow>
@@ -143,6 +145,7 @@ export default function CategoriesPage() {
                 >
                   <TableCell>{category.id}</TableCell>
                   <TableCell>{category.nameMongolian}</TableCell>
+                  <TableCell>{category.classificationCode || '-'}</TableCell>
                   <TableCell>{category.description || '-'}</TableCell>
                 </TableRow>
               ))
@@ -171,19 +174,30 @@ export default function CategoriesPage() {
       {/* Category Form Dialog */}
       <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle>{selectedCategory ? 'Edit Category' : 'Add Category'}</DialogTitle>
+          <DialogTitle>{selectedCategory ? 'Ангилал засах' : 'Ангилал нэмэх'}</DialogTitle>
           <DialogContent>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
               <TextField
-                label="Mongolian Name"
-                {...register('nameMongolian', { required: 'This field is required' })}
+                label="Нэр (Монгол)"
+                {...register('nameMongolian', { required: 'Нэр оруулна уу' })}
                 error={!!errors.nameMongolian}
                 helperText={errors.nameMongolian?.message}
                 fullWidth
                 required
               />
               <TextField
-                label="Description"
+                label="БҮНА код (И-Баримт)"
+                {...register('classificationCode')}
+                error={!!errors.classificationCode}
+                helperText={
+                  errors.classificationCode?.message ||
+                  'Бараа үйлчилгээний нэгдсэн ангиллын код — И-Баримтад хэрэглэгдэнэ'
+                }
+                fullWidth
+                placeholder="жишээ: 6116120"
+              />
+              <TextField
+                label="Тайлбар"
                 {...register('description')}
                 error={!!errors.description}
                 helperText={errors.description?.message}

@@ -42,7 +42,6 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
       nameMongolian: '',
       productCode: '',
       barcode: '',
-      classificationCode: '',
       categoryId: undefined,
       stockQuantity: 0,
       unitsPerBox: 1,
@@ -56,8 +55,6 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
   });
 
   const barcodeValue = watch('barcode');
-  const classificationCodeValue = watch('classificationCode');
-  const showEbarimtWarning = !barcodeValue?.trim() && !classificationCodeValue?.trim();
 
   // Fetch categories on mount
   useEffect(() => {
@@ -78,7 +75,6 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
         nameMongolian: product.nameMongolian,
         productCode: product.productCode,
         barcode: product.barcode || '',
-        classificationCode: product.classificationCode || '',
         categoryId: product.categoryId || undefined,
         stockQuantity: product.stockQuantity,
         unitsPerBox: product.unitsPerBox || 1,
@@ -169,29 +165,11 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           )}
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <Controller
-            name="classificationCode"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="БҮНА код (Classification Code)"
-                fullWidth
-                error={!!errors.classificationCode}
-                helperText={
-                  errors.classificationCode?.message || 'Бараа, үйлчилгээний нэгдсэн ангиллын код'
-                }
-              />
-            )}
-          />
-        </Grid>
-
-        {showEbarimtWarning && (
+        {!barcodeValue?.trim() && (
           <Grid size={12}>
-            <Alert severity="warning">
-              И-Баримт бүртгэхэд barcode эсвэл БҮНА код аль нэг нь заавал шаардлагатай. Аль нэгийг
-              бөглөнө үү.
+            <Alert severity="info">
+              И-Баримт бүртгэхэд barcode эсвэл БҮНА код шаардлагатай. БҮНА кодыг барааны{' '}
+              <strong>ангиллын тохиргоо</strong>-оос оруулна уу.
             </Alert>
           </Grid>
         )}

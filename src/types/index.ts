@@ -67,7 +67,6 @@ export interface Product {
   priceRetail: string | number;
   pricePerBox?: number; // Хайрцагны үнэ
   isActive?: boolean; // Идэвхтэй эсэх
-  batches?: ProductBatch[]; // Багцуудын жагсаалт
   prices?: ProductPrice[]; // Үнийн жагсаалт
   createdAt?: string;
   updatedAt?: string;
@@ -111,49 +110,6 @@ export interface InventoryAdjustmentRequest {
   reason: string;
 }
 
-// Product Batch Types
-export interface ProductBatch {
-  id: number;
-  productId: number;
-  product?: Product;
-  batchNumber: string;
-  quantity: number;
-  receivedDate: string;
-  expiryDate: string;
-  priceWholesale: number;
-  priceRetail: number;
-  createdAt?: string;
-}
-
-export type ExpiryStatus = 'expired' | 'critical' | 'warning' | 'good' | 'no-expiry';
-
-export interface ExpiryStats {
-  expired: number;
-  expiring30Days: number;
-  expiring90Days: number;
-  total: number;
-  healthy: number;
-}
-
-export interface CreateProductBatchRequest {
-  productId: number;
-  batchNumber: string;
-  quantity: number;
-  receivedDate: string;
-  expiryDate: string;
-  priceWholesale: number;
-  priceRetail: number;
-}
-
-export interface UpdateProductBatchRequest {
-  batchNumber?: string;
-  quantity?: number;
-  receivedDate?: string;
-  expiryDate?: string;
-  priceWholesale?: number;
-  priceRetail?: number;
-}
-
 export interface MonthlyInventory {
   id: number;
   productId: number;
@@ -172,17 +128,20 @@ export interface Category {
   id: number;
   nameMongolian: string;
   description?: string;
+  classificationCode?: string;
   createdAt?: string;
 }
 
 export interface CreateCategoryRequest {
   nameMongolian: string;
   description?: string;
+  classificationCode?: string;
 }
 
 export interface UpdateCategoryRequest {
   nameMongolian?: string;
   description?: string;
+  classificationCode?: string;
 }
 
 // Customer Types
@@ -353,7 +312,6 @@ export interface Return {
   customerId?: number; // Optional: Which customer returned the product
   customer?: Customer;
   unitPrice?: number; // Optional: Unit price at time of return
-  expiryDate?: string; // Optional: Expiry date of returned product
   notes?: string; // Optional: Additional notes
   createdById: number;
   createdBy?: User;
@@ -367,7 +325,6 @@ export interface CreateReturnRequest {
   reason: string;
   customerId?: number; // Optional
   unitPrice?: number; // Optional
-  expiryDate?: string; // Optional
   notes?: string; // Optional
 }
 

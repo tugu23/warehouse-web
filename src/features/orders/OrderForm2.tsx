@@ -307,7 +307,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
             wholesalePrice: Number(p.priceWholesale ?? 0),
             stock: p.stockQuantity ?? 0,
             barCode: p.barcode ?? '',
-            classificationCode: p.classificationCode ?? '',
+            classificationCode: p.classificationCode ?? p.category?.classificationCode ?? '',
           }))
         );
       })

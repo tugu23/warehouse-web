@@ -10,11 +10,6 @@ const DashboardPage = lazy(() => import('../features/dashboard/DashboardPage'));
 const ProductsPage = lazy(() => import('../features/products/ProductsPage'));
 const ProductBatchesPage = lazy(() => import('../features/products/ProductBatchesPage'));
 const MonthlyInventoryPage = lazy(() => import('../features/products/MonthlyInventoryPage'));
-const ProductSalesAnalyticsPage = lazy(
-  () => import('../features/products/ProductSalesAnalyticsPage')
-);
-const InventoryForecastPage = lazy(() => import('../features/analytics/InventoryForecastPage'));
-const SalesByPeriodPage = lazy(() => import('../features/analytics/SalesByPeriodPage'));
 const CustomersPage = lazy(() => import('../features/customers/CustomersPage'));
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'));
 const EmployeesPage = lazy(() => import('../features/employees/EmployeesPage'));
@@ -63,13 +58,6 @@ export default function AppRoutes() {
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/products/batches" element={<ProductBatchesPage />} />
               <Route path="/products/inventory/monthly" element={<MonthlyInventoryPage />} />
-
-              {/* Analytics - Admin/Manager only */}
-              <Route element={<ProtectedRoute allowedRoles={['Admin', 'Manager']} />}>
-                <Route path="/products/analytics" element={<ProductSalesAnalyticsPage />} />
-                <Route path="/analytics/forecast" element={<InventoryForecastPage />} />
-                <Route path="/analytics/sales-period" element={<SalesByPeriodPage />} />
-              </Route>
 
               {/* Categories */}
               <Route path="/categories" element={<CategoriesPage />} />

@@ -1,21 +1,29 @@
 import { useState, useEffect, useMemo } from 'react';
 import { productsApi, customersApi, ordersApi } from '../../api';
-import { Customer, type PaymentMethod as ApiPaymentMethod } from '../../types';
+import { Customer, Order, type PaymentMethod as ApiPaymentMethod } from '../../types';
 import { toast } from 'react-hot-toast';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface ProductOption {
   id: number;
   name: string;
-  price: number;
+  retailPrice: number;
+  wholesalePrice: number;
   stock: number;
   barCode: string;
   classificationCode: string;
 }
 
+type PriceMode = 'retail' | 'wholesale' | 'custom';
+
 interface OrderItem {
   productId: string;
+  productInput?: string;
+  productQuery?: string;
   qty: number;
+  priceMode: PriceMode;
+  priceModeInput?: string;
+  customUnitPrice?: number;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
@@ -148,7 +156,7 @@ const s: Record<string, React.CSSProperties> = {
   itemRowDuplicate: { border: `1px solid ${C.red}` },
   itemGrid: {
     display: 'grid',
-    gridTemplateColumns: '2fr 90px 100px 100px 36px',
+    gridTemplateColumns: '2.2fr 80px 170px 100px 36px',
     gap: 10,
     alignItems: 'center',
   },
@@ -248,7 +256,8 @@ const submitBtn = (disabled: boolean): React.CSSProperties => ({
 // ── Component ──────────────────────────────────────────────────────────────
 interface Props {
   onClose?: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (createdOrder?: Order) => void;
+  initialOrder?: Order | null;
 }
 
 const PAYMENT_METHODS = [
@@ -259,18 +268,29 @@ const PAYMENT_METHODS = [
 ] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value'];
 
-export default function OrderForm2({ onClose, onSuccess }: Props) {
+export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) {
+  const isEditMode = Boolean(initialOrder);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [customerInput, setCustomerInput] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | ''>('');
   const [orderType, setOrderType] = useState<'Store' | 'Market'>('Store');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash');
   const [creditTermDays, setCreditTermDays] = useState(30);
   const [deliveryDate, setDeliveryDate] = useState('');
-  const [productSearch, setProductSearch] = useState('');
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([{ productId: '', qty: 1 }]);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([
+    {
+      productId: '',
+      productInput: '',
+      productQuery: '',
+      qty: 1,
+      priceMode: 'retail',
+      priceModeInput: 'Ширхэгийн үнэ',
+      customUnitPrice: undefined,
+    },
+  ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -283,7 +303,8 @@ export default function OrderForm2({ onClose, onSuccess }: Props) {
           raw.map((p) => ({
             id: p.id,
             name: p.nameMongolian,
-            price: Number(p.priceRetail ?? p.priceWholesale ?? 0),
+            retailPrice: Number(p.priceRetail ?? 0),
+            wholesalePrice: Number(p.priceWholesale ?? 0),
             stock: p.stockQuantity ?? 0,
             barCode: p.barcode ?? '',
             classificationCode: p.classificationCode ?? '',
@@ -301,20 +322,87 @@ export default function OrderForm2({ onClose, onSuccess }: Props) {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!initialOrder) return;
+
+    setSelectedCustomerId(initialOrder.customerId || '');
+    setCustomerInput(initialOrder.customer?.name || '');
+    setCustomerQuery(initialOrder.customer?.name || '');
+    setOrderType((initialOrder.orderType as 'Store' | 'Market') || 'Store');
+    setPaymentMethod((initialOrder.paymentMethod as PaymentMethod) || 'Cash');
+    setCreditTermDays(initialOrder.creditTermDays || 30);
+    setDeliveryDate(initialOrder.deliveryDate ? initialOrder.deliveryDate.slice(0, 10) : '');
+
+    const mappedItems: OrderItem[] =
+      initialOrder.orderItems?.map((item) => ({
+        productId: String(item.productId),
+        productInput: item.product?.nameMongolian || '',
+        productQuery: item.product?.nameMongolian || '',
+        qty: item.quantity,
+        priceMode: 'custom',
+        priceModeInput: 'Гараар үнэ',
+        customUnitPrice: Number(item.unitPrice || 0),
+      })) || [];
+
+    setOrderItems(
+      mappedItems.length > 0
+        ? mappedItems
+        : [
+            {
+              productId: '',
+              productInput: '',
+              productQuery: '',
+              qty: 1,
+              priceMode: 'retail',
+              priceModeInput: 'Ширхэгийн үнэ',
+              customUnitPrice: undefined,
+            },
+          ]
+    );
+  }, [initialOrder]);
+
   // ── Derived ───────────────────────────────────────────────────────────────
   const selectedCustomer = customers.find((c) => c.id === Number(selectedCustomerId));
 
   const filteredCustomers = useMemo(() => {
-    if (!customerSearch) return customers;
-    const q = customerSearch.toLowerCase();
-    return customers.filter((c) => c.name.toLowerCase().includes(q) || c.phoneNumber?.includes(q));
-  }, [customers, customerSearch]);
+    if (!customerQuery) return customers;
+    const q = customerQuery.toLowerCase();
+    return customers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phoneNumber?.includes(q) ||
+        c.registrationNumber?.toLowerCase().includes(q)
+    );
+  }, [customers, customerQuery]);
 
-  const filteredProducts = useMemo(() => {
-    if (!productSearch) return products;
-    const q = productSearch.toLowerCase();
+  const selectedCustomerOption = selectedCustomerId
+    ? customers.find((c) => c.id === Number(selectedCustomerId))
+    : undefined;
+
+  const getFilteredProductsForItem = (query?: string) => {
+    if (!query) return products;
+    const q = query.toLowerCase();
     return products.filter((p) => p.name.toLowerCase().includes(q) || p.barCode.includes(q));
-  }, [products, productSearch]);
+  };
+
+  const PRICE_MODE_OPTIONS: Array<{ value: PriceMode; label: string }> = [
+    { value: 'retail', label: 'Ширхэгийн үнэ' },
+    { value: 'wholesale', label: 'Бөөний үнэ' },
+    { value: 'custom', label: 'Гараар үнэ' },
+  ];
+
+  const findPriceModeByInput = (input: string): PriceMode | undefined => {
+    const q = input.trim().toLowerCase();
+    if (!q) return undefined;
+
+    const exact = PRICE_MODE_OPTIONS.find((o) => o.label.toLowerCase() === q);
+    if (exact) return exact.value;
+
+    const startsWith = PRICE_MODE_OPTIONS.find((o) => o.label.toLowerCase().startsWith(q));
+    if (startsWith) return startsWith.value;
+
+    return undefined;
+  };
 
   const getProduct = (id: string) => products.find((p) => p.id === Number(id));
 
@@ -333,27 +421,126 @@ export default function OrderForm2({ onClose, onSuccess }: Props) {
     return p ? oi.qty > p.stock : false;
   };
 
-  const itemSubtotals = orderItems.map((oi) => {
+  const getUnitPrice = (oi: OrderItem): number => {
     const p = getProduct(oi.productId);
-    return p ? p.price * (oi.qty || 0) : 0;
-  });
+    if (!p) return 0;
+
+    if (oi.priceMode === 'custom') {
+      return Number(oi.customUnitPrice || 0);
+    }
+
+    if (oi.priceMode === 'wholesale') {
+      return p.wholesalePrice || p.retailPrice || 0;
+    }
+
+    return p.retailPrice || p.wholesalePrice || 0;
+  };
+
+  const itemSubtotals = orderItems.map((oi) => getUnitPrice(oi) * (oi.qty || 0));
   const totalAmount = itemSubtotals.reduce((s, v) => s + v, 0);
   const vatAmount = Math.round(((totalAmount * 10) / 112) * 100) / 100;
 
   const validItemCount = orderItems.filter((oi) => oi.productId && oi.qty > 0).length;
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const addItem = () => setOrderItems([...orderItems, { productId: '', qty: 1 }]);
+  const onCustomerInputChange = (value: string) => {
+    setCustomerInput(value);
+    setCustomerQuery(value);
+
+    const exact = customers.find(
+      (c) => c.name.toLowerCase() === value.toLowerCase() || c.phoneNumber === value
+    );
+
+    if (exact) {
+      setSelectedCustomerId(exact.id);
+      setErrors((p) => {
+        const n = { ...p };
+        delete n.customer;
+        return n;
+      });
+    } else if (!value.trim()) {
+      setSelectedCustomerId('');
+    }
+  };
+
+  const addItem = () =>
+    setOrderItems([
+      ...orderItems,
+      {
+        productId: '',
+        productInput: '',
+        productQuery: '',
+        qty: 1,
+        priceMode: 'retail',
+        priceModeInput: 'Ширхэгийн үнэ',
+        customUnitPrice: undefined,
+      },
+    ]);
   const removeItem = (i: number) => setOrderItems(orderItems.filter((_, idx) => idx !== i));
-  const updateItem = (i: number, field: 'productId' | 'qty', val: string | number) => {
+  const updateItem = (
+    i: number,
+    field:
+      | 'productId'
+      | 'productInput'
+      | 'qty'
+      | 'priceMode'
+      | 'priceModeInput'
+      | 'customUnitPrice',
+    val: string | number
+  ) => {
     const next = [...orderItems];
     const item = next[i];
     if (!item) return;
+
     if (field === 'productId') {
       item.productId = val as string;
       item.qty = 1;
+      const selected = products.find((p) => p.id === Number(val));
+      item.productQuery = selected?.name || '';
+      item.productInput = selected?.name || '';
     }
+
+    if (field === 'productInput') {
+      const input = String(val);
+      item.productInput = input;
+      item.productQuery = input;
+
+      const exact = products.find((p) => p.name.toLowerCase() === input.toLowerCase());
+      if (exact) {
+        item.productId = String(exact.id);
+        item.qty = 1;
+      } else if (!input.trim()) {
+        item.productId = '';
+      }
+    }
+
     if (field === 'qty') item.qty = Math.max(1, val as number);
+
+    if (field === 'priceMode') {
+      item.priceMode = val as PriceMode;
+      const modeLabel = PRICE_MODE_OPTIONS.find((m) => m.value === item.priceMode)?.label;
+      item.priceModeInput = modeLabel || item.priceModeInput;
+      if (item.priceMode !== 'custom') {
+        item.customUnitPrice = undefined;
+      }
+    }
+
+    if (field === 'priceModeInput') {
+      const input = String(val);
+      item.priceModeInput = input;
+      const matchedMode = findPriceModeByInput(input);
+      if (matchedMode) {
+        item.priceMode = matchedMode;
+        if (matchedMode !== 'custom') {
+          item.customUnitPrice = undefined;
+        }
+      }
+    }
+
+    if (field === 'customUnitPrice') {
+      item.customUnitPrice = Number(val);
+    }
+
     setOrderItems(next);
     setErrors((prev) => {
       const n = { ...prev };
@@ -370,6 +557,9 @@ export default function OrderForm2({ onClose, onSuccess }: Props) {
     orderItems.forEach((oi, i) => {
       if (oi.productId && isDuplicate(i)) errs[`item_${i}`] = 'Давтагдсан бараа';
       if (oi.productId && isOverStock(i)) errs[`item_${i}`] = 'Үлдэгдэл хүрэлцэхгүй';
+      if (oi.productId && oi.priceMode === 'custom' && Number(oi.customUnitPrice || 0) <= 0) {
+        errs[`item_${i}`] = 'Гараар оруулсан үнэ 0-ээс их байх ёстой';
+      }
     });
     if (paymentMethod === 'Credit' && (!creditTermDays || creditTermDays < 1))
       errs.credit = 'Зээлийн хугацаа оруулна уу';
@@ -385,20 +575,36 @@ export default function OrderForm2({ onClose, onSuccess }: Props) {
     try {
       const apiPaymentMethod: ApiPaymentMethod =
         paymentMethod === 'Card' ? 'BankTransfer' : paymentMethod;
-      await ordersApi.create({
+      const payload = {
         customerId: Number(selectedCustomerId),
         paymentMethod: apiPaymentMethod,
         orderType,
         creditTermDays: paymentMethod === 'Credit' ? creditTermDays : undefined,
         deliveryDate: orderType === 'Market' && deliveryDate ? deliveryDate : undefined,
-        items: validItems.map((oi) => ({ productId: Number(oi.productId), quantity: oi.qty })),
-      });
-      toast.success('Захиалга амжилттай үүслээ!');
-      onSuccess?.();
+        items: validItems.map((oi) => ({
+          productId: Number(oi.productId),
+          quantity: oi.qty,
+          priceMode: oi.priceMode,
+          customUnitPrice: oi.priceMode === 'custom' ? Number(oi.customUnitPrice || 0) : undefined,
+        })),
+      };
+
+      const response =
+        isEditMode && initialOrder?.id
+          ? await ordersApi.update(initialOrder.id, payload)
+          : await ordersApi.create(payload);
+
+      const savedOrder = response.data?.data?.order;
+
+      toast.success(isEditMode ? 'Захиалга амжилттай шинэчлэгдлээ!' : 'Захиалга амжилттай үүслээ!');
+      onSuccess?.(savedOrder);
       onClose?.();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Захиалга үүсгэхэд алдаа гарлаа');
+      toast.error(
+        err.response?.data?.message ||
+          (isEditMode ? 'Захиалга шинэчлэхэд алдаа гарлаа' : 'Захиалга үүсгэхэд алдаа гарлаа')
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -411,8 +617,8 @@ export default function OrderForm2({ onClose, onSuccess }: Props) {
         {/* Header */}
         <div style={s.header}>
           <div style={s.headerLeft}>
-            <h2 style={s.title}>Захиалга үүсгэх</h2>
-            <span style={s.badge}>Шинэ</span>
+            <h2 style={s.title}>{isEditMode ? 'Захиалга засах' : 'Захиалга үүсгэх'}</h2>
+            <span style={s.badge}>{isEditMode ? 'Засвар' : 'Шинэ'}</span>
           </div>
           <button style={s.closeBtn} onClick={onClose}>
             ×
@@ -425,41 +631,31 @@ export default function OrderForm2({ onClose, onSuccess }: Props) {
             <div style={s.sectionHeader}>
               <span style={s.sectionTitle}>Харилцагч</span>
             </div>
-            <div style={s.grid2}>
-              <div>
-                <label style={s.label}>Хайлт</label>
-                <input
-                  style={s.input}
-                  placeholder="Нэр, утасны дугаараар хайх..."
-                  value={customerSearch}
-                  onChange={(e) => setCustomerSearch(e.target.value)}
-                />
-              </div>
-              <div>
-                <label style={s.label}>
-                  Харилцагч сонгох{' '}
-                  {errors.customer && <span style={{ color: C.red }}> — {errors.customer}</span>}
-                </label>
-                <select
-                  style={{ ...s.select, ...(errors.customer ? s.inputError : {}) }}
-                  value={selectedCustomerId}
-                  onChange={(e) => {
-                    setSelectedCustomerId(e.target.value ? Number(e.target.value) : '');
-                    setErrors((p) => {
-                      const n = { ...p };
-                      delete n.customer;
-                      return n;
-                    });
-                  }}
-                >
-                  <option value="">— Харилцагч сонгох —</option>
-                  {filteredCustomers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label style={s.label}>
+                Харилцагч (Search with selected){' '}
+                {errors.customer && <span style={{ color: C.red }}> — {errors.customer}</span>}
+              </label>
+              <input
+                list="customer-options"
+                style={{ ...s.input, ...(errors.customer ? s.inputError : {}) }}
+                placeholder="Нэр, утас, регистр..."
+                value={customerInput}
+                onChange={(e) => onCustomerInputChange(e.target.value)}
+              />
+              <datalist id="customer-options">
+                {filteredCustomers.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.phoneNumber || ''}
+                  </option>
+                ))}
+              </datalist>
+
+              {selectedCustomerOption && (
+                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6 }}>
+                  Selected: {selectedCustomerOption.name}
+                </div>
+              )}
             </div>
             {selectedCustomer && (
               <div style={s.customerCard}>
@@ -539,20 +735,12 @@ export default function OrderForm2({ onClose, onSuccess }: Props) {
                   </span>
                 )}
               </div>
-              <div style={{ width: 200 }}>
-                <input
-                  style={{ ...s.input, fontSize: 12 }}
-                  placeholder="Бараа хайх..."
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                />
-              </div>
             </div>
             {errors.items && <div style={{ ...s.err, marginBottom: 8 }}>⚠ {errors.items}</div>}
 
             {/* Колонкийн гарчиг */}
             <div style={{ ...s.itemGrid, marginBottom: 4, padding: '0 14px' }}>
-              {['Бараа', 'Тоо', 'Нэгж үнэ', 'Дүн', ''].map((h, i) => (
+              {['Бараа (хайх + сонгох)', 'Тоо', 'Нэгж үнэ', 'Дүн', ''].map((h, i) => (
                 <span key={i} style={{ fontSize: 11, color: C.textDim, fontWeight: 600 }}>
                   {h}
                 </span>
@@ -580,23 +768,31 @@ export default function OrderForm2({ onClose, onSuccess }: Props) {
                   }}
                 >
                   <div style={s.itemGrid}>
-                    {/* Бараа */}
-                    <select
-                      style={{ ...s.select, fontSize: 13 }}
-                      value={oi.productId}
-                      onChange={(e) => updateItem(idx, 'productId', e.target.value)}
-                    >
-                      <option value="">Бараа сонгох</option>
-                      {productsLoading ? (
-                        <option disabled>Ачааллаж байна...</option>
-                      ) : (
-                        filteredProducts.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} {p.stock === 0 ? '✕' : ''}
-                          </option>
-                        ))
+                    {/* Бараа: search with selected */}
+                    <div>
+                      <input
+                        list={`product-options-${idx}`}
+                        style={{ ...s.input, fontSize: 12 }}
+                        placeholder="Бараа хайх, сонгох..."
+                        value={oi.productInput || ''}
+                        onChange={(e) => updateItem(idx, 'productInput', e.target.value)}
+                      />
+                      <datalist id={`product-options-${idx}`}>
+                        {(productsLoading ? [] : getFilteredProductsForItem(oi.productInput)).map(
+                          (p) => (
+                            <option key={p.id} value={p.name}>
+                              {`Үлдэгдэл: ${p.stock}`}
+                            </option>
+                          )
+                        )}
+                      </datalist>
+
+                      {prod && (
+                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6 }}>
+                          Selected: {prod.name}
+                        </div>
                       )}
-                    </select>
+                    </div>
 
                     {/* Тоо */}
                     <input
@@ -612,16 +808,44 @@ export default function OrderForm2({ onClose, onSuccess }: Props) {
                       onChange={(e) => updateItem(idx, 'qty', Number(e.target.value))}
                     />
 
-                    {/* Нэгж үнэ */}
-                    <div
-                      style={{
-                        textAlign: 'right',
-                        fontSize: 13,
-                        color: C.textMuted,
-                        paddingRight: 4,
-                      }}
-                    >
-                      {prod ? `${prod.price.toLocaleString()}₮` : '—'}
+                    {/* Үнэ + price mode: search with selected */}
+                    <div>
+                      <input
+                        list={`price-mode-options-${idx}`}
+                        style={{ ...s.input, fontSize: 12, marginBottom: 6, padding: '6px 8px' }}
+                        placeholder="Үнийн төрөл..."
+                        value={oi.priceModeInput || ''}
+                        onChange={(e) => updateItem(idx, 'priceModeInput', e.target.value)}
+                      />
+                      <datalist id={`price-mode-options-${idx}`}>
+                        {PRICE_MODE_OPTIONS.map((m) => (
+                          <option key={m.value} value={m.label} />
+                        ))}
+                      </datalist>
+
+                      {oi.priceMode === 'custom' ? (
+                        <input
+                          style={{ ...s.input, textAlign: 'right', padding: '6px 8px' }}
+                          type="number"
+                          min={1}
+                          value={oi.customUnitPrice || ''}
+                          onChange={(e) =>
+                            updateItem(idx, 'customUnitPrice', Number(e.target.value))
+                          }
+                          placeholder="Үнэ"
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            textAlign: 'right',
+                            fontSize: 13,
+                            color: C.textMuted,
+                            paddingRight: 4,
+                          }}
+                        >
+                          {prod ? `${getUnitPrice(oi).toLocaleString()}₮` : '—'}
+                        </div>
+                      )}
                     </div>
 
                     {/* Дүн */}

@@ -324,6 +324,9 @@ export interface CreateOrderRequest {
   items: {
     productId: number;
     quantity: number;
+    priceMode?: 'auto' | 'wholesale' | 'retail' | 'custom';
+    customUnitPrice?: number;
+    unitPrice?: number;
   }[];
 }
 

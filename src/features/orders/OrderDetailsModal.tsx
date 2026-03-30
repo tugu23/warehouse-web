@@ -20,14 +20,15 @@ import {
   Description as DescriptionIcon,
   Receipt as ReceiptIcon,
   CheckCircle as CheckCircleIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { Order } from '../../types';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import { calculateVAT } from '../../api/posApi';
 import { ordersApi } from '../../api';
 import { formatDateMN } from '../../utils/dateFormatter';
 import EbarimtPrintModal from './EbarimtPrintModal';
+import OrderForm2 from './OrderForm2';
 
 interface OrderDetailsModalProps {
   order: Order | null;
@@ -47,6 +48,7 @@ export default function OrderDetailsModal({
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<string>('');
   const [ebarimtPrintOpen, setEbarimtPrintOpen] = useState(false);
+  const [editOrderOpen, setEditOrderOpen] = useState(false);
 
   if (!order) return null;
 
@@ -79,6 +81,7 @@ export default function OrderDetailsModal({
   };
 
   const canPrintEbarimt = order.status === 'Fulfilled' && !order.ebarimtRegistered;
+  const canEditBeforeEbarimt = order.status === 'Pending' && !order.ebarimtRegistered;
 
   return (
     <Box>
@@ -178,47 +181,12 @@ export default function OrderDetailsModal({
                 <TableCell align="right">₮{Number(item.subtotal).toLocaleString()}</TableCell>
               </TableRow>
             ))}
-            {order.orderType === 'Store' && (
-              <>
-                <TableRow>
-                  <TableCell colSpan={3} align="right">
-                    <Typography variant="body1">Дэд дүн:</Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body1">
-                      ₮{Number(order.totalAmount).toLocaleString()}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={3} align="right">
-                    <Typography variant="body1" color="primary">
-                      НӨАТ (10%):
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body1" color="primary">
-                      ₮{calculateVAT(Number(order.totalAmount)).toLocaleString()}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              </>
-            )}
             <TableRow>
               <TableCell colSpan={3} align="right">
-                <Typography variant="h6">
-                  {order.orderType === 'Store' ? 'Нийт төлөх дүн:' : 'Нийт дүн:'}
-                </Typography>
+                <Typography variant="h6">Нийт дүн:</Typography>
               </TableCell>
               <TableCell align="right">
-                <Typography variant="h6">
-                  ₮
-                  {order.orderType === 'Store'
-                    ? (
-                        Number(order.totalAmount) + calculateVAT(Number(order.totalAmount))
-                      ).toLocaleString()
-                    : Number(order.totalAmount).toLocaleString()}
-                </Typography>
+                <Typography variant="h6">₮{Number(order.totalAmount).toLocaleString()}</Typography>
               </TableCell>
             </TableRow>
           </TableBody>
@@ -243,6 +211,17 @@ export default function OrderDetailsModal({
         >
           Падаан харах
         </Button>
+
+        {canEditBeforeEbarimt && (
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<EditIcon />}
+            onClick={() => setEditOrderOpen(true)}
+          >
+            Захиалга засах
+          </Button>
+        )}
 
         {/* eBarimt хэвлэх — зөвхөн Fulfilled, хэвлэгдээгүй тохиолдолд */}
         {canPrintEbarimt && (
@@ -294,6 +273,18 @@ export default function OrderDetailsModal({
           onSuccess={() => {
             setEbarimtPrintOpen(false);
             onRefresh?.();
+          }}
+        />
+      )}
+
+      {editOrderOpen && (
+        <OrderForm2
+          initialOrder={order}
+          onClose={() => setEditOrderOpen(false)}
+          onSuccess={() => {
+            setEditOrderOpen(false);
+            onRefresh?.();
+            toast.success('Захиалга шинэчлэгдлээ');
           }}
         />
       )}

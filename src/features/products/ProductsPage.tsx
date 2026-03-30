@@ -108,6 +108,13 @@ export default function ProductsPage() {
     setDetailsModalOpen(true);
   };
 
+  const getDisplayBatch = (batches: Product['batches']) => {
+    if (!batches || batches.length === 0) return undefined;
+    const now = new Date();
+    const nonExpired = batches.filter((b) => !b.expiryDate || new Date(b.expiryDate) >= now);
+    return nonExpired.length > 0 ? nonExpired[0] : batches[0];
+  };
+
   const columns = [
     {
       id: 'nameMongolian',
@@ -120,7 +127,7 @@ export default function ProductsPage() {
           </Typography>
           {row.batches && row.batches.length > 0 && (
             <Box sx={{ mt: 0.5 }}>
-              <ExpiryBadge batch={row.batches[0]} />
+              <ExpiryBadge batch={getDisplayBatch(row.batches)} />
             </Box>
           )}
         </Box>
@@ -165,12 +172,13 @@ export default function ProductsPage() {
             </Typography>
           );
         }
+        const displayBatch = getDisplayBatch(row.batches);
         if (row.batches.length === 1) {
-          return <ExpiryBadge batch={row.batches[0]} showDate={false} />;
+          return <ExpiryBadge batch={displayBatch} showDate={false} />;
         }
         return (
           <Badge badgeContent={row.batches.length} color="primary">
-            <ExpiryBadge batch={row.batches[0]} showDate={false} />
+            <ExpiryBadge batch={displayBatch} showDate={false} />
           </Badge>
         );
       },

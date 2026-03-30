@@ -4,91 +4,17 @@ import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
 import { toast } from 'react-hot-toast';
 import { ordersApi } from '../../api';
+import { createEbarimtRequest, getTinInfo } from '../../api/ebarimt';
 import { Order } from '../../types';
 import { RobotoRegular } from '../../fonts/Roboto-Regular';
 import { RobotoBold } from '../../fonts/Roboto-Bold';
 
-// ── eBarimt request builder ──────────────────────────────────────────
-const MERCHANT_TIN = '37900846788';
-const DEFAULT_CONSUMER_NO = '10012516';
 const COMPANY = {
   name: 'GLF LLC OASIS Боонь тов',
   address: 'Монгол, Улаанбаатар, Сүхбаатар дүүрэг, 6-р хороо, 27-49',
   phones: '70121128, 88048350, 89741277',
   tin: '5317878',
 };
-
-function buildEbarimtPayload(opts: {
-  items: {
-    name: string;
-    barCode: string;
-    classificationCode: string;
-    unitPrice: number;
-    qty: number;
-  }[];
-  paymentType: 'CASH' | 'BANK_TRANSFER' | 'PAYMENT_CARD';
-  type: 'B2C_RECEIPT' | 'B2B_RECEIPT';
-  consumerNo?: string | null;
-  customerTin?: string | null;
-}) {
-  const { items, paymentType, type, consumerNo, customerTin } = opts;
-
-  const calculatedItems = items.map((item) => {
-    const qty = item.qty || 1;
-    const itemTotalAmount = +(item.unitPrice * qty).toFixed(2);
-    const unitPriceExTax = +(item.unitPrice / 1.12).toFixed(2);
-    const itemTotalVAT = +((itemTotalAmount * 10) / 112).toFixed(2);
-    const itemTotalCityTax = +((itemTotalAmount * 2) / 112).toFixed(2);
-    return {
-      name: item.name,
-      barCode: item.barCode,
-      barCodeType: 'GS1',
-      classificationCode: item.classificationCode || '2399421',
-      taxProductCode: null,
-      measureUnit: 'ш',
-      qty,
-      unitPrice: unitPriceExTax,
-      totalVAT: itemTotalVAT,
-      totalCityTax: itemTotalCityTax,
-      totalAmount: itemTotalAmount,
-    };
-  });
-
-  const totalAmount = +calculatedItems.reduce((s, i) => s + i.totalAmount, 0).toFixed(2);
-  const totalVAT = +((totalAmount * 10) / 112).toFixed(2);
-  const totalCityTax = +((totalAmount * 2) / 112).toFixed(2);
-
-  return {
-    branchNo: '001',
-    totalAmount,
-    totalVAT,
-    totalCityTax,
-    districtCode: '2506',
-    merchantTin: MERCHANT_TIN,
-    posNo: '001',
-    customerTin: type === 'B2B_RECEIPT' ? (customerTin ? String(customerTin) : null) : null,
-    consumerNo: type === 'B2C_RECEIPT' ? consumerNo || DEFAULT_CONSUMER_NO : undefined,
-    type,
-    inactiveId: null,
-    invoiceId: null,
-    reportMonth: null,
-    billIdSuffix: '01',
-    receipts: [
-      {
-        totalAmount,
-        taxType: 'VAT_ABLE',
-        merchantTin: MERCHANT_TIN,
-        customerTin: type === 'B2B_RECEIPT' ? (customerTin ? String(customerTin) : null) : null,
-        totalVAT,
-        totalCityTax,
-        bankAccountNo: '',
-        iBan: '',
-        items: calculatedItems,
-      },
-    ],
-    payments: [{ code: paymentType, status: 'PAID', paidAmount: totalAmount }],
-  };
-}
 
 /** POS receipt API payload used when drawing the PDF */
 interface EbarimtReceiptPdfData {
@@ -476,8 +402,10 @@ interface Props {
 }
 
 export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) {
+  const customerRegNo = String(order.customer?.registrationNumber || '').trim();
   const [customerKind, setCustomerKind] = useState<'organization' | 'individual'>('organization');
-  const [regNumber, setRegNumber] = useState('');
+  const [useCustomerRegNo, setUseCustomerRegNo] = useState(Boolean(customerRegNo));
+  const [regNumber, setRegNumber] = useState(customerRegNo);
   const [regResult, setRegResult] = useState<{ name: string; tin: string } | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [regError, setRegError] = useState('');
@@ -489,7 +417,8 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
   const paymentLabels = { Cash: 'Бэлэн', BankTransfer: 'Шилжүүлэг', Card: 'Карт' };
 
   const handleRegLookup = async () => {
-    const trimmed = regNumber.trim();
+    const activeRegNo = useCustomerRegNo ? customerRegNo : regNumber;
+    const trimmed = activeRegNo.trim();
     if (!trimmed) {
       setRegError('Регистрийн дугаар оруулна уу');
       return;
@@ -523,7 +452,9 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
 
   const handlePrint = async () => {
     const isB2B = customerKind === 'organization';
-    if (isB2B && !regResult?.tin) {
+    const activeRegNo = useCustomerRegNo ? customerRegNo : regNumber.trim();
+
+    if (isB2B && !regResult?.tin && !activeRegNo) {
       toast.error("Байгууллагын TIN-г 'Лавлах' товч дарж авна уу");
       return;
     }
@@ -543,12 +474,33 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         qty: oi.quantity,
       }));
 
-      const payload = buildEbarimtPayload({
+      let resolvedTin = isB2B && regResult?.tin ? regResult.tin : null;
+
+      if (isB2B && !resolvedTin && activeRegNo) {
+        try {
+          const tinInfo = await getTinInfo(Number(activeRegNo));
+          resolvedTin = tinInfo.tinNumber;
+          if (!regResult) {
+            setRegResult({ name: tinInfo.tinName, tin: tinInfo.tinNumber });
+          }
+        } catch {
+          toast.error('Регистрээс TIN авахад алдаа гарлаа. Лавлах товч дарж шалгана уу');
+          return;
+        }
+      }
+
+      if (isB2B && !resolvedTin) {
+        toast.error('Байгууллагын TIN олдсонгүй. Лавлах товч дарж баталгаажуулна уу');
+        return;
+      }
+
+      const payload = await createEbarimtRequest({
         items: ebarimtItems,
         paymentType: paymentMap[paymentMethod],
         type: isB2B ? 'B2B_RECEIPT' : 'B2C_RECEIPT',
         consumerNo: !isB2B && individualReg ? individualReg : null,
-        customerTin: isB2B && regResult?.tin ? regResult.tin : null,
+        customerTin: resolvedTin,
+        regNo: isB2B && activeRegNo ? Number(activeRegNo) : undefined,
       });
 
       const res = await fetch('http://localhost:7080/rest/receipt', {
@@ -556,7 +508,28 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data: { id?: string; date?: string; message?: string } = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        /* non-JSON */
+      }
+
+      if (!res.ok) {
+        const parsedMessage = (() => {
+          try {
+            const j = raw ? JSON.parse(raw) : null;
+            return j?.message || j?.error || j?.data?.message;
+          } catch {
+            return undefined;
+          }
+        })();
+
+        console.error('eBarimt POS 400 payload', payload);
+        toast.error(parsedMessage || data?.message || raw || `HTTP ${res.status}`);
+        return;
+      }
 
       if (!data?.id) {
         toast.error(data?.message || 'eBarimt үүсгэхэд алдаа гарлаа');
@@ -669,12 +642,32 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
 
           {customerKind === 'organization' ? (
             <div style={{ marginBottom: 14 }}>
+              {customerRegNo && (
+                <label style={{ ...st.radioLabel, marginBottom: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={useCustomerRegNo}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setUseCustomerRegNo(checked);
+                      setRegError('');
+                      setRegResult(null);
+                      if (checked) {
+                        setRegNumber(customerRegNo);
+                      }
+                    }}
+                  />
+                  Харилцагчийн бүртгэлтэй регистр ({customerRegNo}) ашиглах
+                </label>
+              )}
+
               <label style={st.label}>Байгууллагын регистр</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
-                  style={st.input}
-                  value={regNumber}
+                  style={{ ...st.input, ...(useCustomerRegNo ? { opacity: 0.7 } : {}) }}
+                  value={useCustomerRegNo ? customerRegNo : regNumber}
                   placeholder="Регистрийн дугаар"
+                  disabled={useCustomerRegNo}
                   onChange={(e) => setRegNumber(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleRegLookup()}
                 />

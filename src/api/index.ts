@@ -166,6 +166,8 @@ export const ordersApi = {
   getById: (id: number) => api.get<ApiResponse<{ order: Order }>>(`/api/orders/${id}`),
   create: (data: CreateOrderRequest) =>
     api.post<ApiResponse<{ order: Order }>>('/api/orders', data),
+  update: (id: number, data: CreateOrderRequest) =>
+    api.put<ApiResponse<{ order: Order }>>(`/api/orders/${id}`, data),
   updateStatus: (id: number, data: UpdateOrderStatusRequest) =>
     api.put<ApiResponse<{ order: Order }>>(`/api/orders/${id}/status`, data),
   updateEbarimt: (
@@ -241,10 +243,16 @@ export const ordersApi = {
     ebarimtDate: string;
     ebarimtId?: string;
   }) => api.post<ApiResponse<{ order: Order }>>('/api/orders/ebarimt-direct', data),
+  /** Persists POS eBarimt result; uses PUT /ebarimt (same handler as mark-ebarimt) for compatibility */
   markEbarimt: (
     id: number,
     data: { ebarimtBillId: string; ebarimtDate: string; ebarimtId?: string; ebarimtType?: string }
-  ) => api.post<ApiResponse<void>>(`/api/orders/${id}/mark-ebarimt`, data),
+  ) =>
+    api.put<ApiResponse<{ order: Order }>>(`/api/orders/${id}/ebarimt`, {
+      ebarimtId: data.ebarimtId ?? data.ebarimtBillId,
+      ebarimtBillId: data.ebarimtBillId,
+      ebarimtDate: data.ebarimtDate,
+    }),
   ebarimtReturn: (id: number) =>
     api.post<ApiResponse<{ ebarimtBillId: string; ebarimtDate: string; orderId: number }>>(
       `/api/orders/${id}/ebarimt-return`

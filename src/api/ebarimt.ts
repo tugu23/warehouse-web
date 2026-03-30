@@ -1,116 +1,3 @@
-// import { EbarimtParams } from "@/types/ebarimt";
-
-// const EBARIMT_URL = "http://localhost:7080/rest/receipt";
-
-// export async function sendEbarimtRequest(params: EbarimtParams) {
-//   try {
-//     const payload = await createEbarimtRequest(params);
-
-//     const response = await fetch(EBARIMT_URL, {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify(payload),
-//     });
-
-//     const result = await response.json();
-
-//     if (!response.ok) {
-//       throw new Error(result?.message || "eBarimt илгээхэд алдаа гарлаа");
-//     }
-
-//     return result;
-//   } catch (error) {
-//     console.error("eBarimt error:", error);
-//     throw error;
-//   }
-// }
-
-// export async function createEbarimtRequest({
-//   items,
-//   paymentType = "CASH",
-//   type = "B2C_RECEIPT",
-//   consumerNo = null,
-//   customerTin = null,
-// }: EbarimtParams) {
-
-//   const merchantTin = "89001226559";
-
-//   if (type === "B2B_RECEIPT" && !customerTin) {
-//     throw new Error("B2B_RECEIPT үед customerTin заавал хэрэгтэй");
-//   }
-
-//   const calculatedItems = items.map((item) => {
-
-//     const qty = item.qty || 1;
-
-//     const basePrice = +(item.unitPrice / 1.12).toFixed(2);
-
-//     const itemTotalVAT = +(basePrice * 0.1 * qty).toFixed(2);
-
-//     const itemTotalAmount = +(item.unitPrice * qty).toFixed(2);
-
-//     return {
-//       name: item.name,
-//       barCode: item.barCode,
-//       barCodeType: "GS1",
-//       classificationCode: item.classificationCode ?? "2399421",
-//       taxProductCode: null,
-//       measureUnit: "ш",
-//       qty,
-//       unitPrice: basePrice,
-//       totalVAT: itemTotalVAT,
-//       totalCityTax: 0,
-//       totalAmount: itemTotalAmount,
-//     };
-//   });
-
-//   const totalAmount = calculatedItems.reduce((sum, i) => sum + i.totalAmount, 0);
-//   const totalVAT = calculatedItems.reduce((sum, i) => sum + i.totalVAT, 0);
-
-//   return {
-//     branchNo: "001",
-//     totalAmount,
-//     totalVAT,
-//     totalCityTax: 0,
-//     districtCode: "2506",
-//     merchantTin,
-//     posNo: "001",
-
-//     customerTin: type === "B2B_RECEIPT" ? customerTin : null,
-//     consumerNo: type === "B2C_RECEIPT" ? consumerNo : null,
-
-//     type,
-//     inactiveId: null,
-//     reportMonth: null,
-//     billIdSuffix: "01",
-
-//     receipts: [
-//       {
-//         totalAmount,
-//         taxType: "VAT_ABLE",
-//         merchantTin,
-//         customerTin: type === "B2B_RECEIPT" ? customerTin : null,
-//         totalVAT,
-//         totalCityTax: 0,
-//         invoiceId: null,
-//         bankAccountNo: "",
-//         iBan: "",
-//         items: calculatedItems,
-//       },
-//     ],
-
-//     payments: [
-//       {
-//         code: paymentType,
-//         status: "PAID",
-//         paidAmount: totalAmount,
-//       },
-//     ],
-//   };
-// }
-
 import { EbarimtParams } from '@/types/ebarimt';
 
 export async function createEbarimtRequest({
@@ -123,12 +10,12 @@ export async function createEbarimtRequest({
 }: EbarimtParams) {
   const merchantTin = '37900846788';
 
-  let finalCustomerTin = customerTin;
+  let finalCustomerTin: string | null = customerTin != null ? String(customerTin) : null;
 
   // Хэрвээ regNo ирвэл tin татаж авна
   if (regNo) {
     const tinInfo = await getTinInfo(regNo);
-    finalCustomerTin = tinInfo.tinNumber;
+    finalCustomerTin = String(tinInfo.tinNumber);
   }
 
   if (type === 'B2B_RECEIPT' && !finalCustomerTin) {
@@ -138,12 +25,12 @@ export async function createEbarimtRequest({
   const calculatedItems = items.map((item) => {
     const qty = item.qty || 1;
 
-    const basePrice = +(item.unitPrice / 1.12).toFixed(2);
-
-    const itemTotalVAT = +(basePrice * 0.1 * qty).toFixed(2);
-    const itemTotalCityTax = +(basePrice * 0.02 * qty).toFixed(2);
-
     const itemTotalAmount = +(item.unitPrice * qty).toFixed(2);
+    // POS validation expects VAT as totalAmount * 10/110 (rounded to 2)
+    const itemTotalVAT = +((itemTotalAmount * 10) / 110).toFixed(2);
+    const itemTotalCityTax = 0;
+    const itemNetAmount = +(itemTotalAmount - itemTotalVAT).toFixed(2);
+    const basePrice = +(itemNetAmount / qty).toFixed(2);
 
     return {
       name: item.name,
@@ -160,21 +47,20 @@ export async function createEbarimtRequest({
     };
   });
 
-  const totalAmount = calculatedItems.reduce((sum, i) => sum + i.totalAmount, 0);
-  const totalVAT = calculatedItems.reduce((sum, i) => sum + i.totalVAT, 0);
-  const totalCityTax = calculatedItems.reduce((sum, i) => sum + i.totalCityTax, 0);
+  const totalAmount = +calculatedItems.reduce((sum, i) => sum + i.totalAmount, 0).toFixed(2);
+  const totalVAT = +((totalAmount * 10) / 110).toFixed(2);
 
   return {
     branchNo: '001',
     totalAmount,
     totalVAT,
-    totalCityTax,
+    totalCityTax: 0,
     districtCode: '2506',
     merchantTin,
     posNo: '001',
 
     customerTin: type === 'B2B_RECEIPT' ? finalCustomerTin : null,
-    consumerNo: type === 'B2C_RECEIPT' ? (consumerNo ?? '') : '',
+    ...(type === 'B2C_RECEIPT' ? { consumerNo: consumerNo ?? '' } : {}),
 
     type,
     inactiveId: null,
@@ -186,10 +72,10 @@ export async function createEbarimtRequest({
       {
         totalAmount,
         taxType: 'VAT_ABLE',
-        merchantTin: '',
+        merchantTin,
         customerTin: type === 'B2B_RECEIPT' ? finalCustomerTin : null,
         totalVAT,
-        totalCityTax,
+        totalCityTax: 0,
         bankAccountNo: '',
         iBan: '',
         items: calculatedItems,

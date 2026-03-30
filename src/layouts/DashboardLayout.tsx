@@ -34,9 +34,7 @@ import {
   Category as CategoryIcon,
   Event as EventIcon,
   Assessment as ReportIcon,
-  Analytics as AnalyticsIcon,
   Receipt as ReceiptIcon,
-  AssignmentReturn as ReturnIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../config/ThemeProvider';
@@ -54,28 +52,10 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { text: 'Хянах самбар', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Бараа бүтээгдэхүүн', icon: <InventoryIcon />, path: '/products' },
-  {
-    text: 'Борлуулалтын шинжилгээ',
-    icon: <AnalyticsIcon />,
-    path: '/products/analytics',
-    roles: ['Admin', 'Manager'],
-  },
-  {
-    text: 'Нөөцийн таамаглал',
-    icon: <AnalyticsIcon />,
-    path: '/analytics/forecast',
-    roles: ['Admin', 'Manager'],
-  },
-  {
-    text: 'Үе шаттай борлуулалт',
-    icon: <AnalyticsIcon />,
-    path: '/analytics/sales-period',
-    roles: ['Admin', 'Manager'],
-  },
+
   { text: 'Ангилал', icon: <CategoryIcon />, path: '/categories' },
   { text: 'Харилцагчид', icon: <PeopleIcon />, path: '/customers' },
   { text: 'Захиалга', icon: <ShoppingCartIcon />, path: '/orders' },
-  { text: 'Буцаалт', icon: <ReturnIcon />, path: '/returns', roles: ['Admin', 'Manager'] },
   { text: 'Ажлын төлөвлөгөө', icon: <EventIcon />, path: '/work-plans/visits' },
   { text: 'Тайлан', icon: <ReportIcon />, path: '/reports/sales' },
   {

@@ -58,6 +58,7 @@ import {
   ProductPrice,
   CreateProductPriceRequest,
   UpdateProductPriceRequest,
+  CustomerType,
   AgentKpiSummaryData,
   AgentKpiProductRow,
   AgentKpiMultiAgentRow,
@@ -138,6 +139,10 @@ export const customersApi = {
     api.post<ApiResponse<{ customer: Customer }>>('/api/customers', data),
   update: (id: number, data: UpdateCustomerRequest) =>
     api.put<ApiResponse<{ customer: Customer }>>(`/api/customers/${id}`, data),
+};
+
+export const customerTypesApi = {
+  getAll: () => api.get<ApiResponse<{ customerTypes: CustomerType[] }>>('/api/customer-types'),
 };
 
 // Orders API
@@ -517,6 +522,7 @@ export default {
   products: productsApi,
   productPrices: productPricesApi,
   customers: customersApi,
+  customerTypes: customerTypesApi,
   orders: ordersApi,
   returns: returnsApi,
   agents: agentsApi,

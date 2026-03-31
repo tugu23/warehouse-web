@@ -20,10 +20,16 @@ import {
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
 import { customerSchema } from '../../utils/validation';
-import { Customer, CreateCustomerRequest, UpdateCustomerRequest, Employee } from '../../types';
+import {
+  Customer,
+  CreateCustomerRequest,
+  UpdateCustomerRequest,
+  Employee,
+  CustomerType,
+} from '../../types';
 import { z } from 'zod';
 import MapPicker from '../../components/MapPicker';
-import { etaxApi, employeesApi } from '../../api';
+import { etaxApi, employeesApi, customerTypesApi } from '../../api';
 import { toast } from 'react-hot-toast';
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -38,6 +44,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
   const [searchingRegno, setSearchingRegno] = useState(false);
   const [regnoSearchResult, setRegnoSearchResult] = useState<string | null>(null);
   const [agents, setAgents] = useState<Employee[]>([]);
+  const [customerTypes, setCustomerTypes] = useState<CustomerType[]>([]);
 
   const {
     control,
@@ -73,6 +80,12 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
       .then((res) => {
         const all = res.data.data?.employees || [];
         setAgents(all.filter((e) => e.isActive));
+      })
+      .catch(() => {});
+    customerTypesApi
+      .getAll()
+      .then((res) => {
+        setCustomerTypes(res.data.data?.customerTypes ?? []);
       })
       .catch(() => {});
   }, []);
@@ -291,8 +304,11 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
                   label="Харилцагчийн төрөл *"
                   onChange={(e) => field.onChange(Number(e.target.value))}
                 >
-                  <MenuItem value={1}>Жижиглэнгийн (Retail)</MenuItem>
-                  <MenuItem value={2}>Бөөний (Wholesale)</MenuItem>
+                  {customerTypes.map((ct) => (
+                    <MenuItem key={ct.id} value={ct.id}>
+                      {ct.typeName}
+                    </MenuItem>
+                  ))}
                 </Select>
                 {errors.customerTypeId && (
                   <FormHelperText>{errors.customerTypeId.message}</FormHelperText>

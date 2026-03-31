@@ -123,7 +123,7 @@ export const exportCustomersToExcel = async (customers: Customer[]) => {
       name: customer.name,
       address: customer.address,
       phoneNumber: customer.phoneNumber,
-      customerType: customer.customerType.name,
+      customerType: customer.customerType.typeName || customer.customerType.name,
       agent: customer.assignedAgent?.name || 'N/A',
       latitude: customer.locationLatitude,
       longitude: customer.locationLongitude,

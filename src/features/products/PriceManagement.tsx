@@ -24,29 +24,22 @@ import {
   Save as SaveIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
-import { productPricesApi } from '../../api';
-import { ProductPrice, CreateProductPriceRequest, UpdateProductPriceRequest } from '../../types';
+import { productPricesApi, customerTypesApi } from '../../api';
+import {
+  ProductPrice,
+  CreateProductPriceRequest,
+  UpdateProductPriceRequest,
+  CustomerType,
+} from '../../types';
 
 interface PriceManagementProps {
   productId: number;
   onUpdate?: () => void;
 }
 
-interface CustomerTypeOption {
-  id: number;
-  name: string;
-}
-
-// Common customer types - you might want to fetch these from backend in the future
-const CUSTOMER_TYPES: CustomerTypeOption[] = [
-  { id: 1, name: 'Retail' },
-  { id: 2, name: 'Wholesale' },
-  { id: 3, name: 'Market' },
-  { id: 4, name: 'Special' },
-];
-
 export default function PriceManagement({ productId, onUpdate }: PriceManagementProps) {
   const [prices, setPrices] = useState<ProductPrice[]>([]);
+  const [customerTypes, setCustomerTypes] = useState<CustomerType[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -80,6 +73,13 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
   useEffect(() => {
     fetchPrices();
   }, [fetchPrices]);
+
+  useEffect(() => {
+    customerTypesApi
+      .getAll()
+      .then((res) => setCustomerTypes(res.data.data?.customerTypes ?? []))
+      .catch(() => {});
+  }, []);
 
   const handleCreate = async (data: CreateProductPriceRequest | UpdateProductPriceRequest) => {
     try {
@@ -198,9 +198,9 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       >
                         <MenuItem value={0}>Сонгох</MenuItem>
-                        {CUSTOMER_TYPES.map((type) => (
+                        {customerTypes.map((type) => (
                           <MenuItem key={type.id} value={type.id}>
-                            {type.name}
+                            {type.typeName}
                           </MenuItem>
                         ))}
                       </Select>
@@ -282,9 +282,9 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
                           label="Харилцагчийн төрөл *"
                           onChange={(e) => field.onChange(Number(e.target.value))}
                         >
-                          {CUSTOMER_TYPES.map((type) => (
+                          {customerTypes.map((type) => (
                             <MenuItem key={type.id} value={type.id}>
-                              {type.name}
+                              {type.typeName}
                             </MenuItem>
                           ))}
                         </Select>
@@ -364,8 +364,8 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
 
       <Divider sx={{ my: 3 }} />
       <Alert severity="info">
-        <strong>Анхаар:</strong> Бараа бүрт харилцагчийн төрөл бүрт зориулсан үнэ тохируулж болно.
-        Жишээ нь: Retail (Жижиглэн), Wholesale (Бөөний), Market (Захын лангуу) гэх мэт.
+        <strong>Анхаар:</strong> Бараа бүрт харилцагчийн төрөл (Зах, Дэлгүүр, Номин, CU, Наш) бүрт
+        зориулсан үнэ тохируулж болно.
       </Alert>
     </Box>
   );

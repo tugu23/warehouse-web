@@ -17,6 +17,7 @@ import {
   Business as BusinessIcon,
 } from '@mui/icons-material';
 import { Customer } from '../../types';
+import { chipColorForCustomerTypeName } from '../../utils/customerTypeUi';
 
 interface CustomerDetailsModalProps {
   customer: Customer | null;
@@ -94,7 +95,9 @@ export default function CustomerDetailsModal({
                       {customer.customerType && (
                         <Chip
                           label={customer.customerType.typeName || customer.customerType.name}
-                          color={customer.customerType.name === 'Wholesale' ? 'info' : 'secondary'}
+                          color={chipColorForCustomerTypeName(
+                            customer.customerType.typeName || customer.customerType.name
+                          )}
                           size="small"
                           variant="outlined"
                         />
@@ -103,7 +106,9 @@ export default function CustomerDetailsModal({
                   ) : customer.customerType ? (
                     <Chip
                       label={customer.customerType.typeName || customer.customerType.name}
-                      color={customer.customerType.name === 'Wholesale' ? 'primary' : 'secondary'}
+                      color={chipColorForCustomerTypeName(
+                        customer.customerType.typeName || customer.customerType.name
+                      )}
                       size="medium"
                     />
                   ) : (

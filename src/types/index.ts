@@ -168,8 +168,9 @@ export interface Customer {
 
 export interface CustomerType {
   id: number;
-  name: 'Retail' | 'Wholesale';
-  typeName?: string; // Alternative field name used in some endpoints
+  typeName: string;
+  /** @deprecated Prisma зөвхөн typeName буцаана */
+  name?: string;
 }
 
 export interface CreateCustomerRequest {
@@ -779,7 +780,7 @@ export interface ProductPrice {
   customerTypeId: number;
   customerType: {
     id: number;
-    typeName: string; // 'Retail', 'Wholesale', etc.
+    typeName: string;
   };
   price: number;
   createdAt?: string;

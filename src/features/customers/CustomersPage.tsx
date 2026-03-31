@@ -10,6 +10,7 @@ import { Customer, CreateCustomerRequest, UpdateCustomerRequest } from '../../ty
 import CustomerForm from './CustomerForm';
 import CustomerDetailsModal from './CustomerDetailsModal';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
+import { chipColorForCustomerTypeName } from '../../utils/customerTypeUi';
 
 export default function CustomersPage() {
   const { canManage, canCreate } = useAuth();
@@ -27,7 +28,8 @@ export default function CustomersPage() {
     setLoading(true);
     try {
       const response = await customersApi.getAll({ limit: 'all' });
-      setCustomers(response.data.data?.customers || []);
+      const list = response.data.data?.customers || [];
+      setCustomers(Array.from(new Map(list.map((c) => [c.id, c])).values()));
     } catch (error) {
       console.error('Error fetching customers:', error);
       toast.error('Харилцагч татахад алдаа гарлаа');
@@ -144,7 +146,9 @@ export default function CustomersPage() {
           return row.customerType ? (
             <Chip
               label={row.customerType.typeName || row.customerType.name}
-              color={row.customerType.name === 'Wholesale' ? 'primary' : 'secondary'}
+              color={chipColorForCustomerTypeName(
+                row.customerType.typeName || row.customerType.name
+              )}
               size="small"
             />
           ) : (

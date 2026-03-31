@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Paper,
   Table,
@@ -49,6 +49,33 @@ export default function DataTable<T extends object>({
   const [order, setOrder] = useState<Order>('asc');
   const [searchQuery, setSearchQuery] = useState('');
 
+  /** Ижил id-тай мөр API/state алдаагаар давхарсан тохиолдолд эхнийхийг үлдээнэ */
+  const dedupedData = useMemo(() => {
+    if (!data?.length) return data;
+    const first = data[0] as Record<string, unknown>;
+    if (first.id === undefined || first.id === null) return data;
+    const seen = new Set<string | number>();
+    const out: T[] = [];
+    for (const row of data) {
+      const id = (row as Record<string, unknown>).id;
+      if (id === undefined || id === null) {
+        out.push(row);
+        continue;
+      }
+      if (!seen.has(id as string | number)) {
+        seen.add(id as string | number);
+        out.push(row);
+      }
+    }
+    return out;
+  }, [data]);
+
+  const rowKey = (row: T, index: number) => {
+    const id = (row as Record<string, unknown>).id;
+    if (id !== undefined && id !== null) return `id-${String(id)}`;
+    return `idx-${index}`;
+  };
+
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
@@ -82,7 +109,7 @@ export default function DataTable<T extends object>({
   };
 
   const filteredData = searchable
-    ? data.filter((row) => {
+    ? dedupedData.filter((row) => {
         const searchLower = searchQuery.toLowerCase();
 
         // Helper function to recursively search through nested objects
@@ -105,7 +132,7 @@ export default function DataTable<T extends object>({
 
         return Object.values(row).some(searchInValue);
       })
-    : data;
+    : dedupedData;
 
   const sortedData = orderBy ? [...filteredData].sort(getComparator(order, orderBy)) : filteredData;
 
@@ -181,7 +208,7 @@ export default function DataTable<T extends object>({
               paginatedData.map((row, index) => (
                 <TableRow
                   hover
-                  key={index}
+                  key={rowKey(row, index)}
                   onClick={() => onRowClick?.(row)}
                   sx={{ cursor: onRowClick ? 'pointer' : 'default' }}
                 >

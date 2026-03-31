@@ -23,6 +23,8 @@ interface EbarimtReceiptPdfData {
   customerTin?: string | null;
   qrData?: string;
   lottery?: string | number;
+  totalAmount?: number;
+  totalVAT?: number;
 }
 
 type JsPDFWithAutoTable = import('jspdf').jsPDF & { lastAutoTable: { finalY: number } };
@@ -36,7 +38,13 @@ async function generateEbarimtPDF(
   orderNumber: string,
   isB2B: boolean
 ) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  // 8-аас олон бараа байвал босоо A4, эс бол хэвтээ A5
+  const useA4Portrait = orderItems.length > 8;
+  const doc = new jsPDF(
+    useA4Portrait
+      ? { orientation: 'portrait', unit: 'mm', format: 'a4' }
+      : { orientation: 'portrait', unit: 'mm', format: 'a4' }
+  );
 
   try {
     doc.addFileToVFS('Roboto-Regular.ttf', RobotoRegular);
@@ -51,7 +59,7 @@ async function generateEbarimtPDF(
   const W = doc.internal.pageSize.getWidth();
   const L = 10,
     R = W - 10;
-  let y = 12;
+  let y = 10;
 
   const drawLine = (yy: number, w = 0.4) => {
     doc.setDrawColor(0);
@@ -63,89 +71,68 @@ async function generateEbarimtPDF(
 
   // Огноо
   normal();
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setTextColor(60, 100, 180);
   doc.text(String(data.date || '').slice(0, 10) || new Date().toISOString().slice(0, 10), L, y);
   doc.setTextColor(0);
-  y += 7;
+  y += 5;
 
   // Гарчиг
   bold();
-  doc.setFontSize(15);
+  doc.setFontSize(13);
   doc.text('ТӨЛБӨРИЙН БАРИМТ', W / 2, y, { align: 'center' });
   y += 2;
   drawLine(y, 0.8);
-  y += 7;
-
-  // Хоёр багана
-  const midX = W / 2 + 5;
-  bold();
-  doc.setFontSize(9);
-  doc.text('Баримтын мэдээлэл', L, y);
-  doc.text('Худалдан авагч', midX, y);
   y += 5;
 
-  const rowH = 5,
-    labelW = 22,
-    labelWR = 14;
-  const leftRows: [string, string][] = [
-    ['Падаан №:', orderNumber],
-    ['ДДТД:', data.id || ''],
-    ['ТТД:', COMPANY.tin],
-    ['Төлбөр:', paymentLabel],
+  // Хоёр багана: Борлуулагч (зүүн) | Худалдан авагч (баруун)
+  const midX = W / 2 + 5;
+  bold();
+  doc.setFontSize(8);
+  doc.text('Борлуулагч', L, y);
+  doc.text('Худалдан авагч', midX, y);
+  y += 4;
+  const rowH = 4.5,
+    labelW = 20,
+    labelWR = 13;
+  // Зүүн тал: Борлуулагч мэдээлэл + баримтын мэдээлэл
+  const sellerRows: [string, string, boolean][] = [
+    ['Байгуулга:', COMPANY.name, false],
+    ['Хаяг:', COMPANY.address, false],
+    ['Утас:', COMPANY.phones, false],
+    ['ДДТД:', data.id || '', true],
+    ['ТТД:', COMPANY.tin, false],
+    ['Төлбөр:', paymentLabel, false],
   ];
+  // Баруун тал: Худалдан авагч
   const rightRows: [string, string][] = [['Нэр:', customerName || '—']];
   if (isB2B && data.customerTin) rightRows.push(['ТТД:', String(data.customerTin)]);
-
   const startY = y;
-  leftRows.forEach(([lbl, val], i) => {
+  sellerRows.forEach(([lbl, val, small], i) => {
     bold();
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.text(lbl, L + 2, startY + i * rowH);
     normal();
-    if (lbl === 'ДДТД:') {
-      doc.setFontSize(6.5);
+    if (small) {
+      doc.setFontSize(6);
       doc.text(val, L + 2 + labelW, startY + i * rowH);
-      doc.setFontSize(8);
     } else {
-      doc.setFontSize(8);
+      doc.setFontSize(7);
       doc.text(val, L + 2 + labelW, startY + i * rowH);
     }
   });
   rightRows.forEach(([lbl, val], i) => {
     bold();
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.text(lbl, midX, startY + i * rowH);
     normal();
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.text(val, midX + labelWR, startY + i * rowH);
   });
 
-  y = startY + Math.max(leftRows.length, rightRows.length) * rowH + 3;
+  y = startY + sellerRows.length * rowH + 2;
   drawLine(y, 0.3);
-  y += 5;
-
-  // Борлуулагч
-  bold();
-  doc.setFontSize(9);
-  doc.text('Борлуулагч', L, y);
-  y += 5;
-  [
-    ['Байгуулга:', COMPANY.name],
-    ['Хаяг:', COMPANY.address],
-    ['Утас:', COMPANY.phones],
-  ].forEach(([lbl, val]) => {
-    bold();
-    doc.setFontSize(8);
-    doc.text(lbl, L + 2, y);
-    normal();
-    doc.setFontSize(8);
-    const lines = doc.splitTextToSize(val, 130);
-    doc.text(lines, L + 2 + 22, y);
-    y += lines.length > 1 ? lines.length * 4 + 1 : rowH;
-  });
-  drawLine(y, 0.3);
-  y += 4;
+  y += 3;
 
   // Хүснэгт
   const tableData = orderItems.map((item, i) => [
@@ -157,34 +144,39 @@ async function generateEbarimtPDF(
     (item.unitPrice * item.qty).toLocaleString(),
   ]);
 
+  // A4 босоо үед баганы өргөн өөр байна
+  const colWidths = useA4Portrait
+    ? { name: 75, barcode: 40, qty: 18, price: 28, total: 28 }
+    : { name: 60, barcode: 35, qty: 18, price: 28, total: 28 };
+
   autoTable(doc, {
     startY: y,
     head: [['№', 'Барааны нэр', 'Баркод', 'Тоо/Ширхэг', 'Нэгж үнэ', 'Нийт үнэ']],
     body: tableData,
     theme: 'grid',
-    styles: { font: 'Roboto', fontStyle: 'normal', fontSize: 8 },
+    styles: { font: 'Roboto', fontStyle: 'normal', fontSize: 7 },
     headStyles: {
       fillColor: [220, 220, 220],
       textColor: 0,
-      fontSize: 8,
+      fontSize: 7,
       fontStyle: 'bold',
       halign: 'center',
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 10 },
-      1: { cellWidth: 60 },
-      2: { halign: 'center', cellWidth: 35 },
-      3: { halign: 'center', cellWidth: 18 },
-      4: { halign: 'right', cellWidth: 28 },
-      5: { halign: 'right', cellWidth: 28 },
+      0: { halign: 'center', cellWidth: 8 },
+      1: { cellWidth: colWidths.name },
+      2: { halign: 'center', cellWidth: colWidths.barcode },
+      3: { halign: 'center', cellWidth: colWidths.qty },
+      4: { halign: 'right', cellWidth: colWidths.price },
+      5: { halign: 'right', cellWidth: colWidths.total },
     },
     margin: { left: L, right: L },
   });
 
-  y = (doc as JsPDFWithAutoTable).lastAutoTable.finalY + 5;
+  y = (doc as JsPDFWithAutoTable).lastAutoTable.finalY + 4;
 
   // QR + Дүн
-  const qrSize = 32,
+  const qrSize = 28,
     qrX = L + 3,
     totalsX = W / 2 + 5;
 
@@ -198,66 +190,62 @@ async function generateEbarimtPDF(
 
   if (qrDataUrl) doc.addImage(qrDataUrl, 'PNG', qrX, y, qrSize, qrSize);
 
-  const lotteryX = qrX + qrSize + 5;
+  const lotteryX = qrX + qrSize + 4;
   if (data.lottery) {
     bold();
-    doc.setFontSize(9);
-    doc.text('Сугалаа:', lotteryX, y + 8);
+    doc.setFontSize(8);
+    doc.text('Сугалаа:', lotteryX, y + 7);
     bold();
-    doc.setFontSize(14);
-    doc.text(String(data.lottery), lotteryX, y + 17);
+    doc.setFontSize(13);
+    doc.text(String(data.lottery), lotteryX, y + 15);
     normal();
     doc.setFontSize(7);
-    doc.text('Сугалаанд оролцоно уу!', lotteryX, y + 23);
+    doc.text('Сугалаанд оролцоно уу!', lotteryX, y + 21);
   } else if (isB2B) {
     normal();
-    doc.setFontSize(8);
-    doc.text('Байгууллагын баримт', lotteryX, y + 12);
-    doc.setFontSize(7);
-    doc.text('(ААН-д сугалаа олгогдохгүй)', lotteryX, y + 18);
+    doc.setFontSize(7.5);
+    doc.text('Байгууллагын баримт', lotteryX, y + 11);
+    doc.setFontSize(6.5);
+    doc.text('(ААН-д сугалаа олгогдохгүй)', lotteryX, y + 17);
   } else {
     normal();
-    doc.setFontSize(8);
-    doc.text('E-Barimt бүртгэлгүй', lotteryX, y + 15);
+    doc.setFontSize(7.5);
+    doc.text('E-Barimt бүртгэлгүй', lotteryX, y + 13);
   }
   normal();
-  doc.setFontSize(7);
-  doc.text('QR код уншуулж баримт шалгана уу', qrX + qrSize / 2, y + qrSize + 4, {
+  doc.setFontSize(6.5);
+  doc.text('QR код уншуулж баримт шалгана уу', qrX + qrSize / 2, y + qrSize + 3, {
     align: 'center',
   });
 
   const total = Number(data.totalAmount) || 0;
   const vat = Number(data.totalVAT) || 0;
-  [
+  const totalRows: [string, string][] = [
     ['Барааны нийт дүн:', total.toLocaleString()],
     ['НӨАТ (10%):', vat.toLocaleString()],
     ['Нийт үнэ:', total.toLocaleString()],
-  ].forEach(([lbl, val], i) => {
-    const ty = y + 5 + i * 7;
+  ];
+  totalRows.forEach(([lbl, val], i) => {
+    const ty = y + 4 + i * 6;
     if (i === 2) bold();
     else normal();
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.text(lbl, totalsX, ty);
     doc.text(val, R, ty, { align: 'right' });
   });
 
-  y += qrSize + 12;
-  drawLine(y, 0.3);
-  y += 7;
-
+  // Гарын үсэг: дүнгийн яг доор
+  const sigY = y + 4 + totalRows.length * 6 + 3;
   normal();
-  doc.setFontSize(9);
-  doc.text('Хүлээлгэн өгсөн:  ........................./.........................', W / 2, y, {
+  doc.setFontSize(8);
+  doc.text('Хүлээлгэн өгсөн:  ........................./.........................', W / 2, sigY, {
     align: 'center',
   });
-  y += 8;
-  doc.text('Хүлээн авсан:  ........................./.........................', W / 2, y, {
+  doc.text('Хүлээн авсан:  ........................./.........................', W / 2, sigY + 7, {
     align: 'center',
   });
-  y += 10;
-  bold();
-  doc.setFontSize(9);
-  doc.text('Худалдан авалт хийсэнд баярлалаа!', W / 2, y, { align: 'center' });
+
+  y += qrSize + 8;
 
   const blobUrl = doc.output('bloburl');
   const pdfWindow = window.open(blobUrl);
@@ -539,8 +527,8 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
       // Backend-д ebarimt мэдээлэл хадгалах
       await ordersApi.markEbarimt(order.id, {
         ebarimtBillId: data.id,
-        ebarimtDate: data.date,
-        ebarimtId: data.date,
+        ebarimtDate: data.date ?? '',
+        ebarimtId: data.date ?? '',
         ebarimtType: isB2B ? 'B2B' : 'B2C',
       });
 

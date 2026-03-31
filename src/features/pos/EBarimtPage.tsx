@@ -133,7 +133,7 @@ export default function EBarimtPage() {
   const isB2BOrder = (order: Order) =>
     order.ebarimtType === 'B2B' || (!order.ebarimtType && !!order.customer?.registrationNumber);
 
-  // eBarimt буцаалт — frontend-ээс шууд POS API DELETE
+  // eBarimt буцаалт — frontend-ээс POS API-руу шууд DELETE
   const handleEbarimtReturn = async (order: Order) => {
     if (isB2BOrder(order)) {
       toast.error('B2B баримт буцаалт хийх боломжгүй');
@@ -148,31 +148,32 @@ export default function EBarimtPage() {
 
     setReturningId(order.id);
     try {
-      // 1. Backend-ээс ebarimtBillId, ebarimtDate авах
-      const infoRes = await ordersApi.ebarimtReturn(order.id);
-      const { ebarimtBillId, ebarimtDate } = infoRes.data?.data || {};
-      if (!ebarimtBillId) {
-        toast.error('eBarimt мэдээлэл олдсонгүй');
-        return;
-      }
+      // POS API-руу DELETE хүсэлт — { id, date } body-тай
+      // POS API: "2006-01-02 15:04:05" форматыг шаарддаг
+      const posDate = order.ebarimtDate
+        ? format(new Date(order.ebarimtDate), 'yyyy-MM-dd HH:mm:ss')
+        : undefined;
 
-      // 2. POS API-руу DELETE хүсэлт
       const posRes = await fetch(`${POS_API_URL}/rest/receipt`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: ebarimtBillId, date: ebarimtDate }),
+        body: JSON.stringify({
+          id: order.ebarimtBillId,
+          ...(posDate ? { date: posDate } : {}),
+        }),
       });
 
-      interface PosReceiptDeleteBody {
+      interface PosDeleteBody {
         message?: string;
         id?: string;
+        success?: boolean;
       }
-      let posData: PosReceiptDeleteBody | null = null;
+      let posData: PosDeleteBody | null = null;
       const rawText = await posRes.text();
       try {
-        posData = rawText ? (JSON.parse(rawText) as PosReceiptDeleteBody) : null;
+        posData = rawText ? (JSON.parse(rawText) as PosDeleteBody) : null;
       } catch {
-        /* non-JSON */
+        /* non-JSON response */
       }
 
       const errMessage = posData?.message || '';
@@ -180,8 +181,9 @@ export default function EBarimtPage() {
       const isSuccess = posRes.ok || alreadyReturned;
 
       if (isSuccess) {
-        // 3. DB шинэчлэх
-        await ordersApi.ebarimtReturnDone(order.id, posData?.id || ebarimtBillId);
+        // DB шинэчлэх
+        const returnId = posData?.id || order.ebarimtBillId!;
+        await ordersApi.ebarimtReturnDone(order.id, returnId);
         toast.success(
           alreadyReturned
             ? 'eBarimt-д аль хэдийн буцаагдсан байсан. Систем шинэчлэгдлээ.'
@@ -192,8 +194,10 @@ export default function EBarimtPage() {
         toast.error(`eBarimt буцаалт амжилтгүй: ${errMessage || `HTTP ${posRes.status}`}`);
       }
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'eBarimt буцаалт хийхэд алдаа гарлаа');
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(
+        err.response?.data?.message || err.message || 'eBarimt буцаалт хийхэд алдаа гарлаа'
+      );
     } finally {
       setReturningId(null);
     }
@@ -223,8 +227,13 @@ export default function EBarimtPage() {
 
       {/* Анхааруулга */}
       {info?.warningMessage && (
-        <Alert severity="warning" icon={<WarningIcon />} sx={{ mb: 3 }}>
+        <Alert severity="warning" icon={<WarningIcon />} sx={{ mb: 2 }}>
           {info.warningMessage}
+        </Alert>
+      )}
+      {info?.shouldSendNow && !info?.warningMessage && (
+        <Alert severity="error" icon={<ErrorIcon />} sx={{ mb: 2 }}>
+          3 хоногийн хугацаа дуусаж байна — нэгдсэн системд яаралтай илгээнэ үү!
         </Alert>
       )}
 
@@ -320,7 +329,7 @@ export default function EBarimtPage() {
                   sendingData ? <CircularProgress size={20} color="inherit" /> : <SendIcon />
                 }
                 onClick={handleSendData}
-                disabled={sendingData || (info?.billCount || 0) === 0}
+                disabled={sendingData}
               >
                 {sendingData ? 'Илгээж байна...' : 'Нэгдсэн системд илгээх'}
               </Button>

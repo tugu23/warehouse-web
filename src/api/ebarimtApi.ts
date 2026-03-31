@@ -22,7 +22,8 @@ export interface EBarimtInformation {
   posNo?: string;
   branchNo?: string;
   lastSentDate?: string;
-  lotteryCount?: number;
+  lotteryCount?: number; // normalized from leftLotteries by backend route
+  leftLotteries?: number; // raw POS API field
   billCount?: number;
   billAmount?: number;
   warningMessage?: string;

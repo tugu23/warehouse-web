@@ -22,15 +22,15 @@ export async function createEbarimtRequest({
     throw new Error('B2B_RECEIPT үед customerTin заавал хэрэгтэй');
   }
 
+  // Захиалгын unitPrice нь НӨАТ-аас өмнөх (backend addVAT-тай тааруулна).
+  // Мөрийн нийт: lineNet + 10% НӨАТ = НӨАТ багтсан дүн (POS-ийн 10/110 шалгалттай нийцнэ).
   const calculatedItems = items.map((item) => {
     const qty = item.qty || 1;
-
-    const itemTotalAmount = +(item.unitPrice * qty).toFixed(2);
-    // POS validation expects VAT as totalAmount * 10/110 (rounded to 2)
-    const itemTotalVAT = +((itemTotalAmount * 10) / 110).toFixed(2);
+    const lineNet = +(item.unitPrice * qty).toFixed(2);
+    const itemTotalVAT = +(lineNet * 0.1).toFixed(2);
     const itemTotalCityTax = 0;
-    const itemNetAmount = +(itemTotalAmount - itemTotalVAT).toFixed(2);
-    const basePrice = +(itemNetAmount / qty).toFixed(2);
+    const itemTotalAmount = +(lineNet + itemTotalVAT).toFixed(2);
+    const basePrice = +item.unitPrice.toFixed(2);
 
     return {
       name: item.name,
@@ -48,7 +48,7 @@ export async function createEbarimtRequest({
   });
 
   const totalAmount = +calculatedItems.reduce((sum, i) => sum + i.totalAmount, 0).toFixed(2);
-  const totalVAT = +((totalAmount * 10) / 110).toFixed(2);
+  const totalVAT = +calculatedItems.reduce((sum, i) => sum + i.totalVAT, 0).toFixed(2);
 
   return {
     branchNo: '001',

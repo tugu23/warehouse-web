@@ -1,6 +1,16 @@
-import { useState, useEffect } from 'react';
-import { Box, Button, Chip } from '@mui/material';
-import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { Add as AddIcon, Clear as ClearIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -12,6 +22,15 @@ import OrderDetailsModal from './OrderDetailsModal';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 import { formatDateTimeMN } from '../../utils/dateFormatter';
 
+type EbarimtListFilter = 'all' | 'returned' | 'active';
+
+/** Захиалгын огноог орон нутгийн календарийн YYYY-MM-DD болгон хувиргана */
+function orderLocalYmd(createdAt: string): string | null {
+  const d = new Date(createdAt);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function OrdersPage() {
   const { canManage, user, isSalesAgent } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -19,6 +38,10 @@ export default function OrdersPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [ebarimtListFilter, setEbarimtListFilter] = useState<EbarimtListFilter>('all');
+  /** `YYYY-MM-DD` — эхлэх/дуусах өдрөөр интервал шүүх */
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   useEffect(() => {
     fetchOrders();
@@ -67,6 +90,32 @@ export default function OrdersPage() {
     handleViewDetails(order);
   };
 
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      if (ebarimtListFilter === 'returned') {
+        if (!o.ebarimtReturnId) return false;
+      } else if (ebarimtListFilter === 'active') {
+        if (!o.ebarimtRegistered || o.ebarimtReturnId) return false;
+      }
+
+      const ymd = orderLocalYmd(o.createdAt);
+      if (!ymd) return false;
+
+      const hasDayRange = Boolean(dateFrom || dateTo);
+      if (hasDayRange) {
+        let from = dateFrom;
+        let to = dateTo;
+        if (from && to && from > to) {
+          [from, to] = [to, from];
+        }
+        if (from && ymd < from) return false;
+        if (to && ymd > to) return false;
+      }
+
+      return true;
+    });
+  }, [orders, ebarimtListFilter, dateFrom, dateTo]);
+
   const columns = [
     {
       id: 'id',
@@ -101,6 +150,25 @@ export default function OrdersPage() {
       },
     },
     {
+      id: 'ebarimtReturnId',
+      label: 'И-баримт',
+      align: 'center' as const,
+      minWidth: 130,
+      format: (row: Order) => {
+        if (row.ebarimtReturnId) {
+          return <Chip label="Буцаагдсан" color="default" size="small" />;
+        }
+        if (row.ebarimtRegistered) {
+          return <Chip label="Идэвхтэй" color="success" size="small" />;
+        }
+        return (
+          <Typography variant="body2" color="text.secondary">
+            Бүртгэлгүй
+          </Typography>
+        );
+      },
+    },
+    {
       id: 'createdBy',
       label: 'Created By',
       minWidth: 130,
@@ -123,12 +191,66 @@ export default function OrdersPage() {
       <DataTable
         title="Orders"
         columns={columns}
-        data={orders}
+        data={filteredOrders}
         searchable
         searchPlaceholder="Search orders..."
         onRowClick={handleRowClick}
         actions={
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+            }}
+          >
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={ebarimtListFilter}
+              onChange={(_, value: EbarimtListFilter | null) => {
+                if (value !== null) setEbarimtListFilter(value);
+              }}
+              aria-label="И-баримтаар шүүх"
+            >
+              <ToggleButton value="all">Бүх</ToggleButton>
+              <ToggleButton value="returned">Буцаагдсан</ToggleButton>
+              <ToggleButton value="active">Идэвхтэй баримт</ToggleButton>
+            </ToggleButtonGroup>
+            <TextField
+              type="date"
+              size="small"
+              label="Эхлэх огноо"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ 'aria-label': 'Интервалын эхлэх огноо' }}
+              sx={{ minWidth: 158 }}
+            />
+            <TextField
+              type="date"
+              size="small"
+              label="Дуусах огноо"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ 'aria-label': 'Интервалын дуусах огноо' }}
+              sx={{ minWidth: 158 }}
+            />
+            {dateFrom || dateTo ? (
+              <Tooltip title="Огнооны шүүлтүүрийг цэвэрлэх">
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    setDateFrom('');
+                    setDateTo('');
+                  }}
+                  aria-label="Огнооны шүүлтүүрийг цэвэрлэх"
+                >
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            ) : null}
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}

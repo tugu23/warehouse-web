@@ -230,6 +230,8 @@ export interface Order {
   distributor?: User;
   orderType?: OrderType; // Захын лангуу эсвэл дэлгүүр
   totalAmount: string | number;
+  /** НӨАТ-аас өмнөх нийт (backend-ийн subtotalAmount) */
+  subtotalAmount?: string | number;
   vatAmount?: number; // НӨАТ дүн (зөвхөн дэлгүүрийн захиалгад)
   status: 'Pending' | 'Fulfilled' | 'Cancelled';
   paymentMethod: PaymentMethod;

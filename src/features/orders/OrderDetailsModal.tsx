@@ -136,7 +136,16 @@ export default function OrderDetailsModal({
           <Typography variant="body2" color="text.secondary">
             eBarimt
           </Typography>
-          {order.ebarimtRegistered ? (
+          {order.ebarimtReturnId ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+              <Chip label="Буцаагдсан" size="small" color="default" />
+              {order.ebarimtBillId && (
+                <Typography variant="caption" color="text.secondary">
+                  ДДТД: …{order.ebarimtBillId.slice(-8)}
+                </Typography>
+              )}
+            </Box>
+          ) : order.ebarimtRegistered ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <CheckCircleIcon color="success" fontSize="small" />
               <Typography variant="body2" color="success.main" fontWeight="bold">

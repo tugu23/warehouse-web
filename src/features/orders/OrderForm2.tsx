@@ -12,6 +12,10 @@ interface ProductOption {
   stock: number;
   barCode: string;
   classificationCode: string;
+  /** Нэг хайрцагт хэдэн ширхэг — backend `unitsPerBox` */
+  unitsPerBox?: number | null;
+  /** Хайрцагны үнэ (байвал хайрцагаар захиалахад ашиглана) */
+  pricePerBox?: number | null;
 }
 
 type PriceMode = 'retail' | 'wholesale' | 'custom';
@@ -20,7 +24,10 @@ interface OrderItem {
   productId: string;
   productInput?: string;
   productQuery?: string;
-  qty: number;
+  /** Нэмэлт ширхэг (хайрцагнаас тусад нь) */
+  qtyPieces: number;
+  /** Хайрцагийн тоо */
+  qtyBoxes: number;
   priceMode: PriceMode;
   priceModeInput?: string;
   customUnitPrice?: number;
@@ -156,10 +163,12 @@ const s: Record<string, React.CSSProperties> = {
   itemRowDuplicate: { border: `1px solid ${C.red}` },
   itemGrid: {
     display: 'grid',
-    gridTemplateColumns: '2.2fr 80px 170px 100px 36px',
+    gridTemplateColumns: 'minmax(0, 2fr) 152px 170px 100px 36px',
     gap: 10,
-    alignItems: 'center',
+    alignItems: 'start',
   },
+  qtyStack: { display: 'flex', flexDirection: 'column' as const, gap: 6 },
+  qtyFieldLabel: { fontSize: 10, color: C.textDim, marginBottom: 2 },
   itemMeta: { display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' },
   tag: { fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 600 },
   stockOk: { background: '#14532d', color: C.success },
@@ -285,7 +294,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       productId: '',
       productInput: '',
       productQuery: '',
-      qty: 1,
+      qtyPieces: 1,
+      qtyBoxes: 0,
       priceMode: 'retail',
       priceModeInput: 'Ширхэгийн үнэ',
       customUnitPrice: undefined,
@@ -308,6 +318,9 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
             stock: p.stockQuantity ?? 0,
             barCode: p.barcode ?? '',
             classificationCode: p.classificationCode ?? p.category?.classificationCode ?? '',
+            unitsPerBox: p.unitsPerBox != null && p.unitsPerBox > 0 ? p.unitsPerBox : null,
+            pricePerBox:
+              p.pricePerBox != null && Number(p.pricePerBox) > 0 ? Number(p.pricePerBox) : null,
           }))
         );
       })
@@ -338,7 +351,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         productId: String(item.productId),
         productInput: item.product?.nameMongolian || '',
         productQuery: item.product?.nameMongolian || '',
-        qty: item.quantity,
+        qtyPieces: item.quantity,
+        qtyBoxes: 0,
         priceMode: 'custom',
         priceModeInput: 'Гараар үнэ',
         customUnitPrice: Number(item.unitPrice || 0),
@@ -352,7 +366,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
               productId: '',
               productInput: '',
               productQuery: '',
-              qty: 1,
+              qtyPieces: 1,
+              qtyBoxes: 0,
               priceMode: 'retail',
               priceModeInput: 'Ширхэгийн үнэ',
               customUnitPrice: undefined,
@@ -418,7 +433,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     const oi = orderItems[idx];
     if (!oi) return false;
     const p = getProduct(oi.productId);
-    return p ? oi.qty > p.stock : false;
+    return p ? getPieceQty(oi) > p.stock : false;
   };
 
   const getUnitPrice = (oi: OrderItem): number => {
@@ -436,11 +451,69 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     return p.retailPrice || p.wholesalePrice || 0;
   };
 
-  const itemSubtotals = orderItems.map((oi) => getUnitPrice(oi) * (oi.qty || 0));
-  const totalAmount = itemSubtotals.reduce((s, v) => s + v, 0);
-  const vatAmount = Math.round(((totalAmount * 10) / 112) * 100) / 100;
+  /** Захиалгын мөрөнд орох нийт ширхэг (хадгалалт/API-д илгээгдэнэ) */
+  const getPieceQty = (oi: OrderItem): number => {
+    const p = getProduct(oi.productId);
+    const boxes = Math.max(0, Math.floor(Number(oi.qtyBoxes) || 0));
+    const pieces = Math.max(0, Math.floor(Number(oi.qtyPieces) || 0));
+    if (p?.unitsPerBox && p.unitsPerBox > 0) {
+      return boxes * p.unitsPerBox + pieces;
+    }
+    return pieces;
+  };
 
-  const validItemCount = orderItems.filter((oi) => oi.productId && oi.qty > 0).length;
+  /** Хайрцаг + ширхэг холилдсон мөрийн дүн */
+  const getLineSubtotal = (oi: OrderItem): number => {
+    const p = getProduct(oi.productId);
+    if (!p) return 0;
+    const boxes = Math.max(0, Math.floor(Number(oi.qtyBoxes) || 0));
+    const pieces = Math.max(0, Math.floor(Number(oi.qtyPieces) || 0));
+    const upb = p.unitsPerBox && p.unitsPerBox > 0 ? p.unitsPerBox : 0;
+
+    if (oi.priceMode === 'custom') {
+      const unit = Number(oi.customUnitPrice || 0);
+      if (!upb) return unit * Math.max(1, pieces || 1);
+      const totalP = boxes * upb + pieces;
+      return totalP > 0 ? unit * totalP : 0;
+    }
+
+    const unit = getUnitPrice(oi);
+    if (!upb) {
+      return unit * Math.max(1, pieces || 1);
+    }
+
+    let boxPart = 0;
+    if (boxes > 0) {
+      if (p.pricePerBox != null && p.pricePerBox > 0) {
+        boxPart = boxes * p.pricePerBox;
+      } else {
+        boxPart = boxes * upb * unit;
+      }
+    }
+    return boxPart + pieces * unit;
+  };
+
+  /** Нэг нэгжийн үнээр × тоо хийхэд мөрийн дүн таарахгүй бол API-д дундаж нэгж илгээнэ */
+  const needsWeightedUnitForApi = (oi: OrderItem, p?: ProductOption): boolean => {
+    if (!p) return false;
+    const upb = p.unitsPerBox && p.unitsPerBox > 0 ? p.unitsPerBox : 0;
+    if (!upb) return false;
+    const b = Math.max(0, Math.floor(Number(oi.qtyBoxes) || 0));
+    const pc = Math.max(0, Math.floor(Number(oi.qtyPieces) || 0));
+    if (b > 0 && pc > 0) return true;
+    if (b > 0 && p.pricePerBox != null && p.pricePerBox > 0) return true;
+    return false;
+  };
+
+  const itemSubtotals = orderItems.map((oi) => getLineSubtotal(oi));
+  /** НӨАТ-гүй барааны нийт (мөрийн дүнгийн нийлбэр) */
+  const subtotalExVat = itemSubtotals.reduce((s, v) => s + v, 0);
+  /** НӨАТ 10% — серверийн vat.service-тай ижил: дэд дүн × 10% */
+  const vatAmount = Math.round(subtotalExVat * 0.1 * 100) / 100;
+  /** НӨАТ орсон эцсийн дүн */
+  const totalWithVat = Math.round((subtotalExVat + vatAmount) * 100) / 100;
+
+  const validItemCount = orderItems.filter((oi) => oi.productId && getPieceQty(oi) >= 1).length;
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const onCustomerInputChange = (value: string) => {
@@ -470,7 +543,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         productId: '',
         productInput: '',
         productQuery: '',
-        qty: 1,
+        qtyPieces: 1,
+        qtyBoxes: 0,
         priceMode: 'retail',
         priceModeInput: 'Ширхэгийн үнэ',
         customUnitPrice: undefined,
@@ -482,7 +556,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     field:
       | 'productId'
       | 'productInput'
-      | 'qty'
+      | 'qtyPieces'
+      | 'qtyBoxes'
       | 'priceMode'
       | 'priceModeInput'
       | 'customUnitPrice',
@@ -494,7 +569,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
     if (field === 'productId') {
       item.productId = val as string;
-      item.qty = 1;
+      item.qtyPieces = 1;
+      item.qtyBoxes = 0;
       const selected = products.find((p) => p.id === Number(val));
       item.productQuery = selected?.name || '';
       item.productInput = selected?.name || '';
@@ -508,13 +584,25 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       const exact = products.find((p) => p.name.toLowerCase() === input.toLowerCase());
       if (exact) {
         item.productId = String(exact.id);
-        item.qty = 1;
+        item.qtyPieces = 1;
+        item.qtyBoxes = 0;
       } else if (!input.trim()) {
         item.productId = '';
       }
     }
 
-    if (field === 'qty') item.qty = Math.max(1, val as number);
+    if (field === 'qtyPieces') {
+      const p = getProduct(item.productId);
+      const v = Math.max(0, Math.floor(Number(val) || 0));
+      if (p?.unitsPerBox && p.unitsPerBox > 0) {
+        item.qtyPieces = v;
+      } else {
+        item.qtyPieces = Math.max(1, v);
+      }
+    }
+    if (field === 'qtyBoxes') {
+      item.qtyBoxes = Math.max(0, Math.floor(Number(val) || 0));
+    }
 
     if (field === 'priceMode') {
       item.priceMode = val as PriceMode;
@@ -552,11 +640,17 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!selectedCustomerId) errs.customer = 'Харилцагч сонгоно уу';
-    const validItems = orderItems.filter((oi) => oi.productId && oi.qty > 0);
+    const validItems = orderItems.filter((oi) => oi.productId && getPieceQty(oi) >= 1);
     if (validItems.length === 0) errs.items = 'Дор хаяж нэг бараа сонгоно уу';
     orderItems.forEach((oi, i) => {
       if (oi.productId && isDuplicate(i)) errs[`item_${i}`] = 'Давтагдсан бараа';
       if (oi.productId && isOverStock(i)) errs[`item_${i}`] = 'Үлдэгдэл хүрэлцэхгүй';
+      if (oi.productId && oi.qtyBoxes > 0) {
+        const p = getProduct(oi.productId);
+        if (!p?.unitsPerBox || p.unitsPerBox < 1) {
+          errs[`item_${i}`] = 'Энэ бараанд хайрцаг дахь тоо тохируулаагүй байна';
+        }
+      }
       if (oi.productId && oi.priceMode === 'custom' && Number(oi.customUnitPrice || 0) <= 0) {
         errs[`item_${i}`] = 'Гараар оруулсан үнэ 0-ээс их байх ёстой';
       }
@@ -570,7 +664,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
   const handleSubmit = async () => {
     if (!validate()) return;
-    const validItems = orderItems.filter((oi) => oi.productId && oi.qty > 0);
+    const validItems = orderItems.filter((oi) => oi.productId && getPieceQty(oi) >= 1);
     setIsSubmitting(true);
     try {
       const apiPaymentMethod: ApiPaymentMethod =
@@ -581,12 +675,34 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         orderType,
         creditTermDays: paymentMethod === 'Credit' ? creditTermDays : undefined,
         deliveryDate: orderType === 'Market' && deliveryDate ? deliveryDate : undefined,
-        items: validItems.map((oi) => ({
-          productId: Number(oi.productId),
-          quantity: oi.qty,
-          priceMode: oi.priceMode,
-          customUnitPrice: oi.priceMode === 'custom' ? Number(oi.customUnitPrice || 0) : undefined,
-        })),
+        items: validItems.map((oi) => {
+          const p = getProduct(oi.productId);
+          const qty = getPieceQty(oi);
+          const line = getLineSubtotal(oi);
+          if (oi.priceMode === 'custom') {
+            return {
+              productId: Number(oi.productId),
+              quantity: qty,
+              priceMode: 'custom' as const,
+              customUnitPrice: Number(oi.customUnitPrice || 0),
+            };
+          }
+          if (needsWeightedUnitForApi(oi, p) && qty > 0) {
+            const avg = Math.round((line / qty) * 100) / 100;
+            return {
+              productId: Number(oi.productId),
+              quantity: qty,
+              priceMode: 'custom' as const,
+              customUnitPrice: avg,
+            };
+          }
+          return {
+            productId: Number(oi.productId),
+            quantity: qty,
+            priceMode: oi.priceMode,
+            customUnitPrice: undefined,
+          };
+        }),
       };
 
       const response =
@@ -740,7 +856,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
             {/* Колонкийн гарчиг */}
             <div style={{ ...s.itemGrid, marginBottom: 4, padding: '0 14px' }}>
-              {['Бараа (хайх + сонгох)', 'Тоо', 'Нэгж үнэ', 'Дүн', ''].map((h, i) => (
+              {['Бараа (хайх + сонгох)', 'Хайрцаг / ширхэг', 'Нэгж үнэ', 'Дүн', ''].map((h, i) => (
                 <span key={i} style={{ fontSize: 11, color: C.textDim, fontWeight: 600 }}>
                   {h}
                 </span>
@@ -752,10 +868,11 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
               const dup = isDuplicate(idx);
               const over = isOverStock(idx);
               const subtotal = itemSubtotals[idx] ?? 0;
+              const pieceQty = prod ? getPieceQty(oi) : 0;
               const stockStatus = prod
                 ? prod.stock === 0
                   ? 'out'
-                  : prod.stock < oi.qty
+                  : prod.stock < pieceQty
                     ? 'warn'
                     : 'ok'
                 : null;
@@ -789,24 +906,83 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
                       {prod && (
                         <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6 }}>
-                          Selected: {prod.name}
+                          {prod.name}
+                          {prod.unitsPerBox ? ` · 1 хайрцаг = ${prod.unitsPerBox} ширхэг` : ''}
                         </div>
                       )}
                     </div>
 
-                    {/* Тоо */}
-                    <input
-                      style={{
-                        ...s.input,
-                        textAlign: 'center',
-                        padding: '9px 6px',
-                        ...(over ? { border: `1px solid ${C.yellow}` } : {}),
-                      }}
-                      type="number"
-                      min={1}
-                      value={oi.qty}
-                      onChange={(e) => updateItem(idx, 'qty', Number(e.target.value))}
-                    />
+                    {/* Хайрцаг + ширхэг нэгэн зэрэг */}
+                    <div style={s.qtyStack}>
+                      {prod?.unitsPerBox ? (
+                        <>
+                          <div>
+                            <div style={s.qtyFieldLabel}>Хайрцаг</div>
+                            <input
+                              style={{
+                                ...s.input,
+                                textAlign: 'center',
+                                padding: '8px 6px',
+                                fontSize: 12,
+                                ...(over ? { border: `1px solid ${C.yellow}` } : {}),
+                              }}
+                              type="number"
+                              min={0}
+                              value={oi.qtyBoxes}
+                              onChange={(e) => updateItem(idx, 'qtyBoxes', Number(e.target.value))}
+                            />
+                          </div>
+                          <div>
+                            <div style={s.qtyFieldLabel}>Ширхэг</div>
+                            <input
+                              style={{
+                                ...s.input,
+                                textAlign: 'center',
+                                padding: '8px 6px',
+                                fontSize: 12,
+                                ...(over ? { border: `1px solid ${C.yellow}` } : {}),
+                              }}
+                              type="number"
+                              min={0}
+                              value={oi.qtyPieces}
+                              onChange={(e) => updateItem(idx, 'qtyPieces', Number(e.target.value))}
+                            />
+                          </div>
+                          <div style={{ fontSize: 10, color: C.textMuted, lineHeight: 1.35 }}>
+                            = нийт {pieceQty} ширхэг
+                            {(() => {
+                              if (!prod.unitsPerBox) return '';
+                              const parts: string[] = [];
+                              if ((oi.qtyBoxes || 0) > 0) {
+                                parts.push(`${oi.qtyBoxes}×${prod.unitsPerBox}`);
+                              }
+                              if ((oi.qtyPieces || 0) > 0) {
+                                parts.push(String(oi.qtyPieces));
+                              }
+                              return parts.length ? ` (${parts.join(' + ')})` : '';
+                            })()}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ fontSize: 10, color: C.textDim, marginBottom: 4 }}>
+                            Ширхэг
+                          </div>
+                          <input
+                            style={{
+                              ...s.input,
+                              textAlign: 'center',
+                              padding: '9px 6px',
+                              ...(over ? { border: `1px solid ${C.yellow}` } : {}),
+                            }}
+                            type="number"
+                            min={1}
+                            value={oi.qtyPieces || 1}
+                            onChange={(e) => updateItem(idx, 'qtyPieces', Number(e.target.value))}
+                          />
+                        </>
+                      )}
+                    </div>
 
                     {/* Үнэ + price mode: search with selected */}
                     <div>
@@ -843,7 +1019,29 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                             paddingRight: 4,
                           }}
                         >
-                          {prod ? `${getUnitPrice(oi).toLocaleString()}₮` : '—'}
+                          {prod ? (
+                            <>
+                              <span>{getUnitPrice(oi).toLocaleString()}₮/ш</span>
+                              {prod.unitsPerBox && oi.qtyBoxes > 0 && prod.pricePerBox ? (
+                                <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
+                                  хайрцаг {prod.pricePerBox.toLocaleString()}₮
+                                </div>
+                              ) : null}
+                              {prod.unitsPerBox &&
+                              needsWeightedUnitForApi(oi, prod) &&
+                              pieceQty > 0 ? (
+                                <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
+                                  мөрний дундаж{' '}
+                                  {(subtotal / pieceQty).toLocaleString(undefined, {
+                                    maximumFractionDigits: 2,
+                                  })}
+                                  ₮/ш
+                                </div>
+                              ) : null}
+                            </>
+                          ) : (
+                            '—'
+                          )}
                         </div>
                       )}
                     </div>
@@ -965,8 +1163,13 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                   <span style={s.summaryLabel}>Барааны тоо</span>
                   <span style={s.summaryValue}>
                     {validItemCount} нэр (
-                    {orderItems.filter((o) => o.productId).reduce((s, o) => s + o.qty, 0)} ширхэг)
+                    {orderItems.filter((o) => o.productId).reduce((s, o) => s + getPieceQty(o), 0)}{' '}
+                    ширхэг)
                   </span>
+                </div>
+                <div style={s.summaryRow}>
+                  <span style={s.summaryLabel}>Барааны нийт (НӨАТ-гүй)</span>
+                  <span style={s.summaryValue}>{subtotalExVat.toLocaleString()}₮</span>
                 </div>
                 <div style={s.summaryRow}>
                   <span style={s.summaryLabel}>НӨАТ (10%)</span>
@@ -976,7 +1179,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
             )}
             <div style={s.totalRow}>
               <span style={s.totalLabel}>Нийт дүн</span>
-              <span style={s.totalValue}>{totalAmount.toLocaleString()}₮</span>
+              <span style={s.totalValue}>{totalWithVat.toLocaleString()}₮</span>
             </div>
           </div>
           <div style={s.actions}>

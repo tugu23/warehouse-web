@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CUSTOMER_ORGANIZATION_TYPE_OPTIONS } from '../../utils/customerOrganizationTypes';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -52,6 +53,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
     formState: { errors, isSubmitting },
     reset,
     setValue,
+    getValues,
     watch,
   } = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
@@ -104,11 +106,20 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
         isVatPayer: customer.isVatPayer || false,
         locationLatitude: customer.locationLatitude,
         locationLongitude: customer.locationLongitude,
-        customerTypeId: customer.customerType.id,
+        customerTypeId: customer.customerType?.id ?? 1,
         assignedAgentId: customer.assignedAgent?.id,
       });
     }
   }, [customer, reset]);
+
+  useEffect(() => {
+    if (customer || customerTypes.length === 0) return;
+    const cur = getValues('customerTypeId');
+    const firstId = customerTypes[0]?.id;
+    if (firstId !== undefined && !customerTypes.some((t) => t.id === cur)) {
+      setValue('customerTypeId', firstId);
+    }
+  }, [customer, customerTypes, getValues, setValue]);
 
   const handleSearchByRegno = async () => {
     if (!registrationNumber || registrationNumber.length !== 7) {
@@ -193,7 +204,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
             render={({ field }) => (
               <TextField
                 {...field}
-                label="⭐ Байгууллагын регистр"
+                label="Байгууллагын регистр"
                 fullWidth
                 error={!!errors.registrationNumber}
                 helperText={
@@ -260,16 +271,21 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
               <FormControl fullWidth error={!!errors.organizationType}>
                 <InputLabel>Байгууллагын төрөл</InputLabel>
                 <Select {...field} label="Байгууллагын төрөл">
-                  <MenuItem value="">Сонгох</MenuItem>
-                  <MenuItem value="Market Warehouse">Захын лангуу (Market Warehouse)</MenuItem>
-                  <MenuItem value="Store">Дэлгүүр (Store)</MenuItem>
-                  <MenuItem value="Restaurant">Ресторан (Restaurant)</MenuItem>
-                  <MenuItem value="Chain">Сүлжээ (Chain)</MenuItem>
-                  <MenuItem value="Other">Бусад (Other)</MenuItem>
+                  <MenuItem value="">
+                    <em>Сонгох</em>
+                  </MenuItem>
+                  {field.value && !CUSTOMER_ORGANIZATION_TYPE_OPTIONS.includes(field.value) && (
+                    <MenuItem value={field.value}>{field.value} (одоогийн утга)</MenuItem>
+                  )}
+                  {CUSTOMER_ORGANIZATION_TYPE_OPTIONS.map((opt) => (
+                    <MenuItem key={opt} value={opt}>
+                      {opt}
+                    </MenuItem>
+                  ))}
                 </Select>
                 <FormHelperText>
                   {errors.organizationType?.message ||
-                    'Захын лангуу: Өмнөх өдөр захиалга, дараа өдөр хүргэлт. Дэлгүүр: Шууд захиалга ба НӨАТ.'}
+                    'Өгөгдлийн сангийн ангилалтай ижил (Зах, Дэлгүүр, Ресторан …). Жагсаалтын Chip-тэй таарна.'}
                 </FormHelperText>
               </FormControl>
             )}
@@ -416,9 +432,11 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
                   {...field}
                   label="Хариуцсан борлуулагч"
                   value={field.value ?? ''}
-                  onChange={(e) =>
-                    field.onChange(e.target.value !== '' ? Number(e.target.value) : undefined)
-                  }
+                  onChange={(e) => {
+                    const v = e.target.value as number | string;
+                    if (v === '' || v === undefined) field.onChange(undefined);
+                    else field.onChange(typeof v === 'number' ? v : Number(v));
+                  }}
                 >
                   <MenuItem value="">
                     <em>Томилоогүй</em>

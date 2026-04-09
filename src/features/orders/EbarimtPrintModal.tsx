@@ -4,7 +4,12 @@ import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
 import { toast } from 'react-hot-toast';
 import { ordersApi } from '../../api';
-import { createEbarimtRequest, getTinInfo } from '../../api/ebarimt';
+import {
+  createEbarimtRequest,
+  getEbarimtInfoByTin,
+  getTinInfo,
+  lookupEbarimtOrganizationBySevenDigitReg,
+} from '../../api/ebarimt';
 import { Order, OrderItem } from '../../types';
 import { RobotoRegular } from '../../fonts/Roboto-Regular';
 import { RobotoBold } from '../../fonts/Roboto-Bold';
@@ -685,6 +690,13 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [regError, setRegError] = useState('');
   const [individualReg, setIndividualReg] = useState('');
+  const [individualLookupResult, setIndividualLookupResult] = useState<{
+    name: string;
+    tin: string;
+  } | null>(null);
+  const [individualLookupError, setIndividualLookupError] = useState('');
+  const [individualLookupInfo, setIndividualLookupInfo] = useState('');
+  const [individualLookingUp, setIndividualLookingUp] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'BankTransfer' | 'Card'>('Cash');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -714,26 +726,50 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
     setRegError('');
     setRegResult(null);
     try {
-      const tinRes = await fetch(
-        `https://api.ebarimt.mn/api/info/check/getTinInfo?regNo=${trimmed}`
-      );
-      const tinData = await tinRes.json();
-      if (!tinData || tinData.status !== 200) {
-        setRegError('TIN олдсонгүй');
-        return;
-      }
-      const tin = tinData.data;
-      const infoRes = await fetch(`https://api.ebarimt.mn/api/info/check/getInfo?tin=${tin}`);
-      const infoData = await infoRes.json();
-      if (!infoData || infoData.status !== 200) {
-        setRegError('Байгууллагын мэдээлэл олдсонгүй');
-        return;
-      }
-      setRegResult({ name: infoData.data.name, tin: String(tin) });
-    } catch {
-      setRegError('Хайлт амжилтгүй');
+      const { name, tin } = await lookupEbarimtOrganizationBySevenDigitReg(trimmed);
+      setRegResult({ name, tin });
+    } catch (e) {
+      setRegError(e instanceof Error ? e.message : 'Хайлт амжилтгүй');
     } finally {
       setIsLookingUp(false);
+    }
+  };
+
+  const handleIndividualLookup = async () => {
+    const trimmed = individualReg.trim();
+    if (!trimmed) {
+      setIndividualLookupError('Дугаар оруулна уу');
+      setIndividualLookupInfo('');
+      return;
+    }
+    setIndividualLookingUp(true);
+    setIndividualLookupError('');
+    setIndividualLookupInfo('');
+    setIndividualLookupResult(null);
+    try {
+      if (/^\d{10,12}$/.test(trimmed)) {
+        const { name, tin } = await getEbarimtInfoByTin(trimmed);
+        setIndividualLookupResult({ name, tin });
+        setIndividualLookupInfo('');
+        toast.success('ТТД (getInfo)-ээр нэр, ТТД татагдлаа');
+      } else if (/^\d{7}$/.test(trimmed)) {
+        const { name, tin } = await lookupEbarimtOrganizationBySevenDigitReg(trimmed);
+        setIndividualLookupResult({ name, tin });
+        setIndividualLookupInfo('');
+        toast.success('eBarimt-аас байгууллагын мэдээлэл татагдлаа');
+      } else if (/^\d{8}$/.test(trimmed)) {
+        setIndividualLookupInfo(
+          '8 оронтой нь И-баримт апп-ын хэрэглэгчийн дугаар. Гадаад API-аар нэр татдаггүй; баримтад шууд дамжуулна.'
+        );
+      } else {
+        setIndividualLookupError(
+          '7 орон — байгууллага, 8 орон — И-баримт хэрэглэгчийн дугаар, 10–12 орон — ТТД (getInfo)'
+        );
+      }
+    } catch (e) {
+      setIndividualLookupError(e instanceof Error ? e.message : 'Хайлт амжилтгүй');
+    } finally {
+      setIndividualLookingUp(false);
     }
   };
 
@@ -781,11 +817,16 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         return;
       }
 
+      const ind = individualReg.trim();
+      /** B2C: зөвхөн 8 орон consumerNo; ТТД (10–12) нь getInfo-оор нэр авсан — POS-д consumer хоосон */
+      const consumerNoB2C =
+        !isB2B && ind ? (/^\d{8}$/.test(ind) ? ind : /^\d{10,12}$/.test(ind) ? '' : null) : null;
+
       const payload = await createEbarimtRequest({
         items: ebarimtItems,
         paymentType: paymentMap[paymentMethod],
         type: isB2B ? 'B2B_RECEIPT' : 'B2C_RECEIPT',
-        consumerNo: !isB2B && individualReg ? individualReg : null,
+        consumerNo: consumerNoB2C,
         customerTin: resolvedTin,
         regNo: isB2B && activeRegNo ? Number(activeRegNo) : undefined,
       });
@@ -833,7 +874,9 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
 
       // PDF хэвлэх
       const orderNum = `ORD-${order.id.toString().padStart(6, '0')}`;
-      const custName = isB2B ? regResult?.name || '' : order.customer?.name || '';
+      const custName = isB2B
+        ? regResult?.name || ''
+        : individualLookupResult?.name || order.customer?.name || '';
       const cust = order.customer;
       const addressStr =
         [cust?.district, cust?.address].filter(Boolean).join(', ') || cust?.address || '';
@@ -854,8 +897,10 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         {
           address: addressStr,
           phone: cust?.phoneNumber ?? '',
-          registrationNumber: cust?.registrationNumber ?? '',
-          tin: resolvedTin ?? '',
+          registrationNumber: isB2B
+            ? (cust?.registrationNumber ?? '')
+            : individualReg.trim() || cust?.registrationNumber || '',
+          tin: isB2B ? (resolvedTin ?? '') : (individualLookupResult?.tin ?? ''),
         }
       );
 
@@ -1024,13 +1069,43 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
             </div>
           ) : (
             <div style={{ marginBottom: 14 }}>
-              <label style={st.label}>Иргэний регистр (заавал биш)</label>
-              <input
-                style={st.input}
-                value={individualReg}
-                placeholder="АА12345678"
-                onChange={(e) => setIndividualReg(e.target.value)}
-              />
+              <label style={st.label}>
+                ТТД (10–12 орон), эсвэл 7 орон байгууллага, эсвэл 8 орон И-баримт хэрэглэгчийн
+                дугаар
+              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  style={st.input}
+                  value={individualReg}
+                  placeholder="Жишээ: 111655202982 (ТТД) эсвэл 1234567 / 12345678"
+                  onChange={(e) => {
+                    setIndividualReg(e.target.value);
+                    setIndividualLookupResult(null);
+                    setIndividualLookupError('');
+                    setIndividualLookupInfo('');
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleIndividualLookup()}
+                />
+                <button
+                  type="button"
+                  style={{ ...st.submitBtn, whiteSpace: 'nowrap' }}
+                  onClick={handleIndividualLookup}
+                  disabled={individualLookingUp}
+                >
+                  {individualLookingUp ? '...' : 'Лавлах'}
+                </button>
+              </div>
+              {individualLookupError && <div style={st.errorText}>{individualLookupError}</div>}
+              {individualLookupInfo && (
+                <div style={{ ...st.successCard, marginTop: 8, background: '#1e293b' }}>
+                  {individualLookupInfo}
+                </div>
+              )}
+              {individualLookupResult && (
+                <div style={{ ...st.successCard, marginTop: 8 }}>
+                  ✓ {individualLookupResult.name} — ТТД: {individualLookupResult.tin}
+                </div>
+              )}
             </div>
           )}
 

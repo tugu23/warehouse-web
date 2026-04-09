@@ -19,6 +19,8 @@ export default function CustomersPage() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  /** Шинэ харилцагчийн формыг бүрэн дахин монтлох (өмнөх засварын өгөгдөл үлдэхгүй) */
+  const [createFormNonce, setCreateFormNonce] = useState(0);
 
   useEffect(() => {
     fetchCustomers();
@@ -230,6 +232,7 @@ export default function CustomersPage() {
                 startIcon={<AddIcon />}
                 onClick={() => {
                   setSelectedCustomer(null);
+                  setCreateFormNonce((n) => n + 1);
                   setEditModalOpen(true);
                 }}
               >
@@ -263,6 +266,7 @@ export default function CustomersPage() {
         maxWidth="md"
       >
         <CustomerForm
+          key={selectedCustomer ? `edit-${selectedCustomer.id}` : `new-${createFormNonce}`}
           customer={selectedCustomer}
           onSubmit={selectedCustomer ? handleUpdate : handleCreate}
           onCancel={handleCloseEditModal}

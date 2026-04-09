@@ -1,9 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import { productsApi, customersApi, ordersApi } from '../../api';
-import { Customer, Order, type PaymentMethod as ApiPaymentMethod } from '../../types';
+import { productsApi, customersApi, customerTypesApi, ordersApi } from '../../api';
+import { Customer, Order, ProductPrice, type PaymentMethod as ApiPaymentMethod } from '../../types';
 import { toast } from 'react-hot-toast';
 
 // ── Types ──────────────────────────────────────────────────────────────────
+/** Харилцагчийн төрөл тус бүрийн үнэ (product_prices) */
+interface ProductTypePriceRow {
+  customerTypeId: number;
+  price: number;
+  typeName?: string;
+}
+
 interface ProductOption {
   id: number;
   name: string;
@@ -16,9 +23,10 @@ interface ProductOption {
   unitsPerBox?: number | null;
   /** Хайрцагны үнэ (байвал хайрцагаар захиалахад ашиглана) */
   pricePerBox?: number | null;
+  typePrices: ProductTypePriceRow[];
 }
 
-type PriceMode = 'retail' | 'wholesale' | 'custom';
+type PriceMode = 'customerType' | 'retail' | 'wholesale' | 'custom';
 
 interface OrderItem {
   productId: string;
@@ -277,6 +285,92 @@ const PAYMENT_METHODS = [
 ] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value'];
 
+/** Төрөл nested эсвэл зөвхөн customerTypeId-аар тодорхой эсэх */
+function customerRowHasType(c: Customer): boolean {
+  if (c.customerType?.typeName || c.customerType?.name) return true;
+  return c.customerTypeId != null && c.customerTypeId > 0;
+}
+
+/** Ижил нэр/утастай олон мөр байвал төрөлтэй, дараа нь бага id-г сонгоно */
+function pickCustomerMatchingInput(value: string, list: Customer[]): Customer | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const vLower = trimmed.toLowerCase();
+
+  const pickBest = (cands: Customer[]): Customer | undefined => {
+    if (cands.length === 0) return undefined;
+    return [...cands].sort((a, b) => {
+      const ha = customerRowHasType(a) ? 0 : 1;
+      const hb = customerRowHasType(b) ? 0 : 1;
+      if (ha !== hb) return ha - hb;
+      return a.id - b.id;
+    })[0];
+  };
+
+  const byName = list.filter((c) => c.name.toLowerCase() === vLower);
+  const fromName = pickBest(byName);
+  if (fromName) return fromName;
+
+  return pickBest(list.filter((c) => c.phoneNumber === trimmed));
+}
+
+function resolveCustomerTypeId(c: Customer | undefined): number | undefined {
+  if (!c) return undefined;
+  const nested = c.customerType?.id;
+  if (nested != null && nested > 0) return nested;
+  if (c.customerTypeId != null && c.customerTypeId > 0) return c.customerTypeId;
+  return undefined;
+}
+
+/**
+ * Зарим орчин/прокси Prisma-ийн @map талбаруудыг snake_case-аар буцааж болно.
+ * Nested `customerType` дутуу ч `customer_type_id` байж болно.
+ */
+function parseCustomerFromApi(row: Customer & Record<string, unknown>): Customer {
+  const snakeTid = row.customer_type_id;
+  const tidFromSnake =
+    typeof snakeTid === 'number'
+      ? snakeTid
+      : snakeTid != null && snakeTid !== ''
+        ? Number(snakeTid)
+        : undefined;
+  const mergedTid =
+    row.customerTypeId != null && row.customerTypeId !== undefined
+      ? Number(row.customerTypeId)
+      : tidFromSnake !== undefined && Number.isFinite(tidFromSnake)
+        ? tidFromSnake
+        : row.customerTypeId;
+
+  const snakeCt = row.customer_type as
+    | { id?: number; type_name?: string; typeName?: string }
+    | null
+    | undefined;
+  let customerType = row.customerType ?? null;
+  if (!customerType && snakeCt) {
+    customerType = {
+      id: Number(snakeCt.id ?? mergedTid ?? 0),
+      typeName: String(snakeCt.typeName ?? snakeCt.type_name ?? ''),
+    };
+  }
+
+  return {
+    ...row,
+    id: Number(row.id),
+    customerTypeId: mergedTid ?? row.customerTypeId ?? null,
+    customerType,
+  };
+}
+
+/** Жагсаалтад nested төрөл байхгүй бол төрлийн нэршлийн map-аас холбоно (нэмэлт HTTPгүй) */
+function enrichCustomerWithTypeMap(c: Customer, typeNames: Record<number, string>): Customer {
+  if (c.customerType?.typeName || c.customerType?.name) return c;
+  const tid = resolveCustomerTypeId(c);
+  if (tid == null) return c;
+  const label = typeNames[tid];
+  if (!label) return c;
+  return { ...c, customerType: { id: tid, typeName: label } };
+}
+
 export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) {
   const isEditMode = Boolean(initialOrder);
   const [products, setProducts] = useState<ProductOption[]>([]);
@@ -303,6 +397,19 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [customerTypeNameById, setCustomerTypeNameById] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    customerTypesApi
+      .getAll()
+      .then((res) => {
+        const rows = res.data.data?.customerTypes ?? [];
+        const rec: Record<number, string> = {};
+        for (const ct of rows) rec[ct.id] = ct.typeName;
+        setCustomerTypeNameById(rec);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     productsApi
@@ -310,18 +417,26 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       .then((res) => {
         const raw = res.data?.data?.products ?? [];
         setProducts(
-          raw.map((p) => ({
-            id: p.id,
-            name: p.nameMongolian,
-            retailPrice: Number(p.priceRetail ?? 0),
-            wholesalePrice: Number(p.priceWholesale ?? 0),
-            stock: p.stockQuantity ?? 0,
-            barCode: p.barcode ?? '',
-            classificationCode: p.classificationCode ?? p.category?.classificationCode ?? '',
-            unitsPerBox: p.unitsPerBox != null && p.unitsPerBox > 0 ? p.unitsPerBox : null,
-            pricePerBox:
-              p.pricePerBox != null && Number(p.pricePerBox) > 0 ? Number(p.pricePerBox) : null,
-          }))
+          raw.map((p) => {
+            const prices = (p.prices ?? []) as ProductPrice[];
+            return {
+              id: p.id,
+              name: p.nameMongolian,
+              retailPrice: Number(p.priceRetail ?? 0),
+              wholesalePrice: Number(p.priceWholesale ?? 0),
+              stock: p.stockQuantity ?? 0,
+              barCode: p.barcode ?? '',
+              classificationCode: p.classificationCode ?? p.category?.classificationCode ?? '',
+              unitsPerBox: p.unitsPerBox != null && p.unitsPerBox > 0 ? p.unitsPerBox : null,
+              pricePerBox:
+                p.pricePerBox != null && Number(p.pricePerBox) > 0 ? Number(p.pricePerBox) : null,
+              typePrices: prices.map((pp) => ({
+                customerTypeId: pp.customerTypeId,
+                price: Number(pp.price),
+                typeName: pp.customerType?.typeName,
+              })),
+            };
+          })
         );
       })
       .catch(() => {})
@@ -330,10 +445,33 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     customersApi
       .getAll({ limit: 'all' })
       .then((res) => {
-        setCustomers(res.data?.data?.customers ?? []);
+        const rows = res.data?.data?.customers ?? [];
+        setCustomers(
+          rows.map((row) => parseCustomerFromApi(row as Customer & Record<string, unknown>))
+        );
       })
       .catch(() => {});
   }, []);
+
+  const customersForForm = useMemo(
+    () => customers.map((c) => enrichCustomerWithTypeMap(c, customerTypeNameById)),
+    [customers, customerTypeNameById]
+  );
+
+  /** Жагсаалт орсны дараа: ижил нэрээр буруу id сонгогдсон бол төрөлтэй мөр рүү шилжүүлнэ */
+  useEffect(() => {
+    if (customersForForm.length === 0 || !customerInput.trim()) return;
+    const picked = pickCustomerMatchingInput(customerInput, customersForForm);
+    if (!picked) return;
+    setSelectedCustomerId((prev) => {
+      if (prev === '' || prev === undefined) return picked.id;
+      const cur = customersForForm.find((c) => c.id === Number(prev));
+      if (!cur) return picked.id;
+      const sameName = cur.name.toLowerCase() === picked.name.toLowerCase();
+      if (sameName && !customerRowHasType(cur) && customerRowHasType(picked)) return picked.id;
+      return prev;
+    });
+  }, [customersForForm, customerInput]);
 
   useEffect(() => {
     if (!initialOrder) return;
@@ -377,22 +515,80 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   }, [initialOrder]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const selectedCustomer = customers.find((c) => c.id === Number(selectedCustomerId));
+  const selectedCustomer = useMemo(() => {
+    if (selectedCustomerId === '' || selectedCustomerId === undefined) return undefined;
+    const id = Number(selectedCustomerId);
+    if (!Number.isFinite(id)) return undefined;
+    return customersForForm.find((c) => c.id === id);
+  }, [customersForForm, selectedCustomerId]);
 
   const filteredCustomers = useMemo(() => {
-    if (!customerQuery) return customers;
+    if (!customerQuery) return customersForForm;
     const q = customerQuery.toLowerCase();
-    return customers.filter(
+    return customersForForm.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.phoneNumber?.includes(q) ||
         c.registrationNumber?.toLowerCase().includes(q)
     );
-  }, [customers, customerQuery]);
+  }, [customersForForm, customerQuery]);
 
-  const selectedCustomerOption = selectedCustomerId
-    ? customers.find((c) => c.id === Number(selectedCustomerId))
-    : undefined;
+  const selectedCustomerOption = selectedCustomer;
+
+  const customerTypeId = resolveCustomerTypeId(selectedCustomer);
+  const customerTypeLabel =
+    selectedCustomer?.customerType?.typeName ||
+    selectedCustomer?.customerType?.name ||
+    (customerTypeId != null ? customerTypeNameById[customerTypeId] : undefined);
+
+  const PRICE_MODE_OPTIONS: Array<{ value: PriceMode; label: string }> = useMemo(() => {
+    const typeLabel = customerTypeLabel
+      ? `Төрлийн үнэ (${customerTypeLabel})`
+      : 'Төрлийн үнэ (Номин, Зах, Дэлгүүр …)';
+    return [
+      { value: 'customerType', label: typeLabel },
+      { value: 'retail', label: 'Ширхэгийн үнэ' },
+      { value: 'wholesale', label: 'Бөөний үнэ' },
+      { value: 'custom', label: 'Гараар үнэ' },
+    ];
+  }, [customerTypeLabel]);
+
+  const priceForCustomerType = (p: ProductOption, ctId: number | undefined): number | null => {
+    if (ctId == null) return null;
+    const row = p.typePrices.find((t) => t.customerTypeId === ctId);
+    if (!row) return null;
+    const n = Number(row.price);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+
+  const pickDefaultPriceModeForProduct = (
+    p: ProductOption | undefined
+  ): { mode: PriceMode; label: string } => {
+    if (!p) return { mode: 'retail', label: 'Ширхэгийн үнэ' };
+    if (customerTypeId != null && priceForCustomerType(p, customerTypeId) != null) {
+      const opt = PRICE_MODE_OPTIONS.find((o) => o.value === 'customerType');
+      return { mode: 'customerType', label: opt?.label ?? 'Төрлийн үнэ' };
+    }
+    return { mode: 'retail', label: 'Ширхэгийн үнэ' };
+  };
+
+  useEffect(() => {
+    setOrderItems((items) => {
+      const next = items.map((oi) => {
+        if (oi.priceMode !== 'customerType') return oi;
+        const p = products.find((x) => x.id === Number(oi.productId));
+        const opt = PRICE_MODE_OPTIONS.find((o) => o.value === 'customerType');
+        if (!p || customerTypeId == null || priceForCustomerType(p, customerTypeId) == null) {
+          return { ...oi, priceMode: 'retail' as PriceMode, priceModeInput: 'Ширхэгийн үнэ' };
+        }
+        const newLabel = opt?.label ?? oi.priceModeInput;
+        if (newLabel === oi.priceModeInput) return oi;
+        return { ...oi, priceModeInput: newLabel };
+      });
+      const unchanged = next.length === items.length && next.every((x, i) => x === items[i]);
+      return unchanged ? items : next;
+    });
+  }, [customerTypeId, products, PRICE_MODE_OPTIONS]);
 
   const getFilteredProductsForItem = (query?: string) => {
     if (!query) return products;
@@ -400,15 +596,11 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     return products.filter((p) => p.name.toLowerCase().includes(q) || p.barCode.includes(q));
   };
 
-  const PRICE_MODE_OPTIONS: Array<{ value: PriceMode; label: string }> = [
-    { value: 'retail', label: 'Ширхэгийн үнэ' },
-    { value: 'wholesale', label: 'Бөөний үнэ' },
-    { value: 'custom', label: 'Гараар үнэ' },
-  ];
-
   const findPriceModeByInput = (input: string): PriceMode | undefined => {
     const q = input.trim().toLowerCase();
     if (!q) return undefined;
+
+    if (q.startsWith('төрлийн') || q.includes('төрлийн үнэ')) return 'customerType';
 
     const exact = PRICE_MODE_OPTIONS.find((o) => o.label.toLowerCase() === q);
     if (exact) return exact.value;
@@ -442,6 +634,11 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
     if (oi.priceMode === 'custom') {
       return Number(oi.customUnitPrice || 0);
+    }
+
+    if (oi.priceMode === 'customerType') {
+      const tp = priceForCustomerType(p, customerTypeId);
+      return tp ?? 0;
     }
 
     if (oi.priceMode === 'wholesale') {
@@ -520,9 +717,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     setCustomerInput(value);
     setCustomerQuery(value);
 
-    const exact = customers.find(
-      (c) => c.name.toLowerCase() === value.toLowerCase() || c.phoneNumber === value
-    );
+    const exact = pickCustomerMatchingInput(value, customersForForm);
 
     if (exact) {
       setSelectedCustomerId(exact.id);
@@ -574,6 +769,10 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       const selected = products.find((p) => p.id === Number(val));
       item.productQuery = selected?.name || '';
       item.productInput = selected?.name || '';
+      const def = pickDefaultPriceModeForProduct(selected);
+      item.priceMode = def.mode;
+      item.priceModeInput = def.label;
+      if (def.mode !== 'custom') item.customUnitPrice = undefined;
     }
 
     if (field === 'productInput') {
@@ -586,6 +785,10 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         item.productId = String(exact.id);
         item.qtyPieces = 1;
         item.qtyBoxes = 0;
+        const def = pickDefaultPriceModeForProduct(exact);
+        item.priceMode = def.mode;
+        item.priceModeInput = def.label;
+        if (def.mode !== 'custom') item.customUnitPrice = undefined;
       } else if (!input.trim()) {
         item.productId = '';
       }
@@ -653,6 +856,17 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       }
       if (oi.productId && oi.priceMode === 'custom' && Number(oi.customUnitPrice || 0) <= 0) {
         errs[`item_${i}`] = 'Гараар оруулсан үнэ 0-ээс их байх ёстой';
+      }
+      if (oi.productId && oi.priceMode === 'customerType') {
+        if (customerTypeId == null) {
+          errs[`item_${i}`] = 'Төрлийн үнэнд харилцагчийн төрөл шаардлагатай';
+        } else {
+          const p = getProduct(oi.productId);
+          if (!p || priceForCustomerType(p, customerTypeId) == null) {
+            errs[`item_${i}`] =
+              'Энэ бараанд сонгосон харилцагчийн төрлийн үнэ байхгүй (Бараа → Үнэ удирдлага)';
+          }
+        }
       }
     });
     if (paymentMethod === 'Credit' && (!creditTermDays || creditTermDays < 1))
@@ -783,6 +997,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                 <span style={s.customerValue}>{selectedCustomer.phoneNumber || '—'}</span>
                 <span style={s.customerField}>Регистр</span>
                 <span style={s.customerValue}>{selectedCustomer.registrationNumber || '—'}</span>
+                <span style={s.customerField}>Харилцагчийн төрөл</span>
+                <span style={s.customerValue}>{customerTypeLabel || '—'}</span>
               </div>
             )}
           </div>

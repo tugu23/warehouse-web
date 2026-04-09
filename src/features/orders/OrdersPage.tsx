@@ -10,7 +10,12 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Add as AddIcon, Clear as ClearIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Clear as ClearIcon,
+  Print as PrintIcon,
+  Refresh as RefreshIcon,
+} from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -21,15 +26,14 @@ import OrderForm2 from './OrderForm2';
 import OrderDetailsModal from './OrderDetailsModal';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 import { formatDateTimeMN } from '../../utils/dateFormatter';
+import {
+  aggregateDailyOrderProducts,
+  orderLocalYmd,
+  todayLocalYmd,
+} from './dailyOrderProductsAggregate';
+import { printDailyOrderProductsPdf } from './printDailyOrderProductsPdf';
 
 type EbarimtListFilter = 'all' | 'returned' | 'active';
-
-/** Захиалгын огноог орон нутгийн календарийн YYYY-MM-DD болгон хувиргана */
-function orderLocalYmd(createdAt: string): string | null {
-  const d = new Date(createdAt);
-  if (Number.isNaN(d.getTime())) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 export default function OrdersPage() {
   const { canManage, user, isSalesAgent } = useAuth();
@@ -42,6 +46,8 @@ export default function OrdersPage() {
   /** `YYYY-MM-DD` — эхлэх/дуусах өдрөөр интервал шүүх */
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  /** A4 ачааны жагсаалтын өдөр — хүснэгтийн e-barimt шүүлтүүрт нөлөөлөхгүй */
+  const [printListDate, setPrintListDate] = useState<string>(() => todayLocalYmd());
 
   useEffect(() => {
     fetchOrders();
@@ -88,6 +94,20 @@ export default function OrdersPage() {
 
   const handleRowClick = (order: Order) => {
     handleViewDetails(order);
+  };
+
+  const handlePrintDailyLoadList = () => {
+    const ymd = printListDate.trim();
+    if (!ymd) {
+      toast.error('Өдөр сонгоно уу');
+      return;
+    }
+    const rows = aggregateDailyOrderProducts(orders, ymd);
+    if (rows.length === 0) {
+      toast.error('Сонгосон өдөрт захиалгад орсон бараа олдсонгүй');
+      return;
+    }
+    printDailyOrderProductsPdf(rows, ymd);
   };
 
   const filteredOrders = useMemo(() => {
@@ -251,6 +271,25 @@ export default function OrdersPage() {
                 </IconButton>
               </Tooltip>
             ) : null}
+            <TextField
+              type="date"
+              size="small"
+              label="Ачааны жагсаалтын өдөр (A4)"
+              value={printListDate}
+              onChange={(e) => setPrintListDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ 'aria-label': 'Ачааны жагсаалтын өдөр' }}
+              sx={{ minWidth: 218 }}
+            />
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<PrintIcon />}
+              onClick={handlePrintDailyLoadList}
+              disabled={loading}
+            >
+              Өдрийн бараа (A4)
+            </Button>
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}

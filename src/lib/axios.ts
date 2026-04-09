@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast';
 
 // Base URL is replaced at build time:
 // - Production: empty string (nginx proxies /api to backend)
-// - Development: empty string (Vite proxy forwards /api to localhost:4000)
+// - Development: empty string (Vite proxy forwards /api — vite.config.ts target)
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
   headers: {

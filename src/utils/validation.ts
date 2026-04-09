@@ -29,18 +29,21 @@ export const productSchema = z.object({
 });
 
 export const customerSchema = z.object({
-  name: z.string().min(2, 'Organization name must be at least 2 characters'),
+  name: z.string().min(2, 'Байгууллагын нэр хамгийн багадаа 2 тэмдэгт'),
   name2: z.string().optional(),
   organizationType: z.string().optional(),
   registrationNumber: z.string().optional(),
-  ebarimtConsumerNo: z.string().max(20, 'E-Barimt дугаар 20 тэмдэгтээс хэтрэхгүй').optional(),
-  address: z.string().min(5, 'Address must be at least 5 characters'),
+  ebarimtConsumerNo: z
+    .string()
+    .max(20, 'И-баримт бүртгэлийн дугаар 20 тэмдэгтээс хэтрэхгүй')
+    .optional(),
+  address: z.string().min(5, 'Хаяг хамгийн багадаа 5 тэмдэгт'),
   district: z.string().optional(),
-  phoneNumber: z.string().min(8, 'Phone number must be at least 8 characters'),
+  phoneNumber: z.string().min(8, 'Утасны дугаар хамгийн багадаа 8 тэмдэгт'),
   isVatPayer: z.boolean().optional(),
-  locationLatitude: z.number().min(-90).max(90, 'Invalid latitude'),
-  locationLongitude: z.number().min(-180).max(180, 'Invalid longitude'),
-  customerTypeId: z.number().min(1, 'Customer type is required'),
+  locationLatitude: z.number().min(-90).max(90, 'Өргөрөг буруу'),
+  locationLongitude: z.number().min(-180).max(180, 'Уртраг буруу'),
+  customerTypeId: z.number().min(1, 'Харилцагчийн төрөл сонгоно уу'),
   assignedAgentId: z.number().optional(),
 });
 

@@ -160,7 +160,9 @@ export interface Customer {
   isVatPayer?: boolean; // НӨАТ төлөгч эсэх
   locationLatitude: number;
   locationLongitude: number;
-  customerType: CustomerType;
+  customerType?: CustomerType | null;
+  /** Prisma scalar — nested `customerType` дутуу үед ч ирнэ */
+  customerTypeId?: number | null;
   assignedAgent?: User;
   creditLimit?: number; // Зээлийн лимит
   createdAt?: string;
@@ -286,7 +288,7 @@ export interface CreateOrderRequest {
   items: {
     productId: number;
     quantity: number;
-    priceMode?: 'auto' | 'wholesale' | 'retail' | 'custom';
+    priceMode?: 'auto' | 'wholesale' | 'retail' | 'custom' | 'customerType';
     customUnitPrice?: number;
     unitPrice?: number;
   }[];

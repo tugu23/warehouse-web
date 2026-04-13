@@ -63,8 +63,8 @@ export interface Product {
   unitsPerBox?: number; // Нэг хайрцагт байх тоо ширхэг
   netWeight?: number; // Цэвэр жин (kg)
   grossWeight?: number; // Бохир жин (kg)
-  priceWholesale: string | number;
-  priceRetail: string | number;
+  /** Төрлийн тусгай үнэ байхгүй үед */
+  defaultPrice: string | number;
   pricePerBox?: number; // Хайрцагны үнэ
   isActive?: boolean; // Идэвхтэй эсэх
   prices?: ProductPrice[]; // Үнийн жагсаалт
@@ -82,8 +82,7 @@ export interface CreateProductRequest {
   unitsPerBox?: number;
   netWeight?: number;
   grossWeight?: number;
-  priceWholesale: number;
-  priceRetail: number;
+  defaultPrice: number;
   pricePerBox?: number;
   isActive?: boolean;
 }
@@ -98,8 +97,7 @@ export interface UpdateProductRequest {
   unitsPerBox?: number;
   netWeight?: number;
   grossWeight?: number;
-  priceWholesale?: number;
-  priceRetail?: number;
+  defaultPrice?: number;
   pricePerBox?: number;
   isActive?: boolean;
 }
@@ -261,6 +259,8 @@ export interface Order {
   ebarimtRegistered?: boolean;
   ebarimtDate?: string;
   ebarimtReturnId?: string;
+  /** Backend: orders.ebarimt_receipt_type (B2B | B2C) */
+  ebarimtReceiptType?: 'B2B' | 'B2C';
   ebarimtType?: string;
   orderDate?: string;
   agentId?: number;
@@ -288,7 +288,7 @@ export interface CreateOrderRequest {
   items: {
     productId: number;
     quantity: number;
-    priceMode?: 'auto' | 'wholesale' | 'retail' | 'custom' | 'customerType';
+    priceMode?: 'auto' | 'wholesale' | 'retail' | 'defaultPrice' | 'custom' | 'customerType';
     customUnitPrice?: number;
     unitPrice?: number;
   }[];

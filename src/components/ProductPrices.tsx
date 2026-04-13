@@ -18,7 +18,7 @@ export default function ProductPrices({ productId }: ProductPricesProps) {
       setError(null);
       try {
         const response = await productPricesApi.getByProductId(productId);
-        setPrices(response.data.data?.productPrices || []);
+        setPrices(response.data.data?.productPrices || response.data.data?.prices || []);
       } catch (err) {
         console.warn('⚠️ Could not fetch product prices:', err);
         setError('Үнийн мэдээлэл татахад алдаа гарлаа');
@@ -80,4 +80,3 @@ export default function ProductPrices({ productId }: ProductPricesProps) {
     </Box>
   );
 }
-

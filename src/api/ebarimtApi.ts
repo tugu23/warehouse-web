@@ -304,10 +304,17 @@ export const formatLotteryNumber = (lottery?: string | null): string => {
 };
 
 /**
- * Check if order is B2B (organization with TIN)
+ * Check if order is B2B — registrationNumber нь хувь хүний ТТД байж болно тул дангаар нь битгий ашиглаарай
  */
-export const isB2BOrder = (customer?: { registrationNumber?: string | null }): boolean => {
-  return !!customer?.registrationNumber;
+export const isB2BOrder = (order?: {
+  ebarimtReceiptType?: string | null;
+  ebarimtType?: string | null;
+  customer?: { organizationName?: string | null; registrationNumber?: string | null } | null;
+}): boolean => {
+  const kind = order?.ebarimtReceiptType || order?.ebarimtType;
+  if (kind === 'B2B') return true;
+  if (kind === 'B2C') return false;
+  return !!order?.customer?.organizationName?.trim();
 };
 
 /**

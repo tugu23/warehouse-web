@@ -61,7 +61,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
     setLoading(true);
     try {
       const response = await productPricesApi.getByProductId(productId);
-      setPrices(response.data.data?.productPrices || []);
+      setPrices(response.data.data?.productPrices || response.data.data?.prices || []);
     } catch (error) {
       console.error('Error fetching prices:', error);
       toast.error('Үнийн мэдээлэл татахад алдаа гарлаа');
@@ -84,7 +84,10 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
   const handleCreate = async (data: CreateProductPriceRequest | UpdateProductPriceRequest) => {
     try {
       const createData = data as CreateProductPriceRequest;
-      await productPricesApi.create({ ...createData, productId });
+      await productPricesApi.upsertByProduct(productId, {
+        customerTypeId: createData.customerTypeId,
+        price: createData.price,
+      });
       toast.success('Үнэ амжилттай нэмэгдлээ!');
       setShowAddForm(false);
       reset();
@@ -97,9 +100,19 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
     }
   };
 
-  const handleUpdate = async (id: number, data: UpdateProductPriceRequest) => {
+  const handleUpdate = async (currentPrice: ProductPrice, data: UpdateProductPriceRequest) => {
     try {
-      await productPricesApi.update(id, data);
+      const nextCustomerTypeId = data.customerTypeId ?? currentPrice.customerTypeId;
+      const nextPrice = data.price ?? currentPrice.price;
+
+      if (nextCustomerTypeId !== currentPrice.customerTypeId) {
+        await productPricesApi.deleteByProduct(productId, currentPrice.customerTypeId);
+      }
+
+      await productPricesApi.upsertByProduct(productId, {
+        customerTypeId: nextCustomerTypeId,
+        price: nextPrice,
+      });
       toast.success('Үнэ амжилттай шинэчлэгдлээ!');
       setEditingId(null);
       reset();
@@ -112,11 +125,11 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (price: ProductPrice) => {
     if (!confirm('Энэ үнийг устгахдаа итгэлтэй байна уу?')) return;
 
     try {
-      await productPricesApi.delete(id);
+      await productPricesApi.deleteByProduct(productId, price.customerTypeId);
       toast.success('Үнэ амжилттай устгагдлаа!');
       fetchPrices();
       onUpdate?.();
@@ -268,7 +281,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
         <Paper key={price.id} sx={{ p: 2, mb: 1 }}>
           {editingId === price.id ? (
             // Edit Mode
-            <Box component="form" onSubmit={handleSubmit((data) => handleUpdate(price.id, data))}>
+            <Box component="form" onSubmit={handleSubmit((data) => handleUpdate(price, data))}>
               <Grid container spacing={2} alignItems="flex-start">
                 <Grid size={{ xs: 12, sm: 5 }}>
                   <Controller
@@ -353,7 +366,7 @@ export default function PriceManagement({ productId, onUpdate }: PriceManagement
                 <IconButton size="small" color="primary" onClick={() => handleEdit(price)}>
                   <EditIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" color="error" onClick={() => handleDelete(price.id)}>
+                <IconButton size="small" color="error" onClick={() => handleDelete(price)}>
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               </Box>

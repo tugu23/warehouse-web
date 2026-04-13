@@ -114,12 +114,24 @@ export const productsApi = {
 
 // Product Prices API
 export const productPricesApi = {
-  getAll: () => api.get<ApiResponse<{ productPrices: ProductPrice[] }>>('/api/product-prices'),
+  getAll: () =>
+    api.get<ApiResponse<{ prices: ProductPrice[]; productPrices?: ProductPrice[] }>>(
+      '/api/product-prices'
+    ),
   getById: (id: number) =>
     api.get<ApiResponse<{ productPrice: ProductPrice }>>(`/api/product-prices/${id}`),
   getByProductId: (productId: number) =>
-    api.get<ApiResponse<{ productPrices: ProductPrice[] }>>(
-      `/api/product-prices/product/${productId}`
+    api.get<ApiResponse<{ prices: ProductPrice[]; productPrices?: ProductPrice[] }>>(
+      `/api/product-prices/products/${productId}/prices`
+    ),
+  upsertByProduct: (productId: number, data: { customerTypeId: number; price: number }) =>
+    api.post<ApiResponse<{ productPrice?: ProductPrice; price?: ProductPrice }>>(
+      `/api/product-prices/products/${productId}/prices`,
+      data
+    ),
+  deleteByProduct: (productId: number, customerTypeId: number) =>
+    api.delete<ApiResponse<void>>(
+      `/api/product-prices/products/${productId}/prices/${customerTypeId}`
     ),
   create: (data: CreateProductPriceRequest) =>
     api.post<ApiResponse<{ productPrice: ProductPrice }>>('/api/product-prices', data),
@@ -246,6 +258,7 @@ export const ordersApi = {
       ebarimtId: data.ebarimtId ?? data.ebarimtBillId,
       ebarimtBillId: data.ebarimtBillId,
       ebarimtDate: data.ebarimtDate,
+      ...(data.ebarimtType ? { ebarimtReceiptType: data.ebarimtType } : {}),
     }),
   ebarimtReturn: (id: number) =>
     api.post<ApiResponse<{ ebarimtBillId: string; ebarimtDate: string; orderId: number }>>(

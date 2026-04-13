@@ -129,9 +129,14 @@ export default function EBarimtPage() {
     }
   };
 
-  // B2B эсэхийг тодорхойлох: ebarimtType эсвэл customer-ийн регистр
-  const isB2BOrder = (order: Order) =>
-    order.ebarimtType === 'B2B' || (!order.ebarimtType && !!order.customer?.registrationNumber);
+  // B2B: хадгалагдсан баримтын төрөл эсвэл байгууллагын нэр (registrationNumber дангаар нь биш)
+  const isB2BOrder = (order: Order) => {
+    const kind = order.ebarimtReceiptType || order.ebarimtType;
+    if (kind === 'B2B') return true;
+    if (kind === 'B2C') return false;
+    const c = order.customer;
+    return !!c?.organizationName?.trim();
+  };
 
   // eBarimt буцаалт — frontend-ээс POS API-руу шууд DELETE
   const handleEbarimtReturn = async (order: Order) => {

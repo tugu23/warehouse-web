@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { productsApi, customersApi, customerTypesApi, ordersApi } from '../../api';
 import { Customer, Order, ProductPrice, type PaymentMethod as ApiPaymentMethod } from '../../types';
 import { toast } from 'react-hot-toast';
@@ -14,8 +14,9 @@ interface ProductTypePriceRow {
 interface ProductOption {
   id: number;
   name: string;
-  retailPrice: number;
-  wholesalePrice: number;
+  isActive: boolean;
+  /** Төрлийн тусгай үнэ байхгүй үед */
+  defaultPrice: number;
   stock: number;
   barCode: string;
   classificationCode: string;
@@ -26,7 +27,7 @@ interface ProductOption {
   typePrices: ProductTypePriceRow[];
 }
 
-type PriceMode = 'customerType' | 'retail' | 'wholesale' | 'custom';
+type PriceMode = 'customerType' | 'defaultPrice' | 'retail' | 'wholesale' | 'custom';
 
 interface OrderItem {
   productId: string;
@@ -39,6 +40,14 @@ interface OrderItem {
   priceMode: PriceMode;
   priceModeInput?: string;
   customUnitPrice?: number;
+}
+
+interface SearchSelectOption<T extends string | number> {
+  value: T;
+  label: string;
+  description?: string;
+  meta?: string;
+  searchText?: string;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
@@ -73,8 +82,8 @@ const s: Record<string, React.CSSProperties> = {
   modal: {
     background: C.bg,
     borderRadius: 14,
-    width: '100%',
-    maxWidth: 780,
+    width: 'min(1120px, calc(100vw - 48px))',
+    maxWidth: 1120,
     maxHeight: '92vh',
     overflowY: 'auto',
     boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
@@ -258,6 +267,175 @@ const typeBtn = (active: boolean): React.CSSProperties => ({
   fontWeight: active ? 600 : 400,
 });
 
+function SearchSelect<T extends string | number>({
+  value,
+  valueLabel,
+  placeholder,
+  searchPlaceholder,
+  options,
+  onSelect,
+  emptyText = 'Сонголт олдсонгүй',
+}: {
+  value?: T | '';
+  valueLabel?: string;
+  placeholder: string;
+  searchPlaceholder?: string;
+  options: Array<SearchSelectOption<T>>;
+  onSelect: (option: SearchSelectOption<T>) => void;
+  emptyText?: string;
+}) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const selectedOption = useMemo(
+    () => options.find((option) => String(option.value) === String(value)),
+    [options, value]
+  );
+
+  const filteredOptions = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return options;
+    return options.filter((option) => {
+      const haystack =
+        option.searchText ||
+        [option.label, option.description, option.meta].filter(Boolean).join(' ');
+      return haystack.toLowerCase().includes(normalized);
+    });
+  }, [options, query]);
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery('');
+    const timer = window.setTimeout(() => {
+      searchRef.current?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleOutside = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [open]);
+
+  const triggerLabel = valueLabel || selectedOption?.label || '';
+
+  return (
+    <div ref={rootRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        style={{
+          ...s.input,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: C.bgInput,
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span
+          style={{
+            color: triggerLabel ? C.text : C.textDim,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {triggerLabel || placeholder}
+        </span>
+        <span style={{ color: C.textMuted, marginLeft: 10 }}>{open ? '▴' : '▾'}</span>
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            right: 0,
+            zIndex: 80,
+            background: C.bgCard,
+            border: `1px solid ${C.border}`,
+            borderRadius: 10,
+            boxShadow: '0 18px 48px rgba(0,0,0,0.4)',
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{ padding: 10, borderBottom: `1px solid ${C.border}` }}>
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={searchPlaceholder || placeholder}
+              style={{ ...s.input, fontSize: 12, padding: '8px 10px' }}
+            />
+          </div>
+          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            {filteredOptions.length === 0 ? (
+              <div style={{ padding: '12px 14px', fontSize: 12, color: C.textDim }}>
+                {emptyText}
+              </div>
+            ) : (
+              filteredOptions.map((option) => {
+                const isSelected = String(option.value) === String(value);
+                return (
+                  <button
+                    key={String(option.value)}
+                    type="button"
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      padding: '10px 14px',
+                      background: isSelected ? '#25365f' : 'transparent',
+                      border: 'none',
+                      borderBottom: `1px solid ${C.border}`,
+                      color: C.text,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                    onClick={() => {
+                      onSelect(option);
+                      setOpen(false);
+                      setQuery('');
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>{option.label}</div>
+                      {option.description ? (
+                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>
+                          {option.description}
+                        </div>
+                      ) : null}
+                    </div>
+                    {option.meta ? (
+                      <div style={{ fontSize: 11, color: C.textDim, whiteSpace: 'nowrap' }}>
+                        {option.meta}
+                      </div>
+                    ) : null}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const submitBtn = (disabled: boolean): React.CSSProperties => ({
   background: disabled ? '#1e3050' : C.blue,
   border: 'none',
@@ -390,8 +568,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       productQuery: '',
       qtyPieces: 1,
       qtyBoxes: 0,
-      priceMode: 'retail',
-      priceModeInput: 'Ширхэгийн үнэ',
+      priceMode: 'defaultPrice',
+      priceModeInput: 'Үндсэн үнэ',
       customUnitPrice: undefined,
     },
   ]);
@@ -422,8 +600,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
             return {
               id: p.id,
               name: p.nameMongolian,
-              retailPrice: Number(p.priceRetail ?? 0),
-              wholesalePrice: Number(p.priceWholesale ?? 0),
+              isActive: p.isActive !== false,
+              defaultPrice: Number(p.defaultPrice ?? 0),
               stock: p.stockQuantity ?? 0,
               barCode: p.barcode ?? '',
               classificationCode: p.classificationCode ?? p.category?.classificationCode ?? '',
@@ -506,8 +684,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
               productQuery: '',
               qtyPieces: 1,
               qtyBoxes: 0,
-              priceMode: 'retail',
-              priceModeInput: 'Ширхэгийн үнэ',
+              priceMode: 'defaultPrice',
+              priceModeInput: 'Үндсэн үнэ',
               customUnitPrice: undefined,
             },
           ]
@@ -547,8 +725,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       : 'Төрлийн үнэ (Номин, Зах, Дэлгүүр …)';
     return [
       { value: 'customerType', label: typeLabel },
-      { value: 'retail', label: 'Ширхэгийн үнэ' },
-      { value: 'wholesale', label: 'Бөөний үнэ' },
+      { value: 'defaultPrice', label: 'Үндсэн үнэ' },
       { value: 'custom', label: 'Гараар үнэ' },
     ];
   }, [customerTypeLabel]);
@@ -564,12 +741,12 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   const pickDefaultPriceModeForProduct = (
     p: ProductOption | undefined
   ): { mode: PriceMode; label: string } => {
-    if (!p) return { mode: 'retail', label: 'Ширхэгийн үнэ' };
+    if (!p) return { mode: 'defaultPrice', label: 'Үндсэн үнэ' };
     if (customerTypeId != null && priceForCustomerType(p, customerTypeId) != null) {
       const opt = PRICE_MODE_OPTIONS.find((o) => o.value === 'customerType');
       return { mode: 'customerType', label: opt?.label ?? 'Төрлийн үнэ' };
     }
-    return { mode: 'retail', label: 'Ширхэгийн үнэ' };
+    return { mode: 'defaultPrice', label: 'Үндсэн үнэ' };
   };
 
   useEffect(() => {
@@ -579,7 +756,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         const p = products.find((x) => x.id === Number(oi.productId));
         const opt = PRICE_MODE_OPTIONS.find((o) => o.value === 'customerType');
         if (!p || customerTypeId == null || priceForCustomerType(p, customerTypeId) == null) {
-          return { ...oi, priceMode: 'retail' as PriceMode, priceModeInput: 'Ширхэгийн үнэ' };
+          return { ...oi, priceMode: 'defaultPrice' as PriceMode, priceModeInput: 'Үндсэн үнэ' };
         }
         const newLabel = opt?.label ?? oi.priceModeInput;
         if (newLabel === oi.priceModeInput) return oi;
@@ -589,27 +766,6 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       return unchanged ? items : next;
     });
   }, [customerTypeId, products, PRICE_MODE_OPTIONS]);
-
-  const getFilteredProductsForItem = (query?: string) => {
-    if (!query) return products;
-    const q = query.toLowerCase();
-    return products.filter((p) => p.name.toLowerCase().includes(q) || p.barCode.includes(q));
-  };
-
-  const findPriceModeByInput = (input: string): PriceMode | undefined => {
-    const q = input.trim().toLowerCase();
-    if (!q) return undefined;
-
-    if (q.startsWith('төрлийн') || q.includes('төрлийн үнэ')) return 'customerType';
-
-    const exact = PRICE_MODE_OPTIONS.find((o) => o.label.toLowerCase() === q);
-    if (exact) return exact.value;
-
-    const startsWith = PRICE_MODE_OPTIONS.find((o) => o.label.toLowerCase().startsWith(q));
-    if (startsWith) return startsWith.value;
-
-    return undefined;
-  };
 
   const getProduct = (id: string) => products.find((p) => p.id === Number(id));
 
@@ -638,14 +794,14 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
     if (oi.priceMode === 'customerType') {
       const tp = priceForCustomerType(p, customerTypeId);
-      return tp ?? 0;
+      return tp ?? p.defaultPrice ?? 0;
     }
 
-    if (oi.priceMode === 'wholesale') {
-      return p.wholesalePrice || p.retailPrice || 0;
+    if (oi.priceMode === 'wholesale' || oi.priceMode === 'retail') {
+      return p.defaultPrice || 0;
     }
 
-    return p.retailPrice || p.wholesalePrice || 0;
+    return p.defaultPrice || 0;
   };
 
   /** Захиалгын мөрөнд орох нийт ширхэг (хадгалалт/API-д илгээгдэнэ) */
@@ -740,8 +896,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         productQuery: '',
         qtyPieces: 1,
         qtyBoxes: 0,
-        priceMode: 'retail',
-        priceModeInput: 'Ширхэгийн үнэ',
+        priceMode: 'defaultPrice',
+        priceModeInput: 'Үндсэн үнэ',
         customUnitPrice: undefined,
       },
     ]);
@@ -817,15 +973,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     }
 
     if (field === 'priceModeInput') {
-      const input = String(val);
-      item.priceModeInput = input;
-      const matchedMode = findPriceModeByInput(input);
-      if (matchedMode) {
-        item.priceMode = matchedMode;
-        if (matchedMode !== 'custom') {
-          item.customUnitPrice = undefined;
-        }
-      }
+      item.priceModeInput = String(val);
     }
 
     if (field === 'customUnitPrice') {
@@ -862,9 +1010,11 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
           errs[`item_${i}`] = 'Төрлийн үнэнд харилцагчийн төрөл шаардлагатай';
         } else {
           const p = getProduct(oi.productId);
-          if (!p || priceForCustomerType(p, customerTypeId) == null) {
+          const tp = p ? priceForCustomerType(p, customerTypeId) : null;
+          const hasDefault = p && Number(p.defaultPrice) > 0;
+          if (!p || (tp == null && !hasDefault)) {
             errs[`item_${i}`] =
-              'Энэ бараанд сонгосон харилцагчийн төрлийн үнэ байхгүй (Бараа → Үнэ удирдлага)';
+              'Энэ бараанд төрлийн үнэ эсвэл үндсэн үнэ тохируулаагүй (Бараа → Үнэ удирдлага)';
           }
         }
       }
@@ -1092,6 +1242,47 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                     ? 'warn'
                     : 'ok'
                 : null;
+              const productSelectOptions: Array<SearchSelectOption<string>> = productsLoading
+                ? []
+                : products
+                    .filter((p) => p.isActive || String(p.id) === oi.productId)
+                    .map((p) => ({
+                      value: String(p.id),
+                      label: p.name,
+                      description: p.unitsPerBox
+                        ? `1 хайрцаг = ${p.unitsPerBox} ширхэг`
+                        : p.barCode
+                          ? `Баркод: ${p.barCode}`
+                          : undefined,
+                      meta: `Үлдэгдэл: ${p.stock}`,
+                      searchText: `${p.name} ${p.barCode} ${p.classificationCode}`,
+                    }));
+              const priceModeSelectOptions: Array<SearchSelectOption<PriceMode>> =
+                PRICE_MODE_OPTIONS.map((modeOption) => {
+                  let meta: string | undefined;
+                  let description: string | undefined;
+
+                  if (modeOption.value === 'custom') {
+                    description = 'Нэгж үнийг гараар оруулна';
+                  } else if (prod) {
+                    const preview =
+                      modeOption.value === 'customerType'
+                        ? (priceForCustomerType(prod, customerTypeId) ?? prod.defaultPrice ?? 0)
+                        : (prod.defaultPrice ?? 0);
+                    meta = `₮${Number(preview || 0).toLocaleString()}/ш`;
+                    if (modeOption.value === 'customerType' && customerTypeId == null) {
+                      description = 'Харилцагчийн төрөл сонгоогүй тул үндсэн үнэ ашиглана';
+                    }
+                  }
+
+                  return {
+                    value: modeOption.value,
+                    label: modeOption.label,
+                    description,
+                    meta,
+                    searchText: modeOption.label,
+                  };
+                });
               return (
                 <div
                   key={idx}
@@ -1101,24 +1292,17 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                   }}
                 >
                   <div style={s.itemGrid}>
-                    {/* Бараа: search with selected */}
+                    {/* Бараа: searchable select */}
                     <div>
-                      <input
-                        list={`product-options-${idx}`}
-                        style={{ ...s.input, fontSize: 12 }}
+                      <SearchSelect
+                        value={oi.productId}
+                        valueLabel={prod?.name || oi.productInput || ''}
                         placeholder="Бараа хайх, сонгох..."
-                        value={oi.productInput || ''}
-                        onChange={(e) => updateItem(idx, 'productInput', e.target.value)}
+                        searchPlaceholder="Барааны нэр, баркодоор хайх..."
+                        options={productSelectOptions}
+                        emptyText="Бараа олдсонгүй"
+                        onSelect={(option) => updateItem(idx, 'productId', option.value)}
                       />
-                      <datalist id={`product-options-${idx}`}>
-                        {(productsLoading ? [] : getFilteredProductsForItem(oi.productInput)).map(
-                          (p) => (
-                            <option key={p.id} value={p.name}>
-                              {`Үлдэгдэл: ${p.stock}`}
-                            </option>
-                          )
-                        )}
-                      </datalist>
 
                       {prod && (
                         <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6 }}>
@@ -1200,24 +1384,26 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                       )}
                     </div>
 
-                    {/* Үнэ + price mode: search with selected */}
+                    {/* Үнэ + price mode: searchable select */}
                     <div>
-                      <input
-                        list={`price-mode-options-${idx}`}
-                        style={{ ...s.input, fontSize: 12, marginBottom: 6, padding: '6px 8px' }}
+                      <SearchSelect
+                        value={oi.priceMode}
+                        valueLabel={oi.priceModeInput || ''}
                         placeholder="Үнийн төрөл..."
-                        value={oi.priceModeInput || ''}
-                        onChange={(e) => updateItem(idx, 'priceModeInput', e.target.value)}
+                        searchPlaceholder="Үнийн төрлөөр хайх..."
+                        options={priceModeSelectOptions}
+                        emptyText="Үнийн төрөл олдсонгүй"
+                        onSelect={(option) => updateItem(idx, 'priceMode', option.value)}
                       />
-                      <datalist id={`price-mode-options-${idx}`}>
-                        {PRICE_MODE_OPTIONS.map((m) => (
-                          <option key={m.value} value={m.label} />
-                        ))}
-                      </datalist>
 
                       {oi.priceMode === 'custom' ? (
                         <input
-                          style={{ ...s.input, textAlign: 'right', padding: '6px 8px' }}
+                          style={{
+                            ...s.input,
+                            textAlign: 'right',
+                            padding: '6px 8px',
+                            marginTop: 6,
+                          }}
                           type="number"
                           min={1}
                           value={oi.customUnitPrice || ''}
@@ -1233,6 +1419,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                             fontSize: 13,
                             color: C.textMuted,
                             paddingRight: 4,
+                            marginTop: 6,
                           }}
                         >
                           {prod ? (

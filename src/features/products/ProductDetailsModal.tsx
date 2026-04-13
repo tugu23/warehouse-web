@@ -9,13 +9,19 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { Edit as EditIcon, Inventory2 as InventoryIcon } from '@mui/icons-material';
+import {
+  Edit as EditIcon,
+  Inventory2 as InventoryIcon,
+  MonetizationOn as PriceIcon,
+} from '@mui/icons-material';
+import ProductPrices from '../../components/ProductPrices';
 import { Product } from '../../types';
 
 interface ProductDetailsModalProps {
   product: Product | null;
   onEdit: () => void;
   onManageInventory: () => void;
+  onManagePrices: () => void;
   canManage: boolean;
 }
 
@@ -23,6 +29,7 @@ export default function ProductDetailsModal({
   product,
   onEdit,
   onManageInventory,
+  onManagePrices,
   canManage,
 }: ProductDetailsModalProps) {
   if (!product) return null;
@@ -30,7 +37,6 @@ export default function ProductDetailsModal({
   return (
     <Box>
       <Stack spacing={3}>
-        {/* Үндсэн мэдээлэл */}
         <Card variant="outlined">
           <CardContent>
             <Typography variant="h6" gutterBottom color="primary">
@@ -78,7 +84,6 @@ export default function ProductDetailsModal({
           </CardContent>
         </Card>
 
-        {/* Агуулахын мэдээлэл */}
         <Card variant="outlined">
           <CardContent>
             <Typography variant="h6" gutterBottom color="primary">
@@ -130,31 +135,22 @@ export default function ProductDetailsModal({
           </CardContent>
         </Card>
 
-        {/* Үнийн мэдээлэл */}
         <Card variant="outlined">
           <CardContent>
             <Typography variant="h6" gutterBottom color="primary">
-              💰 Үнийн мэдээлэл
+              Үнийн мэдээлэл
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Бөөний үнэ
+                  Үндсэн үнэ
                 </Typography>
                 <Typography variant="h6" color="primary">
-                  ₮{Number(product.priceWholesale).toLocaleString()}
+                  ₮{Number(product.defaultPrice ?? 0).toLocaleString()}
                 </Typography>
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Жижиглэн үнэ
-                </Typography>
-                <Typography variant="h6" color="secondary">
-                  ₮{Number(product.priceRetail).toLocaleString()}
-                </Typography>
-              </Grid>
-              {product.pricePerBox && (
+              {product.pricePerBox ? (
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <Typography variant="caption" color="text.secondary">
                     Хайрцагны үнэ
@@ -163,12 +159,12 @@ export default function ProductDetailsModal({
                     ₮{Number(product.pricePerBox).toLocaleString()}
                   </Typography>
                 </Grid>
-              )}
+              ) : null}
             </Grid>
+            <ProductPrices productId={product.id} />
           </CardContent>
         </Card>
 
-        {/* Үйлдлүүд */}
         {canManage && (
           <Card variant="outlined" sx={{ bgcolor: 'action.hover' }}>
             <CardContent>
@@ -184,6 +180,14 @@ export default function ProductDetailsModal({
                   onClick={onEdit}
                 >
                   Засах
+                </Button>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<PriceIcon />}
+                  onClick={onManagePrices}
+                >
+                  Үнэ засах
                 </Button>
                 <Button
                   variant="contained"

@@ -68,8 +68,7 @@ export const exportProductsToExcel = async (products: Product[]) => {
     { header: 'Барааны код', key: 'productCode', width: 15 },
     { header: 'Нэр (Монгол)', key: 'nameMongolian', width: 25 },
     { header: 'Үлдэгдэл', key: 'stockQuantity', width: 12 },
-    { header: 'Бөөний үнэ', key: 'priceWholesale', width: 15 },
-    { header: 'Жижиглэн үнэ', key: 'priceRetail', width: 15 },
+    { header: 'Үндсэн үнэ', key: 'defaultPrice', width: 15 },
   ];
 
   // Style header row
@@ -83,8 +82,7 @@ export const exportProductsToExcel = async (products: Product[]) => {
       productCode: product.productCode,
       nameMongolian: product.nameMongolian,
       stockQuantity: product.stockQuantity,
-      priceWholesale: Number(product.priceWholesale),
-      priceRetail: Number(product.priceRetail),
+      defaultPrice: Number(product.defaultPrice),
     });
   });
 

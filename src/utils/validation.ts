@@ -22,8 +22,7 @@ export const productSchema = z.object({
   unitsPerBox: z.number().min(1, 'Хамгийн багадаа 1 байх ёстой').optional(),
   netWeight: z.number().min(0, 'Жин 0-с их байна').optional(),
   grossWeight: z.number().min(0, 'Жин 0-с их байна').optional(),
-  priceWholesale: z.number().min(1, 'Бөөний үнэ оруулна уу'),
-  priceRetail: z.number().min(1, 'Жижиглэн үнэ оруулна уу'),
+  defaultPrice: z.number().min(0.01, 'Үндсэн үнэ оруулна уу'),
   pricePerBox: z.number().min(0).optional(),
   isActive: z.boolean().optional(),
 });

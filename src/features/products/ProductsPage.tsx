@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
-import { Box, Button, Chip, Typography, Tooltip, IconButton } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Box, Button, Chip, IconButton, Tooltip, Typography } from '@mui/material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
+import { TableSkeleton } from '../../components/LoadingSkeletons';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../hooks/useAuth';
 import { productsApi } from '../../api';
-import { Product, CreateProductRequest, UpdateProductRequest } from '../../types';
-import ProductForm from './ProductForm';
-import ProductDetailsModal from './ProductDetailsModal';
+import { CreateProductRequest, Product, UpdateProductRequest } from '../../types';
 import InventoryAdjustmentForm from './InventoryAdjustmentForm';
-import { TableSkeleton } from '../../components/LoadingSkeletons';
+import PriceManagement from './PriceManagement';
+import ProductDetailsModal from './ProductDetailsModal';
+import ProductForm from './ProductForm';
 
 export default function ProductsPage() {
   const { canManage, canCreate } = useAuth();
@@ -19,6 +20,7 @@ export default function ProductsPage() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
+  const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -55,6 +57,7 @@ export default function ProductsPage() {
 
   const handleUpdate = async (data: CreateProductRequest | UpdateProductRequest) => {
     if (!selectedProduct) return;
+
     try {
       await productsApi.update(selectedProduct.id, data as UpdateProductRequest);
       toast.success('Бараа амжилттай шинэчлэгдлээ!');
@@ -77,6 +80,11 @@ export default function ProductsPage() {
     setInventoryModalOpen(true);
   };
 
+  const handleOpenPrices = () => {
+    setDetailsModalOpen(false);
+    setPriceModalOpen(true);
+  };
+
   const handleCloseDetailsModal = () => {
     setDetailsModalOpen(false);
     setSelectedProduct(null);
@@ -91,6 +99,11 @@ export default function ProductsPage() {
 
   const handleCloseInventoryModal = () => {
     setInventoryModalOpen(false);
+    setDetailsModalOpen(true);
+  };
+
+  const handleClosePriceModal = () => {
+    setPriceModalOpen(false);
     setDetailsModalOpen(true);
   };
 
@@ -124,16 +137,24 @@ export default function ProductsPage() {
       ),
     },
     {
-      id: 'priceWholesale',
-      label: 'Бөөний үнэ',
-      align: 'right' as const,
-      format: (row: Product) => `₮${Number(row.priceWholesale).toLocaleString()}`,
+      id: 'isActive',
+      label: 'Төлөв',
+      minWidth: 120,
+      align: 'center' as const,
+      format: (row: Product) => (
+        <Chip
+          label={row.isActive ? 'Идэвхтэй' : 'Идэвхгүй'}
+          color={row.isActive ? 'success' : 'default'}
+          size="small"
+          variant={row.isActive ? 'filled' : 'outlined'}
+        />
+      ),
     },
     {
-      id: 'priceRetail',
-      label: 'Жижиглэн үнэ',
+      id: 'defaultPrice',
+      label: 'Үндсэн үнэ',
       align: 'right' as const,
-      format: (row: Product) => `₮${Number(row.priceRetail).toLocaleString()}`,
+      format: (row: Product) => `₮${Number(row.defaultPrice ?? 0).toLocaleString()}`,
     },
   ];
 
@@ -178,7 +199,6 @@ export default function ProductsPage() {
         }
       />
 
-      {/* Details Modal */}
       <Modal
         open={detailsModalOpen}
         onClose={handleCloseDetailsModal}
@@ -189,11 +209,11 @@ export default function ProductsPage() {
           product={selectedProduct}
           onEdit={handleOpenEdit}
           onManageInventory={handleOpenInventory}
+          onManagePrices={handleOpenPrices}
           canManage={canManage()}
         />
       </Modal>
 
-      {/* Edit Modal */}
       <Modal
         open={editModalOpen}
         onClose={handleCloseEditModal}
@@ -207,7 +227,22 @@ export default function ProductsPage() {
         />
       </Modal>
 
-      {/* Inventory Modal */}
+      <Modal
+        open={priceModalOpen}
+        onClose={handleClosePriceModal}
+        title={`Үнэ засах: ${selectedProduct?.nameMongolian}`}
+        maxWidth="md"
+      >
+        {selectedProduct ? (
+          <PriceManagement
+            productId={selectedProduct.id}
+            onUpdate={() => {
+              fetchProducts();
+            }}
+          />
+        ) : null}
+      </Modal>
+
       <Modal
         open={inventoryModalOpen}
         onClose={handleCloseInventoryModal}

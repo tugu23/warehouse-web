@@ -68,6 +68,7 @@ interface RegLookupResult {
 
 export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('Market');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -135,11 +136,13 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
 
   const fetchData = async () => {
     try {
-      const [productsRes, employeesRes] = await Promise.all([
+      const [productsRes, customersRes, employeesRes] = await Promise.all([
         productsApi.getAll({ limit: 'all', include: 'prices,category' }),
+        customersApi.getAll({ limit: 'all' }),
         employeesApi.getAll({ limit: 'all' }),
       ]);
       setProducts(productsRes.data.data?.products || []);
+      setCustomers(customersRes.data.data?.customers || []);
       setEmployees(employeesRes.data.data?.employees || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -204,10 +207,16 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     }
   };
 
-  const getProductBasePrice = (product: Product): number => {
-    const firstPrice = product.prices && product.prices.length > 0 ? product.prices[0] : undefined;
-    if (firstPrice) return Number(firstPrice.price);
-    return Number(product.priceRetail) || Number(product.priceWholesale) || 0;
+  const customerIdWatch = watch('customerId');
+  const selectedCustomer = customers.find((c) => c.id === customerIdWatch);
+  const customerTypeIdForPrice = selectedCustomer?.customerTypeId ?? null;
+
+  const getProductBasePrice = (product: Product, ctId: number | null): number => {
+    if (ctId != null && product.prices?.length) {
+      const row = product.prices.find((p) => p.customerTypeId === ctId);
+      if (row && Number(row.price) > 0) return Number(row.price);
+    }
+    return Number(product.defaultPrice) || 0;
   };
 
   const fetchProductPrices = async (productId: number): Promise<ProductPrice[]> => {
@@ -219,7 +228,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     }
     try {
       const response = await productPricesApi.getByProductId(productId);
-      const prices = response.data.data?.productPrices || [];
+      const prices = response.data.data?.productPrices || response.data.data?.prices || [];
       setProductPricesCache((prev) => ({ ...prev, [productId]: prices }));
       return prices;
     } catch (error) {
@@ -232,7 +241,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     return items.reduce((total, item) => {
       const product = products.find((p) => p.id === item.productId);
       if (product) {
-        const price = getProductBasePrice(product);
+        const price = getProductBasePrice(product, customerTypeIdForPrice);
         return total + price * item.quantity;
       }
       return total;

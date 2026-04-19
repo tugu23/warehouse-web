@@ -228,7 +228,7 @@ export default function SalesByPeriodPage() {
                   <XAxis dataKey="period" />
                   <YAxis />
                   <Tooltip
-                    formatter={(value: number) => `₮${value.toLocaleString()}`}
+                    formatter={(value) => `₮${Number(value ?? 0).toLocaleString()}`}
                     labelStyle={{ color: '#000' }}
                   />
                   <Legend />

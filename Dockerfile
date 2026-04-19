@@ -24,8 +24,13 @@ RUN pnpm build
 # Production stage
 FROM --platform=linux/amd64 nginx:alpine AS production
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Default upstream for /api proxy.
+# Override at runtime with: -e API_UPSTREAM=http://your-backend:3000
+ENV API_UPSTREAM=http://backend:3000
+ENV POSAPI_UPSTREAM=http://host.docker.internal:7080
+
+# Copy nginx template; official nginx entrypoint will envsubst it
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html

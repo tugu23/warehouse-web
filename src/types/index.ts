@@ -147,6 +147,7 @@ export interface Customer {
   id: number;
   name: string; // Байгууллагын нэр
   name2?: string; // Хоёр дахь нэр (нэмэлт нэр)
+  organizationName?: string;
   organizationType?: string; // Дэлгүүр, Сүлжээ, Ресторан
   registrationNumber?: string; // Регистрийн дугаар ⭐
   ebarimtConsumerNo?: string; // E-Barimt апп бүртгэлийн дугаар (8 орон)

@@ -40,7 +40,7 @@ import { Order } from '../../types';
 import { ebarimtApi, EBarimtInformation, getLotteryWarningLevel } from '../../api/ebarimtApi';
 import EbarimtPrintModal from '../orders/EbarimtPrintModal';
 
-const POS_API_URL = 'http://localhost:7080';
+const POS_API_URL = '/posapi';
 
 export default function EBarimtPage() {
   const [loading, setLoading] = useState(false);

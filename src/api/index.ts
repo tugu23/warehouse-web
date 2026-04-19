@@ -260,6 +260,19 @@ export const ordersApi = {
       ebarimtDate: data.ebarimtDate,
       ...(data.ebarimtType ? { ebarimtReceiptType: data.ebarimtType } : {}),
     }),
+  /** Register order with eBarimt via backend API */
+  registerEbarimt: (id: number, data?: { customerTin?: string }) =>
+    api.post<
+      ApiResponse<{
+        orderId: number;
+        ebarimtId?: string;
+        billId?: string;
+        lottery?: string;
+        qrData?: string;
+        isB2B?: boolean;
+        message?: string;
+      }>
+    >(`/api/ebarimt/register/${id}`, data),
   ebarimtReturn: (id: number) =>
     api.post<ApiResponse<{ ebarimtBillId: string; ebarimtDate: string; orderId: number }>>(
       `/api/orders/${id}/ebarimt-return`

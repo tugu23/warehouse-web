@@ -116,12 +116,14 @@ export const exportCustomersToExcel = async (customers: Customer[]) => {
   });
 
   customers.forEach((customer) => {
+    const customerTypeLabel =
+      customer.customerType?.typeName || customer.customerType?.name || 'N/A';
     worksheet.addRow({
       id: customer.id,
       name: customer.name,
       address: customer.address,
       phoneNumber: customer.phoneNumber,
-      customerType: customer.customerType.typeName || customer.customerType.name,
+      customerType: customerTypeLabel,
       agent: customer.assignedAgent?.name || 'N/A',
       latitude: customer.locationLatitude,
       longitude: customer.locationLongitude,

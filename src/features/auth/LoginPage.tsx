@@ -140,21 +140,6 @@ export default function LoginPage() {
               >
                 {isLoading ? <CircularProgress size={24} /> : 'Sign In'}
               </Button>
-
-              <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                <Typography variant="caption" display="block" gutterBottom fontWeight="bold">
-                  Туршилтын нэвтрэх мэдээлэл:
-                </Typography>
-                <Typography variant="caption" display="block">
-                  Admin: admin@oasis.mn / admin123
-                </Typography>
-                <Typography variant="caption" display="block">
-                  Manager: manager@oasis.mn / manager123
-                </Typography>
-                <Typography variant="caption" display="block">
-                  Agent: agent@oasis.mn / agent123
-                </Typography>
-              </Box>
             </Box>
           </CardContent>
         </Card>

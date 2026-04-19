@@ -700,6 +700,9 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'BankTransfer' | 'Card'>('Cash');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Feature flag: Backend API ашиглах эсэх (туршилтын үе)
+  const [useBackendApi, setUseBackendApi] = useState(true);
+
   const paymentMap = { Cash: 'CASH', BankTransfer: 'BANK_TRANSFER', Card: 'PAYMENT_CARD' } as const;
   const paymentLabels = { Cash: 'Бэлэн', BankTransfer: 'Шилжүүлэг', Card: 'Карт' };
 
@@ -773,7 +776,8 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
     }
   };
 
-  const handlePrint = async () => {
+  // ========== ХУУЧИН АРГ: Шууд POS API руу хүсэлт илгээх ==========
+  const handlePrintDirect = async () => {
     const isB2B = customerKind === 'organization';
     const activeRegNo = useCustomerRegNo ? customerRegNo : regNumber.trim();
 
@@ -831,7 +835,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         regNo: isB2B && activeRegNo ? Number(activeRegNo) : undefined,
       });
 
-      const res = await fetch('http://localhost:7080/rest/receipt', {
+      const res = await fetch('/posapi/rest/receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -912,6 +916,108 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
       toast.error(err.response?.data?.message || err.message || 'Алдаа гарлаа');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // ========== ШИНЭ АРГ: Backend API ашиглах (зөвлөмжтэй) ==========
+  const handlePrintViaBackend = async () => {
+    const isB2B = customerKind === 'organization';
+    const activeRegNo = useCustomerRegNo ? customerRegNo : regNumber.trim();
+
+    if (isB2B && !regResult?.tin && !activeRegNo) {
+      toast.error("Байгууллагын TIN-г 'Лавлах' товч дарж авна уу");
+      return;
+    }
+
+    if (!order.orderItems || order.orderItems.length === 0) {
+      toast.error('Захиалгын бараа олдсонгүй');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Backend API руу хүсэлт илгээх - бүх логик backend дээр
+      const requestData: { customerTin?: string } = {};
+
+      // Байгууллага бол лавласан TIN дамжуулах
+      if (isB2B && regResult?.tin) {
+        requestData.customerTin = regResult.tin;
+      }
+
+      const res = await ordersApi.registerEbarimt(order.id, requestData);
+      const result = res.data.data;
+
+      if (!result?.billId) {
+        toast.error('eBarimt үүсгэхэд алдаа гарлаа');
+        return;
+      }
+
+      // PDF хэвлэх
+      const ebarimtItems = order.orderItems.map((oi) => ({
+        name: oi.product?.nameMongolian || 'Бараа',
+        barCode: oi.product?.barcode || '',
+        qty: oi.quantity,
+        unitPrice: Number(oi.unitPrice),
+      }));
+
+      const orderNum = `ORD-${order.id.toString().padStart(6, '0')}`;
+      const custName = isB2B
+        ? regResult?.name || ''
+        : individualLookupResult?.name || order.customer?.name || '';
+      const cust = order.customer;
+      const addressStr =
+        [cust?.district, cust?.address].filter(Boolean).join(', ') || cust?.address || '';
+
+      let resolvedTin = isB2B && regResult?.tin ? regResult.tin : null;
+      if (!isB2B && individualLookupResult?.tin) {
+        resolvedTin = individualLookupResult.tin;
+      }
+
+      const pdfData: EbarimtReceiptPdfData = {
+        id: result.billId,
+        date: result.ebarimtId,
+        customerTin: resolvedTin ?? undefined,
+        lottery: result.lottery,
+        qrData: result.qrData,
+        totalAmount: grandTotal,
+        totalVAT: vatNum,
+        subtotalExVat,
+      };
+
+      await generateEbarimtPDF(
+        pdfData,
+        ebarimtItems,
+        custName,
+        paymentLabels[paymentMethod],
+        orderNum,
+        isB2B,
+        {
+          address: addressStr,
+          phone: cust?.phoneNumber ?? '',
+          registrationNumber: isB2B
+            ? (cust?.registrationNumber ?? '')
+            : individualReg.trim() || cust?.registrationNumber || '',
+          tin: isB2B ? (resolvedTin ?? '') : (individualLookupResult?.tin ?? ''),
+        }
+      );
+
+      toast.success('eBarimt амжилттай хэвлэгдлээ! (Backend API)');
+      onSuccess();
+      onClose();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(err.response?.data?.message || err.message || 'Алдаа гарлаа');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ========== ҮНДСЭН ФУНКЦ: Feature flag-аар сонгох ==========
+  const handlePrint = async () => {
+    if (useBackendApi) {
+      await handlePrintViaBackend();
+    } else {
+      await handlePrintDirect();
     }
   };
 
@@ -1121,6 +1227,36 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
               <option value="BankTransfer">Дансанд шилжүүлэх</option>
               <option value="Card">Карт</option>
             </select>
+          </div>
+
+          {/* API сонголт (туршилтын үе) */}
+          <div
+            style={{
+              marginBottom: 14,
+              padding: '12px',
+              background: '#252838',
+              borderRadius: 8,
+              border: '1px solid #3d4460',
+            }}
+          >
+            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8, fontWeight: 500 }}>
+              🔧 Туршилтын горим
+            </div>
+            <label style={{ ...st.radioLabel, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={useBackendApi}
+                onChange={(e) => setUseBackendApi(e.target.checked)}
+              />
+              <span style={{ fontSize: 12 }}>
+                Backend API ашиглах (зөвлөмжтэй) {useBackendApi ? '✅' : ''}
+              </span>
+            </label>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 6, marginLeft: 20 }}>
+              {useBackendApi
+                ? '✓ Аюулгүй, найдвартай арга. Backend дамжуулж POS API руу хүсэлт илгээнэ.'
+                : '⚠️ Хуучин арга: Frontend шууд POS руу холбогдоно.'}
+            </div>
           </div>
 
           <div style={st.footer}>

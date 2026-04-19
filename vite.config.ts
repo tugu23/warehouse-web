@@ -9,6 +9,19 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+            mui: ['@mui/material', '@mui/icons-material'],
+            charts: ['recharts'],
+            excel: ['exceljs', 'jspdf', 'jspdf-autotable'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 1000,
+    },
     server: {
       port: 5173,
       proxy: {

@@ -66,6 +66,7 @@ import {
   CreateAgentKpiTargetRequest,
   UpdateAgentKpiTargetRequest,
   AgentKpiGranularity,
+  SalesKpiData,
 } from '../types';
 
 // Authentication API
@@ -540,6 +541,16 @@ export const agentKpiApi = {
   deleteTarget: (id: number) => api.delete<ApiResponse<null>>(`/api/agent-kpi/targets/${id}`),
 };
 
+export const salesKpiApi = {
+  getTransactions: (params: {
+    from: string;
+    to: string;
+    agentId?: number;
+    productId?: number;
+    granularity?: 'day' | 'week' | 'month' | 'year';
+  }) => api.get<ApiResponse<SalesKpiData>>('/api/sales-kpi', { params }),
+};
+
 import { ebarimtApi } from './ebarimtApi';
 
 export default {
@@ -562,4 +573,5 @@ export default {
   etax: etaxApi,
   ebarimt: ebarimtApi,
   agentKpi: agentKpiApi,
+  salesKpi: salesKpiApi,
 };

@@ -872,3 +872,36 @@ export interface UpdateAgentKpiTargetRequest {
   targetAmount?: string | number;
   targetBoxQty?: string | number | null;
 }
+
+// Sales KPI Types
+export interface SalesTransaction {
+  orderId: number;
+  orderNumber: string | null;
+  orderDate: string;
+  agentId: number;
+  agentName: string;
+  customerId: number;
+  customerName: string;
+  productId: number;
+  productName: string;
+  categoryName: string | null;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  bucket: string;
+}
+
+export interface SalesKpiData {
+  transactions: SalesTransaction[];
+  totals: {
+    totalQuantity: number;
+    totalAmount: number;
+    orderCount: number;
+  };
+  periodTotals: Array<{
+    bucket: string;
+    totalQuantity: number;
+    totalAmount: number;
+    orderCount: number;
+  }>;
+}

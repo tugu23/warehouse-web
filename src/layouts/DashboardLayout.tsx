@@ -64,6 +64,12 @@ const menuItems: MenuItem[] = [
     path: '/reports/agent-kpi',
     roles: ['Admin', 'Manager', 'SalesAgent', 'MarketSalesperson', 'StoreSalesperson'],
   },
+  {
+    text: 'Борлуулалтын KPI',
+    icon: <ReportIcon />,
+    path: '/reports/sales-kpi',
+    roles: ['Admin', 'Manager'],
+  },
   { text: 'Ажилчид', icon: <GroupIcon />, path: '/employees', roles: ['Admin'] },
   { text: 'Агент хяналт', icon: <LocationIcon />, path: '/agents', roles: ['Admin', 'Manager'] },
   {

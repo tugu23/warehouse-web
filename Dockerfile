@@ -1,11 +1,11 @@
 # Build stage
-FROM node:22-alpine AS builder
+FROM --platform=linux/amd64 node:22-alpine AS builder
 
 # Set environment variables for build
 ENV VITE_API_BASE_URL=/
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g pnpm
 
 WORKDIR /app
 
@@ -13,22 +13,21 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm install
 
 # Copy source code
 COPY . .
 
 # Build the application
 ENV NODE_OPTIONS=--max-old-space-size=4096
-RUN pnpm exec tsc -b
-RUN pnpm exec vite build
+RUN pnpm run build
 
 # Production stage
 FROM --platform=linux/amd64 nginx:alpine AS production
 
 # Default upstream for /api proxy.
 # Override at runtime with: -e API_UPSTREAM=http://your-backend:3000
-ENV API_UPSTREAM=http://backend:3000
+ENV API_UPSTREAM=http://host.docker.internal:3000
 ENV POSAPI_UPSTREAM=http://host.docker.internal:7080
 
 # Copy nginx template; official nginx entrypoint will envsubst it

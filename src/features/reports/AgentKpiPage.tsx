@@ -19,9 +19,10 @@ import {
   Tabs,
   Tab,
   IconButton,
+  Chip,
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
 import { agentKpiApi, employeesApi } from '../../api';
 import {
@@ -47,6 +48,209 @@ function fmtNum(n: number | null | undefined, frac = 2) {
 function fmtPct(n: number | null | undefined) {
   if (n == null || Number.isNaN(n)) return '—';
   return `${n.toFixed(2)}%`;
+}
+
+interface ProductRow {
+  brand: string;
+  productName: string;
+  totalBoxes: number;
+  totalAmount: number;
+}
+
+interface AgentGoal {
+  goal: number;
+  paid: number;
+  percent: number;
+}
+
+function AgentKpiReportTab({ effectiveAgentId }: { effectiveAgentId: number | null }) {
+  const [from, setFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [to, setTo] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [loading, setLoading] = useState(false);
+  const [productRows, setProductRows] = useState<ProductRow[]>([]);
+  const [agentGoal, setAgentGoal] = useState<AgentGoal | null>(null);
+
+  const fetchReport = async () => {
+    if (!effectiveAgentId) {
+      toast.error('Ажилтан сонгоно уу');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await agentKpiApi.getByProduct({ from, to, agentId: effectiveAgentId });
+      const products = res.data.data?.products || [];
+
+      const grouped = new Map<string, ProductRow>();
+      products.forEach((p) => {
+        const key = `${p.categoryName || 'Бусад'}_${p.productName}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            brand: p.categoryName || 'Бусад',
+            productName: p.productName,
+            totalBoxes: 0,
+            totalAmount: 0,
+          });
+        }
+        const row = grouped.get(key)!;
+        row.totalBoxes += p.boxes;
+        row.totalAmount += p.amount;
+      });
+
+      setProductRows(Array.from(grouped.values()));
+
+      const summaryRes = await agentKpiApi.getSummary({
+        from,
+        to,
+        agentId: effectiveAgentId,
+        granularity: 'month',
+      });
+      const summary = summaryRes.data.data;
+      if (summary) {
+        const totalGoal = summary.totals.sumTargetAmount || 0;
+        const totalPaid = summary.totals.sumActualAmount || 0;
+        const percent = totalGoal > 0 ? (totalPaid / totalGoal) * 100 : 0;
+        setAgentGoal({ goal: totalGoal, paid: totalPaid, percent });
+      }
+    } catch (error) {
+      toast.error('Тайлан татахад алдаа гарлаа');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2, alignItems: 'center' }}>
+        <TextField
+          size="small"
+          type="date"
+          label="Эхлэх"
+          InputLabelProps={{ shrink: true }}
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+        />
+        <TextField
+          size="small"
+          type="date"
+          label="Дуусах"
+          InputLabelProps={{ shrink: true }}
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+        />
+        <Button variant="contained" onClick={fetchReport} disabled={loading}>
+          Ачаалах
+        </Button>
+      </Box>
+
+      {agentGoal && (
+        <Card sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Зорилтын биелэлт
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Goal (Зорилт)
+                </Typography>
+                <Typography variant="h6">{fmtNum(agentGoal.goal, 2)} ₮</Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Amount (Төлөгдсөн)
+                </Typography>
+                <Typography variant="h6">{fmtNum(agentGoal.paid, 2)} ₮</Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Биелэлт
+                </Typography>
+                <Chip
+                  label={fmtPct(agentGoal.percent)}
+                  color={agentGoal.percent >= 100 ? 'success' : 'warning'}
+                  sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}
+                />
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardContent>
+          {loading ? (
+            <TableSkeleton />
+          ) : productRows.length > 0 ? (
+            <Box sx={{ overflowX: 'auto' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', borderRight: 1, borderColor: 'divider' }}>
+                      Байраа
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', borderRight: 1, borderColor: 'divider' }}>
+                      Бараа
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                      Box
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 'bold', borderRight: 1, borderColor: 'divider' }}
+                    >
+                      Amount
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {productRows.map((row, idx) => (
+                    <TableRow key={idx} hover>
+                      <TableCell sx={{ borderRight: 1, borderColor: 'divider' }}>
+                        {row.brand}
+                      </TableCell>
+                      <TableCell sx={{ borderRight: 1, borderColor: 'divider' }}>
+                        {row.productName}
+                      </TableCell>
+                      <TableCell align="right">{fmtNum(row.totalBoxes, 0)}</TableCell>
+                      <TableCell align="right" sx={{ borderRight: 1, borderColor: 'divider' }}>
+                        {fmtNum(row.totalAmount, 2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow sx={{ bgcolor: 'action.hover', fontWeight: 'bold' }}>
+                    <TableCell
+                      colSpan={2}
+                      sx={{ fontWeight: 'bold', borderRight: 1, borderColor: 'divider' }}
+                    >
+                      Total
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                      {fmtNum(
+                        productRows.reduce((sum, r) => sum + r.totalBoxes, 0),
+                        0
+                      )}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 'bold', borderRight: 1, borderColor: 'divider' }}
+                    >
+                      {fmtNum(
+                        productRows.reduce((sum, r) => sum + r.totalAmount, 0),
+                        2
+                      )}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Box>
+          ) : (
+            <Typography color="text.secondary">Өгөгдөл байхгүй</Typography>
+          )}
+        </CardContent>
+      </Card>
+    </Box>
+  );
 }
 
 export default function AgentKpiPage() {
@@ -159,7 +363,7 @@ export default function AgentKpiPage() {
 
   useEffect(() => {
     if (tab === 3 && effectiveAgentId) fetchTargets();
-  }, [tab, effectiveAgentId]);
+  }, [tab, effectiveAgentId, fetchTargets]);
 
   const openCreateTarget = () => {
     if (!effectiveAgentId) {
@@ -304,6 +508,7 @@ export default function AgentKpiPage() {
         <Tab label="Бараа бүтээгдэхүүн" />
         {canManage() && <Tab label="Бүх агент (өдөр)" />}
         {canManage() && <Tab label="Зорилт" />}
+        <Tab label="Тайлан" />
       </Tabs>
 
       {tab === 0 && (
@@ -478,6 +683,8 @@ export default function AgentKpiPage() {
           </CardContent>
         </Card>
       )}
+
+      {tab === 4 && <AgentKpiReportTab effectiveAgentId={effectiveAgentId} />}
 
       <Modal
         open={targetModal}

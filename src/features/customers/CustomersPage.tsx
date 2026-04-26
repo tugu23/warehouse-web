@@ -96,6 +96,11 @@ export default function CustomersPage() {
       ),
     },
     {
+      id: 'phoneNumber',
+      label: 'Утас',
+      minWidth: 120,
+    },
+    {
       id: 'registrationNumber',
       label: '⭐ Регистр',
       minWidth: 130,
@@ -116,11 +121,6 @@ export default function CustomersPage() {
             -
           </Typography>
         ),
-    },
-    {
-      id: 'phoneNumber',
-      label: 'Утас',
-      minWidth: 120,
     },
     {
       id: 'address',

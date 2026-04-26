@@ -2,7 +2,8 @@
 FROM --platform=linux/amd64 node:22-alpine AS builder
 
 # Set environment variables for build
-ENV VITE_API_BASE_URL=/
+ENV VITE_API_BASE_URL=http://localhost:3000
+ENV CI=true
 
 # Install pnpm
 RUN npm install -g pnpm
@@ -19,8 +20,7 @@ RUN pnpm install
 COPY . .
 
 # Build the application
-ENV NODE_OPTIONS=--max-old-space-size=4096
-RUN pnpm run build
+RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run build 2>&1 || (echo "Build failed, checking logs..." && exit 1)
 
 # Production stage
 FROM --platform=linux/amd64 nginx:alpine AS production

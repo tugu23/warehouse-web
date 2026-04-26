@@ -38,22 +38,20 @@ export function printDailyOrderProductsPdf(rows: DailyAggregatedProduct[], dateY
     String(i + 1),
     r.name,
     r.barcode,
-    String(r.quantity),
     r.boxesLabel,
     '', // гараар чеклэх хоосон зай
   ]);
 
   const pageInnerW = doc.internal.pageSize.getWidth() - 2 * MARGIN;
   const c0 = 9;
-  const c2 = 26;
-  const c3 = 16;
-  const c4 = 22;
-  const c5 = 20;
-  const c1 = Math.max(28, pageInnerW - c0 - c2 - c3 - c4 - c5);
+  const c2 = 35;
+  const c3 = 22;
+  const c4 = 20;
+  const c1 = Math.max(28, pageInnerW - c0 - c2 - c3 - c4);
 
   autoTable(doc, {
     startY: MARGIN + 16,
-    head: [['№', 'Барааны нэр', 'Баркод', 'Нийт (ширхэг)', 'Хайрцаг', 'Шалгах']],
+    head: [['№', 'Барааны нэр', 'Баркод', 'Хайрцаг', 'Шалгах']],
     body,
     theme: 'grid',
     tableWidth: pageInnerW,
@@ -74,9 +72,8 @@ export function printDailyOrderProductsPdf(rows: DailyAggregatedProduct[], dateY
       0: { cellWidth: c0, halign: 'center' },
       1: { cellWidth: c1, halign: 'left' },
       2: { cellWidth: c2, halign: 'center' },
-      3: { cellWidth: c3, halign: 'right' },
-      4: { cellWidth: c4, halign: 'center' },
-      5: { cellWidth: c5, halign: 'center', minCellHeight: 8 },
+      3: { cellWidth: c3, halign: 'center' },
+      4: { cellWidth: c4, halign: 'center', minCellHeight: 8 },
     },
     margin: { left: MARGIN, right: MARGIN },
   });

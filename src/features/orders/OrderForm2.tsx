@@ -82,8 +82,8 @@ const s: Record<string, React.CSSProperties> = {
   modal: {
     background: C.bg,
     borderRadius: 14,
-    width: 'min(1120px, calc(100vw - 48px))',
-    maxWidth: 1120,
+    width: 'min(90vw, 1120px)',
+    maxWidth: '90vw',
     maxHeight: '92vh',
     overflowY: 'auto',
     boxShadow: '0 30px 80px rgba(0,0,0,0.6)',

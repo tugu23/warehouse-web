@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -26,7 +26,6 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
 import { agentKpiApi, employeesApi } from '../../api';
 import {
-  AgentKpiGranularity,
   AgentKpiProductRow,
   AgentKpiSummaryData,
   AgentKpiSummaryRow,
@@ -262,7 +261,6 @@ export default function AgentKpiPage() {
     format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd')
   );
   const [to, setTo] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [granularity, setGranularity] = useState<AgentKpiGranularity>('day');
   const [summary, setSummary] = useState<AgentKpiSummaryData | null>(null);
   const [products, setProducts] = useState<AgentKpiProductRow[]>([]);
   const [multiDate, setMultiDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -351,7 +349,7 @@ export default function AgentKpiPage() {
     }
   };
 
-  const fetchTargets = async () => {
+  const fetchTargets = useCallback(async () => {
     if (!effectiveAgentId) return;
     try {
       const res = await agentKpiApi.getTargets(effectiveAgentId);
@@ -359,7 +357,7 @@ export default function AgentKpiPage() {
     } catch {
       toast.error('Зорилт татахад алдаа');
     }
-  };
+  }, [effectiveAgentId]);
 
   useEffect(() => {
     if (tab === 3 && effectiveAgentId) fetchTargets();
@@ -489,18 +487,6 @@ export default function AgentKpiPage() {
           value={to}
           onChange={(e) => setTo(e.target.value)}
         />
-        <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel>Нарийвчлал</InputLabel>
-          <Select
-            label="Нарийвчлал"
-            value={granularity}
-            onChange={(e) => setGranularity(e.target.value as AgentKpiGranularity)}
-          >
-            <MenuItem value="day">Өдөр</MenuItem>
-            <MenuItem value="month">Сар</MenuItem>
-            <MenuItem value="year">Жил</MenuItem>
-          </Select>
-        </FormControl>
       </Box>
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>

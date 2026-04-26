@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -32,7 +32,6 @@ import {
   Brightness7,
   Logout,
   Category as CategoryIcon,
-  Event as EventIcon,
   Assessment as ReportIcon,
   Receipt as ReceiptIcon,
 } from '@mui/icons-material';
@@ -56,7 +55,6 @@ const menuItems: MenuItem[] = [
   { text: 'Ангилал', icon: <CategoryIcon />, path: '/categories' },
   { text: 'Харилцагчид', icon: <PeopleIcon />, path: '/customers' },
   { text: 'Захиалга', icon: <ShoppingCartIcon />, path: '/orders' },
-  { text: 'Ажлын төлөвлөгөө', icon: <EventIcon />, path: '/work-plans/visits' },
   { text: 'Тайлан', icon: <ReportIcon />, path: '/reports/sales' },
   {
     text: 'Агент KPI',
@@ -82,6 +80,7 @@ const menuItems: MenuItem[] = [
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const muiTheme = useMuiTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const { user, logout, hasRole } = useAuth();
@@ -125,23 +124,29 @@ export default function DashboardLayout() {
       </Toolbar>
       <Divider />
       <List sx={{ px: 2 }}>
-        {filteredMenuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
-            <ListItemButton
-              onClick={() => handleNavigation(item.path)}
-              sx={{
-                borderRadius: 2,
-                '&:hover': {
-                  bgcolor: 'primary.light',
-                  color: 'primary.contrastText',
-                },
-              }}
-            >
-              <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
+        {filteredMenuItems.map((item) => {
+          const isActive =
+            location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+          return (
+            <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
+              <ListItemButton
+                onClick={() => handleNavigation(item.path)}
+                sx={{
+                  borderRadius: 2,
+                  bgcolor: isActive ? 'primary.main' : 'transparent',
+                  color: isActive ? 'primary.contrastText' : 'inherit',
+                  '&:hover': {
+                    bgcolor: isActive ? 'primary.dark' : 'primary.light',
+                    color: 'primary.contrastText',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.text} />
+              </ListItemButton>
+            </ListItem>
+          );
+        })}
       </List>
     </Box>
   );

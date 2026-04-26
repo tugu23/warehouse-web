@@ -160,7 +160,7 @@ export default function DashboardPage() {
       else setRefreshing(true);
       try {
         const [prodRes, custRes, ordRes] = await Promise.all([
-          productsApi.getAll({ limit: 200 }),
+          productsApi.getAll({ limit: 'all' }),
           customersApi.getAll(),
           ordersApi.getAll({ limit: 'all' }),
         ]);
@@ -216,9 +216,9 @@ export default function DashboardPage() {
       (o) => o.status === 'Fulfilled' && !o.ebarimtRegistered
     );
     const lowStock = allProducts
-      .filter((p) => p.stockQuantity < 20)
+      .filter((p) => p.isActive && p.stockQuantity < 20)
       .sort((a, b) => a.stockQuantity - b.stockQuantity);
-    const outOfStock = allProducts.filter((p) => p.stockQuantity === 0);
+    const outOfStock = allProducts.filter((p) => p.isActive && p.stockQuantity === 0);
 
     const monthRevenue = thisMonth
       .filter((o) => o.status === 'Fulfilled')

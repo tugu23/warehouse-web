@@ -309,7 +309,15 @@ export default function OrdersPage() {
         }
       />
 
-      {createModalOpen && <OrderForm2 onClose={() => setCreateModalOpen(false)} />}
+      {createModalOpen && (
+        <OrderForm2
+          onClose={() => setCreateModalOpen(false)}
+          onSuccess={() => {
+            setCreateModalOpen(false);
+            fetchOrders();
+          }}
+        />
+      )}
 
       <Modal
         open={detailsModalOpen}

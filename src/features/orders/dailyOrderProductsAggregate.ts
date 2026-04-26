@@ -16,6 +16,8 @@ export interface DailyAggregatedProduct {
   unitsPerBox: number | null;
   /** Хайрцаг + үлдэгдэл ширхэг — жишээ 2+5ш эсвэл зөвхөн 3 */
   boxesLabel: string;
+  /** Агуулахад байгаа хайрцаг + ширхэг */
+  stockBoxesLabel: string;
 }
 
 function formatBoxesLine(totalPieces: number, unitsPerBox: number | null | undefined): string {
@@ -37,7 +39,13 @@ export function aggregateDailyOrderProducts(
 ): DailyAggregatedProduct[] {
   const map = new Map<
     number,
-    { name: string; quantity: number; barcode: string; unitsPerBox: number | null }
+    {
+      name: string;
+      quantity: number;
+      barcode: string;
+      unitsPerBox: number | null;
+      stockQuantity: number;
+    }
   >();
 
   for (const order of orders) {
@@ -53,6 +61,7 @@ export function aggregateDailyOrderProducts(
           ? item.product.unitsPerBox
           : null;
       const qty = Number(item.quantity) || 0;
+      const stock = item.product?.stockQuantity || 0;
       const prev = map.get(pid);
       if (prev) {
         const mergedBarcode = prev.barcode !== '—' ? prev.barcode : barcode !== '—' ? barcode : '—';
@@ -62,9 +71,10 @@ export function aggregateDailyOrderProducts(
           quantity: prev.quantity + qty,
           barcode: mergedBarcode,
           unitsPerBox: mergedUpb,
+          stockQuantity: stock,
         });
       } else {
-        map.set(pid, { name, quantity: qty, barcode, unitsPerBox: upb });
+        map.set(pid, { name, quantity: qty, barcode, unitsPerBox: upb, stockQuantity: stock });
       }
     }
   }
@@ -77,6 +87,7 @@ export function aggregateDailyOrderProducts(
       barcode: v.barcode,
       unitsPerBox: v.unitsPerBox,
       boxesLabel: formatBoxesLine(v.quantity, v.unitsPerBox),
+      stockBoxesLabel: formatBoxesLine(v.stockQuantity, v.unitsPerBox),
     }))
     .sort((a, b) => a.name.localeCompare(b.name, 'mn', { sensitivity: 'base' }));
 }

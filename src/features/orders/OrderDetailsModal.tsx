@@ -57,9 +57,16 @@ export default function OrderDetailsModal({
     setConfirmDialogOpen(true);
   };
 
-  const confirmStatusChange = () => {
+  const confirmStatusChange = async () => {
     onUpdateStatus(order.id, newStatus);
     setConfirmDialogOpen(false);
+    if (newStatus === 'Fulfilled' && !order.ebarimtRegistered) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const response = await ordersApi.getById(order.id);
+      if (response.data.data?.order) {
+        setEbarimtPrintOpen(true);
+      }
+    }
   };
 
   const getStatusColor = (status: string) => {

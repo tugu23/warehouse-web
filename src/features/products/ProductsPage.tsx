@@ -1,6 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
-import { Box, Button, Chip, IconButton, Tooltip, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  Tooltip,
+  Typography,
+  ToggleButtonGroup,
+  ToggleButton,
+} from '@mui/material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
@@ -22,6 +31,7 @@ export default function ProductsPage() {
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
     fetchProducts();
@@ -163,6 +173,12 @@ export default function ProductsPage() {
     setDetailsModalOpen(true);
   };
 
+  const filteredProducts = useMemo(() => {
+    if (activeFilter === 'all') return products;
+    if (activeFilter === 'active') return products.filter((p) => p.isActive);
+    return products.filter((p) => !p.isActive);
+  }, [products, activeFilter]);
+
   if (loading) {
     return <TableSkeleton />;
   }
@@ -172,12 +188,24 @@ export default function ProductsPage() {
       <DataTable
         title="Бараа материал"
         columns={columns}
-        data={products}
+        data={filteredProducts}
         searchable
         searchPlaceholder="Нэр, бар код, ангиллаар хайх..."
         onRowClick={handleRowClick}
         actions={
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={activeFilter}
+              onChange={(_, value) => {
+                if (value !== null) setActiveFilter(value);
+              }}
+            >
+              <ToggleButton value="all">Бүгд</ToggleButton>
+              <ToggleButton value="active">Идэвхтэй</ToggleButton>
+              <ToggleButton value="inactive">Идэвхгүй</ToggleButton>
+            </ToggleButtonGroup>
             <Tooltip title="Шинэчлэх">
               <IconButton onClick={fetchProducts} size="small">
                 <RefreshIcon />

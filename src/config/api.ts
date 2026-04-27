@@ -1,10 +1,10 @@
 // API Configuration and Axios Instance
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// API Base URL - Use proxy in development, full URL in production
-export const API_BASE_URL = import.meta.env.PROD 
-  ? import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-  : '/api';  // Use Vite proxy in development
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
+
+// Older service modules call paths like /auth/login, so they need /api as their default base path.
+export const API_BASE_URL = configuredApiBaseUrl || '/api';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -34,23 +34,19 @@ apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error: {response: {status: number, data: {message: string}}, message: string}) => {
+  (error: { response: { status: number; data: { message: string } }; message: string }) => {
     if (error.response?.status === 401) {
       // Unauthorized - clear token and redirect to login
-      localStorage.removeItem('user_token');
+      localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
-    
+
     // Extract error message
-    const errorMessage = 
-      error.response?.data?.message || 
-      error.message || 
-      'An error occurred';
-    
+    const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
+
     return Promise.reject(new Error(errorMessage));
   }
 );
 
 export default apiClient;
-

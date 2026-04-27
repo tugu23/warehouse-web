@@ -1,7 +1,7 @@
-import axios from 'axios';
+import api from '../lib/axios';
 import { toast } from 'react-hot-toast';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+const getReceiptPdfPath = (orderId: number) => `/api/orders/${orderId}/receipt/pdf`;
 
 export interface ReceiptResponse {
   success: boolean;
@@ -15,25 +15,36 @@ class ReceiptService {
    * Get receipt PDF URL for viewing
    */
   getReceiptPdfUrl(orderId: number): string {
-    return `${API_BASE_URL}/orders/${orderId}/receipt/pdf`;
+    return getReceiptPdfPath(orderId);
   }
 
   /**
    * Get receipt PDF download URL
    */
   getReceiptDownloadUrl(orderId: number): string {
-    return `${API_BASE_URL}/orders/${orderId}/receipt/pdf?download=true`;
+    return `${getReceiptPdfPath(orderId)}?download=true`;
   }
 
   /**
    * View receipt in new tab
    */
   async viewReceipt(orderId: number): Promise<void> {
+    const previewWindow = window.open('', '_blank');
+
     try {
-      const url = this.getReceiptPdfUrl(orderId);
-      window.open(url, '_blank');
+      const blob = await this.fetchReceiptBlob(orderId);
+      const url = URL.createObjectURL(blob);
+
+      if (previewWindow) {
+        previewWindow.location.href = url;
+      } else {
+        window.open(url, '_blank');
+      }
+
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
       toast.success('Баримт нээгдэж байна...');
     } catch (error) {
+      previewWindow?.close();
       console.error('Error viewing receipt:', error);
       toast.error('Баримт нээхэд алдаа гарлаа');
       throw error;
@@ -45,7 +56,8 @@ class ReceiptService {
    */
   async downloadReceipt(orderId: number, filename?: string): Promise<void> {
     try {
-      const url = this.getReceiptDownloadUrl(orderId);
+      const blob = await this.fetchReceiptBlob(orderId);
+      const url = URL.createObjectURL(blob);
 
       // Create a temporary link and trigger download
       const link = document.createElement('a');
@@ -54,6 +66,7 @@ class ReceiptService {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
       toast.success('Баримт татаж авах үйлдэл эхэллээ');
     } catch (error) {
@@ -68,8 +81,7 @@ class ReceiptService {
    */
   async fetchReceiptBlob(orderId: number): Promise<Blob> {
     try {
-      const url = this.getReceiptPdfUrl(orderId);
-      const response = await axios.get(url, {
+      const response = await api.get<Blob>(getReceiptPdfPath(orderId), {
         responseType: 'blob',
       });
       return response.data;
@@ -128,7 +140,7 @@ class ReceiptService {
         toast.success('Баримт хуваалцлаа');
       } else {
         // Fallback: Copy link to clipboard
-        const url = this.getReceiptPdfUrl(orderId);
+        const url = new URL(this.getReceiptPdfUrl(orderId), window.location.origin).toString();
         await navigator.clipboard.writeText(url);
         toast.success('Линк хуулагдлаа');
       }

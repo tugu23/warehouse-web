@@ -1,11 +1,11 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'react-hot-toast';
 
-// Base URL is replaced at build time:
-// - Production: empty string (nginx proxies /api to backend)
-// - Development: empty string (Vite proxy forwards /api — vite.config.ts target)
+// Leave this empty in production so the browser talks to the same origin and nginx proxies /api.
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '',
+  baseURL: configuredApiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },

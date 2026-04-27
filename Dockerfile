@@ -1,8 +1,8 @@
 # Build stage
 FROM --platform=linux/amd64 node:22-alpine AS builder
 
-# Set environment variables for build
-ENV VITE_API_BASE_URL=http://localhost:3000
+# Build the SPA against same-origin /api paths; nginx selects the real upstream at runtime.
+ENV VITE_API_BASE_URL=
 ENV CI=true
 
 # Install pnpm
@@ -14,7 +14,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -27,7 +27,7 @@ FROM --platform=linux/amd64 nginx:alpine AS production
 
 # Default upstream for /api proxy.
 # Override at runtime with: -e API_UPSTREAM=http://your-backend:3000
-ENV API_UPSTREAM=http://host.docker.internal:3000
+ENV API_UPSTREAM=http://backend:3000
 ENV POSAPI_UPSTREAM=http://host.docker.internal:7080
 
 # Copy nginx template; official nginx entrypoint will envsubst it
@@ -41,4 +41,3 @@ EXPOSE 80
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
-

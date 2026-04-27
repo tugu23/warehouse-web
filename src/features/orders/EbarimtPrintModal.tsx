@@ -701,7 +701,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Feature flag: Backend API ашиглах эсэх (туршилтын үе)
-  const [useBackendApi, setUseBackendApi] = useState(true);
+  const [useBackendApi] = useState(true);
 
   const paymentMap = { Cash: 'CASH', BankTransfer: 'BANK_TRANSFER', Card: 'PAYMENT_CARD' } as const;
   const paymentLabels = { Cash: 'Бэлэн', BankTransfer: 'Шилжүүлэг', Card: 'Карт' };
@@ -1230,7 +1230,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
           </div>
 
           {/* API сонголт (туршилтын үе) */}
-          <div
+          {/* <div
             style={{
               marginBottom: 14,
               padding: '12px',
@@ -1257,7 +1257,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
                 ? '✓ Аюулгүй, найдвартай арга. Backend дамжуулж POS API руу хүсэлт илгээнэ.'
                 : '⚠️ Хуучин арга: Frontend шууд POS руу холбогдоно.'}
             </div>
-          </div>
+          </div> */}
 
           <div style={st.footer}>
             <button style={st.cancelBtn} onClick={onClose}>

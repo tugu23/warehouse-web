@@ -5,22 +5,19 @@ FROM --platform=linux/amd64 node:22-alpine AS builder
 ENV VITE_API_BASE_URL=
 ENV CI=true
 
-# Install pnpm
-RUN npm install -g pnpm
-
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies with npm
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Build the application
-RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run build 2>&1 || (echo "Build failed, checking logs..." && exit 1)
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build 2>&1 || (echo "Build failed, checking logs..." && exit 1)
 
 # Production stage
 FROM --platform=linux/amd64 nginx:alpine AS production

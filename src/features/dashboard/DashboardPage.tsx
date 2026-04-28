@@ -172,7 +172,9 @@ export default function DashboardPage() {
 
         if (userIsAdmin) {
           const empRes = await employeesApi.getAll();
-          setEmployeeCount(empRes.data.data?.employees?.length || 0);
+          setEmployeeCount(
+            empRes.data.data?.pagination?.total ?? (empRes.data.data?.employees?.length || 0)
+          );
         }
       } catch (e) {
         console.error(e);

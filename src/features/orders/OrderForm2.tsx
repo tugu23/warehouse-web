@@ -15,6 +15,8 @@ interface ProductOption {
   id: number;
   name: string;
   isActive: boolean;
+  productCode: string;
+  categoryName: string;
   /** Төрлийн тусгай үнэ байхгүй үед */
   defaultPrice: number;
   stock: number;
@@ -489,7 +491,12 @@ function pickCustomerMatchingInput(value: string, list: Customer[]): Customer | 
   const fromName = pickBest(byName);
   if (fromName) return fromName;
 
-  return pickBest(list.filter((c) => c.phoneNumber === trimmed));
+  const byPhone = list.filter((c) => c.phoneNumber === trimmed);
+  const fromPhone = pickBest(byPhone);
+  if (fromPhone) return fromPhone;
+
+  const byPartialName = list.filter((c) => c.name.toLowerCase().includes(vLower));
+  return pickBest(byPartialName);
 }
 
 function resolveCustomerTypeId(c: Customer | undefined): number | undefined {
@@ -554,7 +561,6 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [customerQuery, setCustomerQuery] = useState('');
   const [customerInput, setCustomerInput] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | ''>('');
   const [orderType, setOrderType] = useState<'Store' | 'Market'>('Store');
@@ -591,7 +597,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
   useEffect(() => {
     productsApi
-      .getAll({ limit: 200 })
+      .getAll({ limit: 'all' })
       .then((res) => {
         const raw = res.data?.data?.products ?? [];
         setProducts(
@@ -601,6 +607,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
               id: p.id,
               name: p.nameMongolian,
               isActive: p.isActive !== false,
+              productCode: p.productCode ?? '',
+              categoryName: p.category?.nameMongolian ?? '',
               defaultPrice: Number(p.defaultPrice ?? 0),
               stock: p.stockQuantity ?? 0,
               barCode: p.barcode ?? '',
@@ -656,7 +664,6 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
     setSelectedCustomerId(initialOrder.customerId || '');
     setCustomerInput(initialOrder.customer?.name || '');
-    setCustomerQuery(initialOrder.customer?.name || '');
     setOrderType((initialOrder.orderType as 'Store' | 'Market') || 'Store');
     setPaymentMethod((initialOrder.paymentMethod as PaymentMethod) || 'Cash');
     setCreditTermDays(initialOrder.creditTermDays || 30);
@@ -699,19 +706,6 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     if (!Number.isFinite(id)) return undefined;
     return customersForForm.find((c) => c.id === id);
   }, [customersForForm, selectedCustomerId]);
-
-  const filteredCustomers = useMemo(() => {
-    if (!customerQuery) return customersForForm;
-    const q = customerQuery.toLowerCase();
-    return customersForForm.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.phoneNumber?.includes(q) ||
-        c.registrationNumber?.toLowerCase().includes(q)
-    );
-  }, [customersForForm, customerQuery]);
-
-  const selectedCustomerOption = selectedCustomer;
 
   const customerTypeId = resolveCustomerTypeId(selectedCustomer);
   const customerTypeLabel =
@@ -869,24 +863,6 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   const validItemCount = orderItems.filter((oi) => oi.productId && getPieceQty(oi) >= 1).length;
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const onCustomerInputChange = (value: string) => {
-    setCustomerInput(value);
-    setCustomerQuery(value);
-
-    const exact = pickCustomerMatchingInput(value, customersForForm);
-
-    if (exact) {
-      setSelectedCustomerId(exact.id);
-      setErrors((p) => {
-        const n = { ...p };
-        delete n.customer;
-        return n;
-      });
-    } else if (!value.trim()) {
-      setSelectedCustomerId('');
-    }
-  };
-
   const addItem = () =>
     setOrderItems([
       ...orderItems,
@@ -1113,29 +1089,29 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
             </div>
             <div>
               <label style={s.label}>
-                Харилцагч (Search with selected){' '}
+                Харилцагч{' '}
                 {errors.customer && <span style={{ color: C.red }}> — {errors.customer}</span>}
               </label>
-              <input
-                list="customer-options"
-                style={{ ...s.input, ...(errors.customer ? s.inputError : {}) }}
-                placeholder="Нэр, утас, регистр..."
-                value={customerInput}
-                onChange={(e) => onCustomerInputChange(e.target.value)}
+              <SearchSelect
+                value={selectedCustomerId}
+                valueLabel={selectedCustomer?.name}
+                placeholder="Харилцагч сонгоно уу"
+                searchPlaceholder="Нэр, утас, регистр..."
+                options={customersForForm.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  meta: c.phoneNumber || c.registrationNumber || '',
+                }))}
+                onSelect={(opt) => {
+                  setSelectedCustomerId(opt.value);
+                  setCustomerInput(opt.label);
+                  setErrors((p) => {
+                    const n = { ...p };
+                    delete n.customer;
+                    return n;
+                  });
+                }}
               />
-              <datalist id="customer-options">
-                {filteredCustomers.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.phoneNumber || ''}
-                  </option>
-                ))}
-              </datalist>
-
-              {selectedCustomerOption && (
-                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6 }}>
-                  Selected: {selectedCustomerOption.name}
-                </div>
-              )}
             </div>
             {selectedCustomer && (
               <div style={s.customerCard}>
@@ -1255,7 +1231,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                           ? `Баркод: ${p.barCode}`
                           : undefined,
                       meta: `Үлдэгдэл: ${p.stock}`,
-                      searchText: `${p.name} ${p.barCode} ${p.classificationCode}`,
+                      searchText: `${p.name} ${p.productCode} ${p.barCode} ${p.classificationCode} ${p.categoryName}`,
                     }));
               const priceModeSelectOptions: Array<SearchSelectOption<PriceMode>> =
                 PRICE_MODE_OPTIONS.map((modeOption) => {

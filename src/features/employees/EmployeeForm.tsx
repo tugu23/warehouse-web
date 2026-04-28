@@ -36,7 +36,7 @@ interface EmployeeFormProps {
 const ROLE_OPTIONS = [
   { value: 'Admin', label: 'Админ', color: 'error' as const, desc: 'Бүх эрхтэй' },
   { value: 'Manager', label: 'Менежер', color: 'warning' as const, desc: 'Удирдах эрхтэй' },
-  { value: 'SalesAgent', label: 'Борлуулагч', color: 'info' as const, desc: 'Борлуулалтын эрхтэй' },
+  { value: 'Agent', label: 'Борлуулагч', color: 'info' as const, desc: 'Борлуулалтын эрхтэй' },
 ];
 
 export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps) {
@@ -54,7 +54,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeF
       email: '',
       phoneNumber: '',
       password: '',
-      roleName: 'SalesAgent',
+      roleName: 'Agent',
     },
   });
 

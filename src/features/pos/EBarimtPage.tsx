@@ -40,8 +40,6 @@ import { Order } from '../../types';
 import { ebarimtApi, EBarimtInformation, getLotteryWarningLevel } from '../../api/ebarimtApi';
 import EbarimtPrintModal from '../orders/EbarimtPrintModal';
 
-const POS_API_URL = '/posapi';
-
 export default function EBarimtPage() {
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState<EBarimtInformation | null>(null);
@@ -159,7 +157,7 @@ export default function EBarimtPage() {
         ? format(new Date(order.ebarimtDate), 'yyyy-MM-dd HH:mm:ss')
         : undefined;
 
-      const posRes = await fetch(`${POS_API_URL}/rest/receipt`, {
+      const posRes = await fetch(`http://43.231.115.209:7080/rest/receipt`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

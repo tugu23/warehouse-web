@@ -96,6 +96,7 @@ export default function EmployeesPage() {
   const roleLabels: Record<string, string> = {
     Admin: 'Админ',
     Manager: 'Менежер',
+    Agent: 'Борлуулагч',
     SalesAgent: 'Борлуулагч',
   };
 
@@ -123,6 +124,7 @@ export default function EmployeesPage() {
         const colors: Record<string, 'error' | 'warning' | 'info' | 'default'> = {
           Admin: 'error',
           Manager: 'warning',
+          Agent: 'info',
           SalesAgent: 'info',
         };
         return (

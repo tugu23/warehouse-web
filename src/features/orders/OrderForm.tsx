@@ -138,7 +138,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     try {
       const [productsRes, customersRes, employeesRes] = await Promise.all([
         productsApi.getAll({ limit: 'all', include: 'prices,category' }),
-        customersApi.getAll({ limit: 'all' }),
+        customersApi.getAll({ limit: 'all', forOrder: true }),
         employeesApi.getAll({ limit: 'all' }),
       ]);
       setProducts(productsRes.data.data?.products || []);
@@ -160,7 +160,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
     setRegLookupResult(null);
     setValue('customerId', 0);
     try {
-      const res = await customersApi.getAll({ limit: 'all' });
+      const res = await customersApi.getAll({ limit: 'all', forOrder: true });
       const allCustomers: Customer[] = res.data.data?.customers || [];
       const found = allCustomers.find(
         (c) => (c.registrationNumber || '').trim().toLowerCase() === trimmed.toLowerCase()
@@ -250,9 +250,8 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
 
   const totalAmount = calculateTotal();
   const vatRate = 0.1;
-  const vatAmount = orderType === 'Store' ? totalAmount * vatRate : 0;
-  const totalWithVat = orderType === 'Store' ? totalAmount + vatAmount : totalAmount;
-  const remainingAmount = isCredit ? totalWithVat - (paidAmount || 0) : 0;
+  const vatAmount = orderType === 'Store' ? (totalAmount / 1.1) * vatRate : 0;
+  const remainingAmount = isCredit ? totalAmount - (paidAmount || 0) : 0;
   const creditDueDate =
     isCredit && creditTermDays ? format(addDays(new Date(), creditTermDays), 'yyyy-MM-dd') : null;
 
@@ -314,7 +313,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                 : undefined,
           });
 
-          const ebarimtRes = await fetch('http://localhost:7080/rest/receipt', {
+          const ebarimtRes = await fetch('/posapi/rest/receipt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(ebarimtPayload),
@@ -616,7 +615,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                       НӨАТ (10%): ₮{vatAmount.toLocaleString()}
                     </Typography>
                     <Typography variant="body2" fontWeight="bold">
-                      Нийт (НӨАТ орсон): ₮{totalWithVat.toLocaleString()}
+                      Нийт (НӨАТ орсон): ₮{totalAmount.toLocaleString()}
                     </Typography>
                   </>
                 )}

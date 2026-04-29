@@ -34,6 +34,7 @@ interface OrderDetailsModalProps {
   order: Order | null;
   onUpdateStatus: (orderId: number, status: string) => void;
   canManage: boolean;
+  canUpdateStatus: boolean;
   currentUserId?: number;
   onRefresh?: () => void;
 }
@@ -42,6 +43,7 @@ export default function OrderDetailsModal({
   order,
   onUpdateStatus,
   canManage,
+  canUpdateStatus,
   currentUserId,
   onRefresh,
 }: OrderDetailsModalProps) {
@@ -88,7 +90,10 @@ export default function OrderDetailsModal({
   };
 
   const canPrintEbarimt = order.status === 'Fulfilled' && !order.ebarimtRegistered;
-  const canEditBeforeEbarimt = order.status === 'Pending' && !order.ebarimtRegistered;
+  const canEditBeforeEbarimt =
+    order.status === 'Pending' &&
+    !order.ebarimtRegistered &&
+    (canManage || (currentUserId != null && order.createdById === currentUserId));
 
   return (
     <Box>
@@ -252,25 +257,24 @@ export default function OrderDetailsModal({
         )}
 
         {/* Төлөв өөрчлөх */}
-        {(canManage || (currentUserId && order.createdById === currentUserId)) &&
-          order.status === 'Pending' && (
-            <>
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={() => handleStatusChange('Cancelled')}
-              >
-                Цуцлах
-              </Button>
-              <Button
-                variant="contained"
-                color="success"
-                onClick={() => handleStatusChange('Fulfilled')}
-              >
-                Гүйцэтгэсэн
-              </Button>
-            </>
-          )}
+        {canUpdateStatus && order.status === 'Pending' && (
+          <>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => handleStatusChange('Cancelled')}
+            >
+              Цуцлах
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => handleStatusChange('Fulfilled')}
+            >
+              Гүйцэтгэсэн
+            </Button>
+          </>
+        )}
       </Box>
 
       <ConfirmDialog

@@ -152,7 +152,7 @@ export const generateOrderReceiptPDF = async (
 
   // Calculate VAT
   const totalAmount = Number(order.totalAmount);
-  const vatAmount = order.vatAmount || totalAmount / 11;
+  const vatAmount = order.vatAmount || totalAmount * 0.1;
   const cityTax = 0;
 
   // Section 1: General Receipt Info

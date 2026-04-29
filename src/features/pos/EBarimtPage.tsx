@@ -136,7 +136,7 @@ export default function EBarimtPage() {
     return !!c?.organizationName?.trim();
   };
 
-  // eBarimt буцаалт — frontend-ээс POS API-руу шууд DELETE
+  // eBarimt буцаалт — backend-ээр дамжуулж POS API руу илгээнэ
   const handleEbarimtReturn = async (order: Order) => {
     if (isB2BOrder(order)) {
       toast.error('B2B баримт буцаалт хийх боломжгүй');
@@ -151,50 +151,15 @@ export default function EBarimtPage() {
 
     setReturningId(order.id);
     try {
-      // POS API-руу DELETE хүсэлт — { id, date } body-тай
-      // POS API: "2006-01-02 15:04:05" форматыг шаарддаг
-      const posDate = order.ebarimtDate
-        ? format(new Date(order.ebarimtDate), 'yyyy-MM-dd HH:mm:ss')
-        : undefined;
+      const res = await ebarimtApi.returnOrder(order.id);
+      const result = res.data.data;
 
-      const posRes = await fetch(`http://43.231.115.209:7080/rest/receipt`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: order.ebarimtBillId,
-          ...(posDate ? { date: posDate } : {}),
-        }),
-      });
-
-      interface PosDeleteBody {
-        message?: string;
-        id?: string;
-        success?: boolean;
-      }
-      let posData: PosDeleteBody | null = null;
-      const rawText = await posRes.text();
-      try {
-        posData = rawText ? (JSON.parse(rawText) as PosDeleteBody) : null;
-      } catch {
-        /* non-JSON response */
-      }
-
-      const errMessage = posData?.message || '';
-      const alreadyReturned = errMessage.toLowerCase().includes('unique constraint');
-      const isSuccess = posRes.ok || alreadyReturned;
-
-      if (isSuccess) {
-        // DB шинэчлэх
-        const returnId = posData?.id || order.ebarimtBillId!;
-        await ordersApi.ebarimtReturnDone(order.id, returnId);
-        toast.success(
-          alreadyReturned
-            ? 'eBarimt-д аль хэдийн буцаагдсан байсан. Систем шинэчлэгдлээ.'
-            : 'eBarimt буцаалт амжилттай!'
-        );
+      if (result?.success) {
+        toast.success(result.message || 'eBarimt буцаалт амжилттай!');
         fetchOrders();
+        fetchInfo();
       } else {
-        toast.error(`eBarimt буцаалт амжилтгүй: ${errMessage || `HTTP ${posRes.status}`}`);
+        toast.error(result?.message || 'eBarimt буцаалт амжилтгүй');
       }
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } }; message?: string };

@@ -629,7 +629,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       .finally(() => setProductsLoading(false));
 
     customersApi
-      .getAll({ limit: 'all' })
+      .getAll({ limit: 'all', forOrder: true })
       .then((res) => {
         const rows = res.data?.data?.customers ?? [];
         setCustomers(
@@ -853,12 +853,12 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   };
 
   const itemSubtotals = orderItems.map((oi) => getLineSubtotal(oi));
-  /** НӨАТ-гүй барааны нийт (мөрийн дүнгийн нийлбэр) */
-  const subtotalExVat = itemSubtotals.reduce((s, v) => s + v, 0);
-  /** НӨАТ 10% — серверийн vat.service-тай ижил: дэд дүн × 10% */
-  const vatAmount = Math.round(subtotalExVat * 0.1 * 100) / 100;
-  /** НӨАТ орсон эцсийн дүн */
-  const totalWithVat = Math.round((subtotalExVat + vatAmount) * 100) / 100;
+  /** Барааны мөрийн дүнгийн нийлбэр (оруулж байгаа үнэ нь НӨАТ орсон үнэ) */
+  const totalGross = Math.round(itemSubtotals.reduce((s, v) => s + v, 0) * 100) / 100;
+  /** НӨАТ = (нийт дүн / 1.1) × 0.1 */
+  const vatAmount = Math.round((totalGross / 1.1) * 0.1 * 100) / 100;
+  /** НӨАТ-гүй дүн = нийт дүн - НӨАТ */
+  const subtotalExVat = Math.round((totalGross - vatAmount) * 100) / 100;
 
   const validItemCount = orderItems.filter((oi) => oi.productId && getPieceQty(oi) >= 1).length;
 
@@ -1558,7 +1558,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
             )}
             <div style={s.totalRow}>
               <span style={s.totalLabel}>Нийт дүн</span>
-              <span style={s.totalValue}>{totalWithVat.toLocaleString()}₮</span>
+              <span style={s.totalValue}>{totalGross.toLocaleString()}₮</span>
             </div>
           </div>
           <div style={s.actions}>

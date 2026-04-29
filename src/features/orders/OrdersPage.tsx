@@ -36,7 +36,7 @@ import { printDailyOrderProductsPdf } from './printDailyOrderProductsPdf';
 type EbarimtListFilter = 'all' | 'returned' | 'active';
 
 export default function OrdersPage() {
-  const { canManage, user, isSalesAgent } = useAuth();
+  const { canManage, user, hasRole } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -51,18 +51,13 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
       const response = await ordersApi.getAll({ limit: 'all' });
-      let allOrders = response.data?.data?.orders || [];
-      if (isSalesAgent() && user) {
-        allOrders = allOrders.filter((order) => order?.createdBy?.id === user?.id);
-      }
-      setOrders(allOrders);
+      setOrders(response.data?.data?.orders || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
@@ -206,6 +201,14 @@ export default function OrdersPage() {
     return <TableSkeleton />;
   }
 
+  const canUpdateAnyOrderStatus = hasRole([
+    'Admin',
+    'Manager',
+    'SalesAgent',
+    'MarketSalesperson',
+    'StoreSalesperson',
+  ]);
+
   return (
     <Box>
       <DataTable
@@ -329,6 +332,7 @@ export default function OrdersPage() {
           order={selectedOrder}
           onUpdateStatus={handleUpdateStatus}
           canManage={canManage()}
+          canUpdateStatus={canUpdateAnyOrderStatus}
           currentUserId={user?.id}
           onRefresh={() => {
             fetchOrders();

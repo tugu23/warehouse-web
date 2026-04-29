@@ -41,7 +41,7 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
 
   const totalAmount = Number(order.totalAmount);
   // Calculate VAT (10%) if not provided
-  const vatAmount = order.vatAmount || totalAmount / 11;
+  const vatAmount = order.vatAmount || totalAmount * 0.1;
   const cityTax = 0; // Assuming 0 for now as per example, or could be part of calculation
 
   return (

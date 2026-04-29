@@ -31,7 +31,7 @@ interface EbarimtReceiptPdfData {
   /** НӨАТ орсон нийт дүн */
   totalAmount?: number;
   totalVAT?: number;
-  /** НӨАТ-аас өмнөх барааны нийт (байхгүй бол totalAmount - totalVAT-аар тооцно) */
+  /** НӨАТ-гүй барааны нийт (байхгүй бол totalAmount - totalVAT-аар тооцно) */
   subtotalExVat?: number;
 }
 
@@ -505,10 +505,7 @@ async function generateEbarimtPDF(
 
   const grossWithVat = Number(data.totalAmount) || 0;
   const vat = Number(data.totalVAT) || 0;
-  const subtotalNoVat =
-    data.subtotalExVat != null && !Number.isNaN(Number(data.subtotalExVat))
-      ? Number(data.subtotalExVat)
-      : Math.round((grossWithVat - vat) * 100) / 100;
+  const subtotalNoVat = Math.round((grossWithVat - vat) * 100) / 100;
   const totalRows: [string, string][] = [
     ['Барааны нийт дүн:', subtotalNoVat.toLocaleString()],
     ['НӨАТ (10%):', vat.toLocaleString()],
@@ -706,15 +703,15 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
   const paymentMap = { Cash: 'CASH', BankTransfer: 'BANK_TRANSFER', Card: 'PAYMENT_CARD' } as const;
   const paymentLabels = { Cash: 'Бэлэн', BankTransfer: 'Шилжүүлэг', Card: 'Карт' };
 
-  const lineNetTotal = (oi: OrderItem) => {
+  const lineGrossTotal = (oi: OrderItem) => {
     if (oi.subtotal != null && oi.subtotal !== '') return Number(oi.subtotal);
     return Number(oi.unitPrice) * oi.quantity;
   };
-  const linesSubtotal = (order.orderItems || []).reduce((s, oi) => s + lineNetTotal(oi), 0);
+  const linesGrossTotal = (order.orderItems || []).reduce((s, oi) => s + lineGrossTotal(oi), 0);
   const subtotalExVat =
     order.subtotalAmount != null && order.subtotalAmount !== ''
       ? Number(order.subtotalAmount)
-      : linesSubtotal;
+      : linesGrossTotal - (order.vatAmount != null ? Number(order.vatAmount) : 0);
   const vatNum = order.vatAmount != null ? Number(order.vatAmount) : 0;
   const grandTotal = Number(order.totalAmount) || 0;
 
@@ -936,12 +933,32 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
 
     setIsSubmitting(true);
     try {
+      let resolvedTin = isB2B && regResult?.tin ? regResult.tin : null;
+
+      if (isB2B && !resolvedTin && activeRegNo) {
+        try {
+          const tinInfo = await getTinInfo(Number(activeRegNo));
+          resolvedTin = String(tinInfo.tinNumber);
+          if (!regResult) {
+            setRegResult({ name: tinInfo.tinName, tin: tinInfo.tinNumber });
+          }
+        } catch {
+          toast.error('Регистрээс TIN авахад алдаа гарлаа. Лавлах товч дарж шалгана уу');
+          return;
+        }
+      }
+
+      if (isB2B && !resolvedTin) {
+        toast.error('Байгууллагын TIN олдсонгүй. Лавлах товч дарж баталгаажуулна уу');
+        return;
+      }
+
       // Backend API руу хүсэлт илгээх - бүх логик backend дээр
       const requestData: { customerTin?: string } = {};
 
       // Байгууллага бол лавласан TIN дамжуулах
-      if (isB2B && regResult?.tin) {
-        requestData.customerTin = regResult.tin;
+      if (isB2B && resolvedTin) {
+        requestData.customerTin = resolvedTin;
       }
 
       const res = await ordersApi.registerEbarimt(order.id, requestData);
@@ -968,20 +985,20 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
       const addressStr =
         [cust?.district, cust?.address].filter(Boolean).join(', ') || cust?.address || '';
 
-      let resolvedTin = isB2B && regResult?.tin ? regResult.tin : null;
+      let resolvedTinForPdf = resolvedTin;
       if (!isB2B && individualLookupResult?.tin) {
-        resolvedTin = individualLookupResult.tin;
+        resolvedTinForPdf = individualLookupResult.tin;
       }
 
       const pdfData: EbarimtReceiptPdfData = {
         id: result.billId,
         date: result.ebarimtId,
-        customerTin: resolvedTin ?? undefined,
+        customerTin: resolvedTinForPdf ?? undefined,
         lottery: result.lottery,
         qrData: result.qrData,
-        totalAmount: grandTotal,
-        totalVAT: vatNum,
-        subtotalExVat,
+        totalAmount: result.totalAmount || grandTotal,
+        totalVAT: result.totalVAT || vatNum,
+        subtotalExVat: undefined,
       };
 
       await generateEbarimtPDF(
@@ -997,7 +1014,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
           registrationNumber: isB2B
             ? (cust?.registrationNumber ?? '')
             : individualReg.trim() || cust?.registrationNumber || '',
-          tin: isB2B ? (resolvedTin ?? '') : (individualLookupResult?.tin ?? ''),
+          tin: isB2B ? (resolvedTinForPdf ?? '') : (individualLookupResult?.tin ?? ''),
         }
       );
 
@@ -1036,15 +1053,10 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
           {/* Захиалгын барааны жагсаалт */}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>Барааны жагсаалт</div>
-            {showVatBreakdown ? (
-              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
-                Нэгжийн үнэ болон мөрийн дүн НӨАТ-аас өмнөх
-              </div>
-            ) : null}
             <div style={st.itemsList}>
               {(order.orderItems || []).map((oi, i) => {
                 const unit = Number(oi.unitPrice);
-                const lineNet = lineNetTotal(oi);
+                const lineGross = lineGrossTotal(oi);
                 return (
                   <div
                     key={oi.id ?? i}
@@ -1061,7 +1073,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
                         {oi.quantity} × {unit.toLocaleString()}₮
                       </div>
                       <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                        = {lineNet.toLocaleString()}₮{showVatBreakdown ? ' (НӨАТ-гүй)' : ''}
+                        = {lineGross.toLocaleString()}₮
                       </div>
                     </div>
                   </div>

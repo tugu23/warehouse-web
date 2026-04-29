@@ -6,6 +6,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiProxyTarget =
     env.VITE_API_PROXY_TARGET || 'http://localhost:3000';
+  const posApiProxyTarget =
+    env.VITE_POSAPI_PROXY_TARGET || 'http://43.231.115.209:7080';
 
   return {
     plugins: [react()],
@@ -27,6 +29,10 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           target: apiProxyTarget,
+          changeOrigin: true,
+        },
+        '/posapi': {
+          target: posApiProxyTarget,
           changeOrigin: true,
         },
       },

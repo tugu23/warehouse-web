@@ -47,7 +47,7 @@ export async function createEbarimtRequest({
   customerTin = null,
   regNo,
 }: EbarimtParams) {
-  const merchantTin = '37900846788';
+  const merchantTin = '89001226559';
 
   let finalCustomerTin: string | null = customerTin != null ? String(customerTin) : null;
 
@@ -61,14 +61,14 @@ export async function createEbarimtRequest({
     throw new Error('B2B_RECEIPT үед customerTin заавал хэрэгтэй');
   }
 
-  // Захиалгын unitPrice нь НӨАТ-аас өмнөх (backend addVAT-тай тааруулна).
-  // Мөрийн нийт: lineNet + 10% НӨАТ = НӨАТ багтсан дүн (POS-ийн 10/110 шалгалттай нийцнэ).
+  // Захиалгын unitPrice нь НӨАТ орсон үнэ.
+  // НӨАТ-гүй дүн ба НӨАТ-ыг нийт дүнгээс салгаж бодно.
   const calculatedItems = items.map((item) => {
     const qty = item.qty || 1;
-    const lineNet = +(item.unitPrice * qty).toFixed(2);
-    const itemTotalVAT = +(lineNet * 0.1).toFixed(2);
+    const lineGross = +(item.unitPrice * qty).toFixed(2);
+    const itemTotalVAT = +(lineGross * 0.1).toFixed(2);
     const itemTotalCityTax = 0;
-    const itemTotalAmount = +(lineNet + itemTotalVAT).toFixed(2);
+    const itemTotalAmount = lineGross;
     const basePrice = +item.unitPrice.toFixed(2);
 
     return {

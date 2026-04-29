@@ -143,7 +143,13 @@ export const productPricesApi = {
 
 // Customers API
 export const customersApi = {
-  getAll: (params?: { search?: string; limit?: string; page?: number; district?: string }) =>
+  getAll: (params?: {
+    search?: string;
+    limit?: string;
+    page?: number;
+    district?: string;
+    forOrder?: boolean;
+  }) =>
     api.get<ApiResponse<{ customers: Customer[]; pagination?: PaginationInfo }>>('/api/customers', {
       params,
     }),

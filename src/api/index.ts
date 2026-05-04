@@ -67,6 +67,9 @@ import {
   UpdateAgentKpiTargetRequest,
   AgentKpiGranularity,
   SalesKpiData,
+  Promotion,
+  CreatePromotionRequest,
+  UpdatePromotionRequest,
 } from '../types';
 
 // Authentication API
@@ -561,6 +564,19 @@ export const salesKpiApi = {
   }) => api.get<ApiResponse<SalesKpiData>>('/api/sales-kpi', { params }),
 };
 
+// Promotions API
+export const promotionsApi = {
+  listByProduct: (productId: number, params?: { activeOnly?: boolean }) =>
+    api.get<ApiResponse<{ promotions: Promotion[] }>>(`/api/products/${productId}/promotions`, {
+      params,
+    }),
+  create: (productId: number, data: CreatePromotionRequest) =>
+    api.post<ApiResponse<{ promotion: Promotion }>>(`/api/products/${productId}/promotions`, data),
+  update: (id: number, data: UpdatePromotionRequest) =>
+    api.put<ApiResponse<{ promotion: Promotion }>>(`/api/promotions/${id}`, data),
+  delete: (id: number) => api.delete<ApiResponse<{ id: number }>>(`/api/promotions/${id}`),
+};
+
 import { ebarimtApi } from './ebarimtApi';
 
 export default {
@@ -584,4 +600,5 @@ export default {
   ebarimt: ebarimtApi,
   agentKpi: agentKpiApi,
   salesKpi: salesKpiApi,
+  promotions: promotionsApi,
 };

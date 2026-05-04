@@ -21,6 +21,7 @@ import InventoryAdjustmentForm from './InventoryAdjustmentForm';
 import PriceManagement from './PriceManagement';
 import ProductDetailsModal from './ProductDetailsModal';
 import ProductForm from './ProductForm';
+import PromotionManagement from './PromotionManagement';
 
 export default function ProductsPage() {
   const { canManage, canCreate } = useAuth();
@@ -30,6 +31,7 @@ export default function ProductsPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
+  const [promotionModalOpen, setPromotionModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
@@ -95,6 +97,11 @@ export default function ProductsPage() {
     setPriceModalOpen(true);
   };
 
+  const handleOpenPromotions = () => {
+    setDetailsModalOpen(false);
+    setPromotionModalOpen(true);
+  };
+
   const handleCloseDetailsModal = () => {
     setDetailsModalOpen(false);
     setSelectedProduct(null);
@@ -114,6 +121,11 @@ export default function ProductsPage() {
 
   const handleClosePriceModal = () => {
     setPriceModalOpen(false);
+    setDetailsModalOpen(true);
+  };
+
+  const handleClosePromotionModal = () => {
+    setPromotionModalOpen(false);
     setDetailsModalOpen(true);
   };
 
@@ -238,6 +250,7 @@ export default function ProductsPage() {
           onEdit={handleOpenEdit}
           onManageInventory={handleOpenInventory}
           onManagePrices={handleOpenPrices}
+          onManagePromotions={handleOpenPromotions}
           canManage={canManage()}
         />
       </Modal>
@@ -285,6 +298,22 @@ export default function ProductsPage() {
           }}
           onCancel={handleCloseInventoryModal}
         />
+      </Modal>
+
+      <Modal
+        open={promotionModalOpen}
+        onClose={handleClosePromotionModal}
+        title={`Урамшуулал: ${selectedProduct?.nameMongolian}`}
+        maxWidth="md"
+      >
+        {selectedProduct ? (
+          <PromotionManagement
+            productId={selectedProduct.id}
+            onUpdate={() => {
+              fetchProducts();
+            }}
+          />
+        ) : null}
       </Modal>
     </Box>
   );

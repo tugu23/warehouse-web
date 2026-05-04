@@ -1,6 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { productsApi, customersApi, customerTypesApi, ordersApi } from '../../api';
-import { Customer, Order, ProductPrice, type PaymentMethod as ApiPaymentMethod } from '../../types';
+import {
+  Customer,
+  Order,
+  ProductPrice,
+  type PaymentMethod as ApiPaymentMethod,
+  type Promotion,
+} from '../../types';
 import { toast } from 'react-hot-toast';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -27,6 +33,8 @@ interface ProductOption {
   /** Хайрцагны үнэ (байвал хайрцагаар захиалахад ашиглана) */
   pricePerBox?: number | null;
   typePrices: ProductTypePriceRow[];
+  /** Энэ бараанд одоо идэвхтэй урамшууллууд */
+  promotions: Promotion[];
 }
 
 type PriceMode = 'customerType' | 'defaultPrice' | 'retail' | 'wholesale' | 'custom';
@@ -42,6 +50,8 @@ interface OrderItem {
   priceMode: PriceMode;
   priceModeInput?: string;
   customUnitPrice?: number;
+  /** Сонгосон урамшууллын ID (байхгүй үед урамшуулалгүй) */
+  promotionId?: number;
 }
 
 interface SearchSelectOption<T extends string | number> {
@@ -256,17 +266,6 @@ const pmBtn = (active: boolean): React.CSSProperties => ({
   fontSize: 13,
   fontWeight: active ? 600 : 400,
   transition: 'all 0.15s',
-});
-
-const typeBtn = (active: boolean): React.CSSProperties => ({
-  background: active ? '#1e3a8a' : C.bgInput,
-  border: `1px solid ${active ? '#3b82f6' : C.border}`,
-  color: active ? '#93c5fd' : C.textMuted,
-  borderRadius: 8,
-  padding: '7px 18px',
-  cursor: 'pointer',
-  fontSize: 13,
-  fontWeight: active ? 600 : 400,
 });
 
 function SearchSelect<T extends string | number>({
@@ -563,10 +562,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerInput, setCustomerInput] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | ''>('');
-  const [orderType, setOrderType] = useState<'Store' | 'Market'>('Store');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash');
   const [creditTermDays, setCreditTermDays] = useState(30);
-  const [deliveryDate, setDeliveryDate] = useState('');
   const [orderItems, setOrderItems] = useState<OrderItem[]>([
     {
       productId: '',
@@ -621,6 +618,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                 price: Number(pp.price),
                 typeName: pp.customerType?.typeName,
               })),
+              promotions: p.promotions ?? [],
             };
           })
         );
@@ -664,10 +662,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
     setSelectedCustomerId(initialOrder.customerId || '');
     setCustomerInput(initialOrder.customer?.name || '');
-    setOrderType((initialOrder.orderType as 'Store' | 'Market') || 'Store');
     setPaymentMethod((initialOrder.paymentMethod as PaymentMethod) || 'Cash');
     setCreditTermDays(initialOrder.creditTermDays || 30);
-    setDeliveryDate(initialOrder.deliveryDate ? initialOrder.deliveryDate.slice(0, 10) : '');
 
     const mappedItems: OrderItem[] =
       initialOrder.orderItems?.map((item) => ({
@@ -775,27 +771,51 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     const oi = orderItems[idx];
     if (!oi) return false;
     const p = getProduct(oi.productId);
-    return p ? getPieceQty(oi) > p.stock : false;
+    if (!p) return false;
+    const totalNeeded = getPieceQty(oi) + getBonusQty(oi);
+    return totalNeeded > p.stock;
+  };
+
+  /** Барааны идэвхтэй (одоо хүчин төгөлдөр) урамшууллыг буцаана */
+  const getActivePromotionsFor = (p?: ProductOption | null): Promotion[] => {
+    if (!p?.promotions?.length) return [];
+    const now = Date.now();
+    return p.promotions.filter((pr) => {
+      if (!pr.isActive) return false;
+      const s = new Date(pr.startDate).getTime();
+      const e = new Date(pr.endDate).getTime();
+      return Number.isFinite(s) && Number.isFinite(e) && s <= now && e >= now;
+    });
+  };
+
+  /** OrderItem дээр сонгогдсон урамшууллыг (хүчин төгөлдөр бол) олно */
+  const getSelectedPromotion = (oi: OrderItem): Promotion | null => {
+    if (oi.promotionId == null) return null;
+    const p = getProduct(oi.productId);
+    const active = getActivePromotionsFor(p);
+    return active.find((pr) => pr.id === oi.promotionId) ?? null;
   };
 
   const getUnitPrice = (oi: OrderItem): number => {
     const p = getProduct(oi.productId);
     if (!p) return 0;
 
+    let base: number;
     if (oi.priceMode === 'custom') {
-      return Number(oi.customUnitPrice || 0);
-    }
-
-    if (oi.priceMode === 'customerType') {
+      base = Number(oi.customUnitPrice || 0);
+    } else if (oi.priceMode === 'customerType') {
       const tp = priceForCustomerType(p, customerTypeId);
-      return tp ?? p.defaultPrice ?? 0;
+      base = tp ?? p.defaultPrice ?? 0;
+    } else {
+      base = p.defaultPrice || 0;
     }
 
-    if (oi.priceMode === 'wholesale' || oi.priceMode === 'retail') {
-      return p.defaultPrice || 0;
+    const promo = getSelectedPromotion(oi);
+    if (promo?.type === 'PERCENT_DISCOUNT' && promo.discountPercent != null) {
+      const dp = Math.max(0, Math.min(100, Number(promo.discountPercent)));
+      return Math.round(base * (1 - dp / 100) * 100) / 100;
     }
-
-    return p.defaultPrice || 0;
+    return base;
   };
 
   /** Захиалгын мөрөнд орох нийт ширхэг (хадгалалт/API-д илгээгдэнэ) */
@@ -809,16 +829,34 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     return pieces;
   };
 
-  /** Хайрцаг + ширхэг холилдсон мөрийн дүн */
+  /** BUY_X_GET_Y төрөл сонгосон үед үнэгүй авах ширхэгийг тооцно */
+  const getBonusQty = (oi: OrderItem): number => {
+    const promo = getSelectedPromotion(oi);
+    if (promo?.type !== 'BUY_X_GET_Y') return 0;
+    const buyQty = Number(promo.buyQty || 0);
+    const freeQty = Number(promo.freeQty || 0);
+    if (buyQty < 1 || freeQty < 1) return 0;
+    const qty = getPieceQty(oi);
+    if (qty < buyQty) return 0;
+    return Math.floor(qty / buyQty) * freeQty;
+  };
+
+  /** Хайрцаг + ширхэг холилдсон мөрийн дүн (урамшуулал тооцсон) */
   const getLineSubtotal = (oi: OrderItem): number => {
     const p = getProduct(oi.productId);
     if (!p) return 0;
     const boxes = Math.max(0, Math.floor(Number(oi.qtyBoxes) || 0));
     const pieces = Math.max(0, Math.floor(Number(oi.qtyPieces) || 0));
     const upb = p.unitsPerBox && p.unitsPerBox > 0 ? p.unitsPerBox : 0;
+    const promo = getSelectedPromotion(oi);
+    const isPercent = promo?.type === 'PERCENT_DISCOUNT';
+    const discount = isPercent
+      ? Math.max(0, Math.min(100, Number(promo!.discountPercent ?? 0))) / 100
+      : 0;
 
     if (oi.priceMode === 'custom') {
-      const unit = Number(oi.customUnitPrice || 0);
+      const baseUnit = Number(oi.customUnitPrice || 0);
+      const unit = isPercent ? baseUnit * (1 - discount) : baseUnit;
       if (!upb) return unit * Math.max(1, pieces || 1);
       const totalP = boxes * upb + pieces;
       return totalP > 0 ? unit * totalP : 0;
@@ -831,11 +869,10 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
     let boxPart = 0;
     if (boxes > 0) {
-      if (p.pricePerBox != null && p.pricePerBox > 0) {
-        boxPart = boxes * p.pricePerBox;
-      } else {
-        boxPart = boxes * upb * unit;
-      }
+      const baseBoxPrice =
+        p.pricePerBox != null && p.pricePerBox > 0 ? p.pricePerBox : upb * (p.defaultPrice || 0);
+      const effBoxPrice = isPercent ? baseBoxPrice * (1 - discount) : baseBoxPrice;
+      boxPart = boxes * effBoxPrice;
     }
     return boxPart + pieces * unit;
   };
@@ -843,6 +880,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   /** Нэг нэгжийн үнээр × тоо хийхэд мөрийн дүн таарахгүй бол API-д дундаж нэгж илгээнэ */
   const needsWeightedUnitForApi = (oi: OrderItem, p?: ProductOption): boolean => {
     if (!p) return false;
+    // Урамшуулал хэрэглэгдэж байвал заавал дундаж нэгжийн үнэ илгээнэ
+    if (getSelectedPromotion(oi)) return true;
     const upb = p.unitsPerBox && p.unitsPerBox > 0 ? p.unitsPerBox : 0;
     if (!upb) return false;
     const b = Math.max(0, Math.floor(Number(oi.qtyBoxes) || 0));
@@ -875,6 +914,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         priceMode: 'defaultPrice',
         priceModeInput: 'Үндсэн үнэ',
         customUnitPrice: undefined,
+        promotionId: undefined,
       },
     ]);
   const removeItem = (i: number) => setOrderItems(orderItems.filter((_, idx) => idx !== i));
@@ -887,8 +927,9 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       | 'qtyBoxes'
       | 'priceMode'
       | 'priceModeInput'
-      | 'customUnitPrice',
-    val: string | number
+      | 'customUnitPrice'
+      | 'promotionId',
+    val: string | number | undefined
   ) => {
     const next = [...orderItems];
     const item = next[i];
@@ -898,6 +939,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       item.productId = val as string;
       item.qtyPieces = 1;
       item.qtyBoxes = 0;
+      item.promotionId = undefined;
       const selected = products.find((p) => p.id === Number(val));
       item.productQuery = selected?.name || '';
       item.productInput = selected?.name || '';
@@ -917,12 +959,14 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         item.productId = String(exact.id);
         item.qtyPieces = 1;
         item.qtyBoxes = 0;
+        item.promotionId = undefined;
         const def = pickDefaultPriceModeForProduct(exact);
         item.priceMode = def.mode;
         item.priceModeInput = def.label;
         if (def.mode !== 'custom') item.customUnitPrice = undefined;
       } else if (!input.trim()) {
         item.productId = '';
+        item.promotionId = undefined;
       }
     }
 
@@ -954,6 +998,15 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
     if (field === 'customUnitPrice') {
       item.customUnitPrice = Number(val);
+    }
+
+    if (field === 'promotionId') {
+      if (val === undefined || val === '' || val === null) {
+        item.promotionId = undefined;
+      } else {
+        const num = Number(val);
+        item.promotionId = Number.isFinite(num) && num > 0 ? num : undefined;
+      }
     }
 
     setOrderItems(next);
@@ -997,7 +1050,6 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     });
     if (paymentMethod === 'Credit' && (!creditTermDays || creditTermDays < 1))
       errs.credit = 'Зээлийн хугацаа оруулна уу';
-    if (orderType === 'Market' && !deliveryDate) errs.delivery = 'Хүргэлтийн огноо сонгоно уу';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -1012,33 +1064,45 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       const payload = {
         customerId: Number(selectedCustomerId),
         paymentMethod: apiPaymentMethod,
-        orderType,
+        orderType: 'Store' as const,
         creditTermDays: paymentMethod === 'Credit' ? creditTermDays : undefined,
-        deliveryDate: orderType === 'Market' && deliveryDate ? deliveryDate : undefined,
         items: validItems.map((oi) => {
           const p = getProduct(oi.productId);
-          const qty = getPieceQty(oi);
+          const baseQty = getPieceQty(oi);
+          const bonusQty = getBonusQty(oi);
+          const totalQty = baseQty + bonusQty;
           const line = getLineSubtotal(oi);
+          const promo = getSelectedPromotion(oi);
+          // Урамшуулал хэрэглэгдсэн бол дундаж нэгжийн үнийг гаргаж "custom" хэлбэрээр илгээнэ
+          if (promo) {
+            const avg = totalQty > 0 ? Math.round((line / totalQty) * 100) / 100 : 0;
+            return {
+              productId: Number(oi.productId),
+              quantity: totalQty,
+              priceMode: 'custom' as const,
+              customUnitPrice: avg,
+            };
+          }
           if (oi.priceMode === 'custom') {
             return {
               productId: Number(oi.productId),
-              quantity: qty,
+              quantity: baseQty,
               priceMode: 'custom' as const,
               customUnitPrice: Number(oi.customUnitPrice || 0),
             };
           }
-          if (needsWeightedUnitForApi(oi, p) && qty > 0) {
-            const avg = Math.round((line / qty) * 100) / 100;
+          if (needsWeightedUnitForApi(oi, p) && baseQty > 0) {
+            const avg = Math.round((line / baseQty) * 100) / 100;
             return {
               productId: Number(oi.productId),
-              quantity: qty,
+              quantity: baseQty,
               priceMode: 'custom' as const,
               customUnitPrice: avg,
             };
           }
           return {
             productId: Number(oi.productId),
-            quantity: qty,
+            quantity: baseQty,
             priceMode: oi.priceMode,
             customUnitPrice: undefined,
           };
@@ -1131,50 +1195,6 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
           <div style={s.divider} />
 
-          {/* ── Захиалгын төрөл ────────────────────────────── */}
-          <div style={{ ...s.section, marginBottom: 16 }}>
-            <div style={s.grid2}>
-              <div>
-                <label style={s.label}>Захиалгын төрөл</label>
-                <div style={s.typeGroup}>
-                  {(['Store', 'Market'] as const).map((t) => (
-                    <button
-                      key={t}
-                      style={typeBtn(orderType === t)}
-                      onClick={() => setOrderType(t)}
-                    >
-                      {t === 'Store' ? '🏪 Дэлгүүр' : '🚚 Захын лангуу'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {orderType === 'Market' && (
-                <div>
-                  <label style={s.label}>
-                    Хүргэлтийн огноо{' '}
-                    {errors.delivery && <span style={{ color: C.red }}> — {errors.delivery}</span>}
-                  </label>
-                  <input
-                    style={{ ...s.input, ...(errors.delivery ? s.inputError : {}) }}
-                    type="date"
-                    value={deliveryDate}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => {
-                      setDeliveryDate(e.target.value);
-                      setErrors((p) => {
-                        const n = { ...p };
-                        delete n.delivery;
-                        return n;
-                      });
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div style={s.divider} />
-
           {/* ── Бараанууд ──────────────────────────────────── */}
           <div style={s.section}>
             <div
@@ -1211,10 +1231,14 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
               const over = isOverStock(idx);
               const subtotal = itemSubtotals[idx] ?? 0;
               const pieceQty = prod ? getPieceQty(oi) : 0;
+              const activePromos = getActivePromotionsFor(prod);
+              const selectedPromo = getSelectedPromotion(oi);
+              const bonusQty = prod ? getBonusQty(oi) : 0;
+              const totalQtyWithBonus = pieceQty + bonusQty;
               const stockStatus = prod
                 ? prod.stock === 0
                   ? 'out'
-                  : prod.stock < pieceQty
+                  : prod.stock < totalQtyWithBonus
                     ? 'warn'
                     : 'ok'
                 : null;
@@ -1408,10 +1432,10 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                               ) : null}
                               {prod.unitsPerBox &&
                               needsWeightedUnitForApi(oi, prod) &&
-                              pieceQty > 0 ? (
+                              totalQtyWithBonus > 0 ? (
                                 <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
                                   мөрний дундаж{' '}
-                                  {(subtotal / pieceQty).toLocaleString(undefined, {
+                                  {(subtotal / totalQtyWithBonus).toLocaleString(undefined, {
                                     maximumFractionDigits: 2,
                                   })}
                                   ₮/ш
@@ -1421,6 +1445,47 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                           ) : (
                             '—'
                           )}
+                        </div>
+                      )}
+
+                      {/* Урамшуулал сонголт */}
+                      {prod && activePromos.length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: C.textDim,
+                              marginBottom: 2,
+                              fontWeight: 600,
+                            }}
+                          >
+                            Урамшуулал
+                          </div>
+                          <select
+                            style={{
+                              ...s.input,
+                              padding: '6px 8px',
+                              fontSize: 12,
+                              width: '100%',
+                            }}
+                            value={oi.promotionId ?? ''}
+                            onChange={(e) =>
+                              updateItem(idx, 'promotionId', e.target.value || undefined)
+                            }
+                          >
+                            <option value="">— Урамшуулалгүй —</option>
+                            {activePromos.map((pr) => {
+                              const desc =
+                                pr.type === 'PERCENT_DISCOUNT'
+                                  ? `${Number(pr.discountPercent ?? 0)}% хөнгөлөлт`
+                                  : `${pr.buyQty ?? 0}+${pr.freeQty ?? 0}`;
+                              return (
+                                <option key={pr.id} value={pr.id}>
+                                  {pr.name} ({desc})
+                                </option>
+                              );
+                            })}
+                          </select>
                         </div>
                       )}
                     </div>
@@ -1467,6 +1532,30 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                       >
                         Үлдэгдэл: {prod.stock}
                       </span>
+                      {selectedPromo && bonusQty > 0 && (
+                        <span
+                          style={{
+                            ...s.tag,
+                            background: '#14532d',
+                            color: '#86efac',
+                            border: '1px solid #166534',
+                          }}
+                        >
+                          + {bonusQty} ширхэг үнэгүй (нийт {totalQtyWithBonus} ш)
+                        </span>
+                      )}
+                      {selectedPromo?.type === 'PERCENT_DISCOUNT' && (
+                        <span
+                          style={{
+                            ...s.tag,
+                            background: '#1e3a8a',
+                            color: '#93c5fd',
+                            border: '1px solid #2563eb',
+                          }}
+                        >
+                          {Number(selectedPromo.discountPercent ?? 0)}% хөнгөлөлт
+                        </span>
+                      )}
                       {dup && <span style={s.err}>⚠ Ижил бараа давхардсан байна</span>}
                       {!dup && over && (
                         <span style={s.warn}>⚠ Үлдэгдэл хүрэлцэхгүй ({prod.stock} байна)</span>

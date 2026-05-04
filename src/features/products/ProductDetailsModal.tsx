@@ -13,16 +13,35 @@ import {
   Edit as EditIcon,
   Inventory2 as InventoryIcon,
   MonetizationOn as PriceIcon,
+  LocalOffer as PromotionIcon,
 } from '@mui/icons-material';
 import ProductPrices from '../../components/ProductPrices';
-import { Product } from '../../types';
+import { Product, Promotion } from '../../types';
 
 interface ProductDetailsModalProps {
   product: Product | null;
   onEdit: () => void;
   onManageInventory: () => void;
   onManagePrices: () => void;
+  onManagePromotions: () => void;
   canManage: boolean;
+}
+
+function describePromotion(p: Promotion): string {
+  if (p.type === 'PERCENT_DISCOUNT') {
+    return `${Number(p.discountPercent ?? 0)}% хөнгөлөлт`;
+  }
+  return `${p.buyQty ?? 0}+${p.freeQty ?? 0}`;
+}
+
+function formatDateShort(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('mn-MN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
 }
 
 export default function ProductDetailsModal({
@@ -30,9 +49,17 @@ export default function ProductDetailsModal({
   onEdit,
   onManageInventory,
   onManagePrices,
+  onManagePromotions,
   canManage,
 }: ProductDetailsModalProps) {
   if (!product) return null;
+
+  const now = Date.now();
+  const activePromotions = (product.promotions || []).filter((p) => {
+    const start = new Date(p.startDate).getTime();
+    const end = new Date(p.endDate).getTime();
+    return p.isActive && start <= now && end >= now;
+  });
 
   return (
     <Box>
@@ -162,6 +189,24 @@ export default function ProductDetailsModal({
               ) : null}
             </Grid>
             <ProductPrices productId={product.id} />
+            {activePromotions.length > 0 && (
+              <Box mt={2}>
+                <Typography variant="caption" color="text.secondary">
+                  Идэвхтэй урамшуулал
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" mt={0.5}>
+                  {activePromotions.map((p) => (
+                    <Chip
+                      key={p.id}
+                      icon={<PromotionIcon />}
+                      color="success"
+                      size="small"
+                      label={`${describePromotion(p)} • ${formatDateShort(p.endDate)} хүртэл`}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            )}
           </CardContent>
         </Card>
 
@@ -196,6 +241,14 @@ export default function ProductDetailsModal({
                   onClick={onManageInventory}
                 >
                   Үлдэгдэл засах
+                </Button>
+                <Button
+                  variant="contained"
+                  color="warning"
+                  startIcon={<PromotionIcon />}
+                  onClick={onManagePromotions}
+                >
+                  Урамшуулал нэмэх
                 </Button>
               </Stack>
             </CardContent>

@@ -68,8 +68,52 @@ export interface Product {
   pricePerBox?: number; // Хайрцагны үнэ
   isActive?: boolean; // Идэвхтэй эсэх
   prices?: ProductPrice[]; // Үнийн жагсаалт
+  promotions?: Promotion[]; // Идэвхтэй урамшууллын жагсаалт
   createdAt?: string;
   updatedAt?: string;
+}
+
+// Promotion Types
+export type PromotionType = 'PERCENT_DISCOUNT' | 'BUY_X_GET_Y';
+
+export interface Promotion {
+  id: number;
+  productId: number;
+  name: string;
+  type: PromotionType;
+  /** PERCENT_DISCOUNT үед 0-100 хооронд */
+  discountPercent: number | null;
+  /** BUY_X_GET_Y үед: хэдэн ширхэг авбал */
+  buyQty: number | null;
+  /** BUY_X_GET_Y үед: хэдэн ширхэг үнэгүй авах */
+  freeQty: number | null;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreatePromotionRequest {
+  name: string;
+  type: PromotionType;
+  discountPercent?: number | null;
+  buyQty?: number | null;
+  freeQty?: number | null;
+  startDate: string;
+  endDate: string;
+  isActive?: boolean;
+}
+
+export interface UpdatePromotionRequest {
+  name?: string;
+  type?: PromotionType;
+  discountPercent?: number | null;
+  buyQty?: number | null;
+  freeQty?: number | null;
+  startDate?: string;
+  endDate?: string;
+  isActive?: boolean;
 }
 
 export interface CreateProductRequest {

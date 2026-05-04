@@ -154,11 +154,13 @@ export default function EBarimtPage() {
       const res = await ebarimtApi.returnOrder(order.id);
       const result = res.data.data;
 
+      // Backend амжилттай бол data.success === true байна
       if (result?.success) {
-        toast.success(result.message || 'eBarimt буцаалт амжилттай!');
+        toast.success('eBarimt буцаалт амжилттай!');
         fetchOrders();
         fetchInfo();
       } else {
+        // Энэ хэсэгт хүрэх ёсгүй, учир нь backend алдаа шидэх ёстой
         toast.error(result?.message || 'eBarimt буцаалт амжилтгүй');
       }
     } catch (e: unknown) {

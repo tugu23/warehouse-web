@@ -869,7 +869,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
       await ordersApi.markEbarimt(order.id, {
         ebarimtBillId: data.id,
         ebarimtDate: data.date ?? '',
-        ebarimtId: data.date ?? '',
+        ebarimtId: data.id,
         ebarimtType: isB2B ? 'B2B' : 'B2C',
       });
 
@@ -992,7 +992,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
 
       const pdfData: EbarimtReceiptPdfData = {
         id: result.billId,
-        date: result.ebarimtId,
+        date: result.date,
         customerTin: resolvedTinForPdf ?? undefined,
         lottery: result.lottery,
         qrData: result.qrData,

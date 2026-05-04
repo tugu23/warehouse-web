@@ -36,7 +36,7 @@ import { printDailyOrderProductsPdf } from './printDailyOrderProductsPdf';
 type EbarimtListFilter = 'all' | 'returned' | 'active';
 
 export default function OrdersPage() {
-  const { canManage, user, hasRole } = useAuth();
+  const { canManage, user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -71,9 +71,10 @@ export default function OrdersPage() {
         status: status as 'Pending' | 'Fulfilled' | 'Cancelled',
       });
       toast.success('Order status updated successfully!');
-      fetchOrders();
+      await fetchOrders();
     } catch (error) {
       console.error('Error updating order status:', error);
+      throw error;
     }
   };
 
@@ -201,13 +202,7 @@ export default function OrdersPage() {
     return <TableSkeleton />;
   }
 
-  const canUpdateAnyOrderStatus = hasRole([
-    'Admin',
-    'Manager',
-    'SalesAgent',
-    'MarketSalesperson',
-    'StoreSalesperson',
-  ]);
+  const canUpdateAnyOrderStatus = true;
 
   return (
     <Box>

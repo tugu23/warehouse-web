@@ -67,9 +67,12 @@ export interface EBarimtRegisterResult {
   orderId?: number;
   ebarimtId?: string;
   billId?: string;
+  date?: string;
   lottery?: string;
   qrData?: string;
   isB2B?: boolean;
+  totalVAT?: number;
+  totalAmount?: number;
   message?: string;
 }
 

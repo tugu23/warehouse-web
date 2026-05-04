@@ -271,12 +271,16 @@ export const ordersApi = {
   registerEbarimt: (id: number, data?: { customerTin?: string }) =>
     api.post<
       ApiResponse<{
+        success: boolean;
         orderId: number;
         ebarimtId?: string;
         billId?: string;
+        date?: string;
         lottery?: string;
         qrData?: string;
         isB2B?: boolean;
+        totalVAT?: number;
+        totalAmount?: number;
         message?: string;
       }>
     >(`/api/ebarimt/register/${id}`, data),

@@ -121,6 +121,9 @@ export default function EmployeesPage() {
       label: 'Эрх',
       align: 'center' as const,
       format: (row: Employee) => {
+        if (!row.role) {
+          return <Chip label="—" color="default" size="small" />;
+        }
         const colors: Record<string, 'error' | 'warning' | 'info' | 'default'> = {
           Admin: 'error',
           Manager: 'warning',

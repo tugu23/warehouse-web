@@ -32,7 +32,7 @@ import OrderForm2 from './OrderForm2';
 
 interface OrderDetailsModalProps {
   order: Order | null;
-  onUpdateStatus: (orderId: number, status: string) => void;
+  onUpdateStatus: (orderId: number, status: string) => Promise<void>;
   canManage: boolean;
   canUpdateStatus: boolean;
   currentUserId?: number;
@@ -60,14 +60,19 @@ export default function OrderDetailsModal({
   };
 
   const confirmStatusChange = async () => {
-    onUpdateStatus(order.id, newStatus);
-    setConfirmDialogOpen(false);
-    if (newStatus === 'Fulfilled' && !order.ebarimtRegistered) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const response = await ordersApi.getById(order.id);
-      if (response.data.data?.order) {
-        setEbarimtPrintOpen(true);
+    try {
+      await onUpdateStatus(order.id, newStatus);
+      setConfirmDialogOpen(false);
+
+      if (newStatus === 'Fulfilled' && !order.ebarimtRegistered) {
+        const response = await ordersApi.getById(order.id);
+        if (response.data.data?.order) {
+          setEbarimtPrintOpen(true);
+        }
       }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast.error('Захиалгын төлөв шинэчлэхэд алдаа гарлаа');
     }
   };
 

@@ -11,8 +11,8 @@ export const useAuth = () => {
   const isAdmin = () => hasRole(['Admin']);
   const isManager = () => hasRole(['Manager']);
   const isSalesAgent = () => hasRole(['SalesAgent']);
-  const canManage = () => hasRole(['Admin', 'Manager']);
-  const canCreate = () => hasRole(['Admin', 'Manager', 'SalesAgent']);
+  const canManage = () => true;
+  const canCreate = () => true;
 
   return {
     user,

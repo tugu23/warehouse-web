@@ -26,6 +26,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
 import { agentKpiApi, employeesApi } from '../../api';
 import {
+  AgentKpiGranularity,
   AgentKpiProductRow,
   AgentKpiSummaryData,
   AgentKpiSummaryRow,
@@ -69,54 +70,65 @@ function AgentKpiReportTab({ effectiveAgentId }: { effectiveAgentId: number | nu
   const [productRows, setProductRows] = useState<ProductRow[]>([]);
   const [agentGoal, setAgentGoal] = useState<AgentGoal | null>(null);
 
-  const fetchReport = async () => {
-    if (!effectiveAgentId) {
-      toast.error('Ажилтан сонгоно уу');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await agentKpiApi.getByProduct({ from, to, agentId: effectiveAgentId });
-      const products = res.data.data?.products || [];
-
-      const grouped = new Map<string, ProductRow>();
-      products.forEach((p) => {
-        const key = `${p.categoryName || 'Бусад'}_${p.productName}`;
-        if (!grouped.has(key)) {
-          grouped.set(key, {
-            brand: p.categoryName || 'Бусад',
-            productName: p.productName,
-            totalBoxes: 0,
-            totalAmount: 0,
-          });
-        }
-        const row = grouped.get(key)!;
-        row.totalBoxes += p.boxes;
-        row.totalAmount += p.amount;
-      });
-
-      setProductRows(Array.from(grouped.values()));
-
-      const summaryRes = await agentKpiApi.getSummary({
-        from,
-        to,
-        agentId: effectiveAgentId,
-        granularity: 'month',
-      });
-      const summary = summaryRes.data.data;
-      if (summary) {
-        const totalGoal = summary.totals.sumTargetAmount || 0;
-        const totalPaid = summary.totals.sumActualAmount || 0;
-        const percent = totalGoal > 0 ? (totalPaid / totalGoal) * 100 : 0;
-        setAgentGoal({ goal: totalGoal, paid: totalPaid, percent });
+  const fetchReport = useCallback(
+    async (silent = false) => {
+      if (!effectiveAgentId) {
+        if (!silent) toast.error('Ажилтан сонгоно уу');
+        return;
       }
-    } catch (error) {
-      toast.error('Тайлан татахад алдаа гарлаа');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      setLoading(true);
+      try {
+        const res = await agentKpiApi.getByProduct({ from, to, agentId: effectiveAgentId });
+        const products = res.data.data?.products || [];
+
+        const grouped = new Map<string, ProductRow>();
+        products.forEach((p) => {
+          const key = `${p.categoryName || 'Бусад'}_${p.productName}`;
+          if (!grouped.has(key)) {
+            grouped.set(key, {
+              brand: p.categoryName || 'Бусад',
+              productName: p.productName,
+              totalBoxes: 0,
+              totalAmount: 0,
+            });
+          }
+          const row = grouped.get(key)!;
+          row.totalBoxes += p.boxes;
+          row.totalAmount += p.amount;
+        });
+
+        setProductRows(Array.from(grouped.values()));
+
+        const summaryRes = await agentKpiApi.getSummary({
+          from,
+          to,
+          agentId: effectiveAgentId,
+          granularity: 'month',
+        });
+        const summary = summaryRes.data.data;
+        if (summary) {
+          const totalGoal = summary.totals.sumTargetAmount || 0;
+          const totalPaid = summary.totals.sumActualAmount || 0;
+          const percent = totalGoal > 0 ? (totalPaid / totalGoal) * 100 : 0;
+          setAgentGoal({ goal: totalGoal, paid: totalPaid, percent });
+        } else {
+          setAgentGoal(null);
+        }
+      } catch (error) {
+        if (!silent) toast.error('Тайлан татахад алдаа гарлаа');
+        console.error(error);
+        setProductRows([]);
+        setAgentGoal(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [effectiveAgentId, from, to]
+  );
+
+  useEffect(() => {
+    if (effectiveAgentId) fetchReport(true);
+  }, [effectiveAgentId, fetchReport]);
 
   return (
     <Box>
@@ -137,7 +149,7 @@ function AgentKpiReportTab({ effectiveAgentId }: { effectiveAgentId: number | nu
           value={to}
           onChange={(e) => setTo(e.target.value)}
         />
-        <Button variant="contained" onClick={fetchReport} disabled={loading}>
+        <Button variant="contained" onClick={() => fetchReport(false)} disabled={loading}>
           Ачаалах
         </Button>
       </Box>
@@ -261,6 +273,7 @@ export default function AgentKpiPage() {
     format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd')
   );
   const [to, setTo] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [granularity, setGranularity] = useState<AgentKpiGranularity>('day');
   const [summary, setSummary] = useState<AgentKpiSummaryData | null>(null);
   const [products, setProducts] = useState<AgentKpiProductRow[]>([]);
   const [multiDate, setMultiDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -299,55 +312,66 @@ export default function AgentKpiPage() {
     }
   }, [canManage, employees, selectedAgentId]);
 
-  const fetchSummary = async () => {
-    if (!effectiveAgentId) {
-      toast.error('Ажилтан сонгоно уу');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await agentKpiApi.getSummary({
-        from,
-        to,
-        agentId: effectiveAgentId,
-        granularity,
-      });
-      setSummary(res.data.data ?? null);
-    } catch {
-      toast.error('KPI татахад алдаа');
-      setSummary(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchSummary = useCallback(
+    async (silent = false) => {
+      if (!effectiveAgentId) {
+        if (!silent) toast.error('Ажилтан сонгоно уу');
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await agentKpiApi.getSummary({
+          from,
+          to,
+          agentId: effectiveAgentId,
+          granularity,
+        });
+        setSummary(res.data.data ?? null);
+      } catch {
+        if (!silent) toast.error('KPI татахад алдаа');
+        setSummary(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [effectiveAgentId, from, to, granularity]
+  );
 
-  const fetchProducts = async () => {
-    if (!effectiveAgentId) {
-      toast.error('Ажилтан сонгоно уу');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await agentKpiApi.getByProduct({ from, to, agentId: effectiveAgentId });
-      setProducts(res.data.data?.products || []);
-    } catch {
-      toast.error('Барааны KPI татахад алдаа');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchProducts = useCallback(
+    async (silent = false) => {
+      if (!effectiveAgentId) {
+        if (!silent) toast.error('Ажилтан сонгоно уу');
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await agentKpiApi.getByProduct({ from, to, agentId: effectiveAgentId });
+        setProducts(res.data.data?.products || []);
+      } catch {
+        if (!silent) toast.error('Барааны KPI татахад алдаа');
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [effectiveAgentId, from, to]
+  );
 
-  const fetchMulti = async () => {
-    setLoading(true);
-    try {
-      const res = await agentKpiApi.getMultiAgentDaily({ date: multiDate });
-      setMultiAgents(res.data.data?.agents || []);
-    } catch {
-      toast.error('Өдрийн нийлбэр татахад алдаа');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchMulti = useCallback(
+    async (silent = false) => {
+      setLoading(true);
+      try {
+        const res = await agentKpiApi.getMultiAgentDaily({ date: multiDate });
+        setMultiAgents(res.data.data?.agents || []);
+      } catch {
+        if (!silent) toast.error('Өдрийн нийлбэр татахад алдаа');
+        setMultiAgents([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [multiDate]
+  );
 
   const fetchTargets = useCallback(async () => {
     if (!effectiveAgentId) return;
@@ -358,6 +382,18 @@ export default function AgentKpiPage() {
       toast.error('Зорилт татахад алдаа');
     }
   }, [effectiveAgentId]);
+
+  useEffect(() => {
+    if (tab === 0 && effectiveAgentId) fetchSummary(true);
+  }, [tab, effectiveAgentId, fetchSummary]);
+
+  useEffect(() => {
+    if (tab === 1 && effectiveAgentId) fetchProducts(true);
+  }, [tab, effectiveAgentId, fetchProducts]);
+
+  useEffect(() => {
+    if (tab === 2) fetchMulti(true);
+  }, [tab, fetchMulti]);
 
   useEffect(() => {
     if (tab === 3 && effectiveAgentId) fetchTargets();
@@ -487,6 +523,18 @@ export default function AgentKpiPage() {
           value={to}
           onChange={(e) => setTo(e.target.value)}
         />
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel>Нарийвчлал</InputLabel>
+          <Select
+            label="Нарийвчлал"
+            value={granularity}
+            onChange={(e) => setGranularity(e.target.value as AgentKpiGranularity)}
+          >
+            <MenuItem value="day">Өдөр</MenuItem>
+            <MenuItem value="month">Сар</MenuItem>
+            <MenuItem value="year">Жил</MenuItem>
+          </Select>
+        </FormControl>
       </Box>
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
@@ -501,7 +549,7 @@ export default function AgentKpiPage() {
         <Card>
           <CardContent>
             <Box sx={{ mb: 2 }}>
-              <Button variant="contained" onClick={fetchSummary} disabled={loading}>
+              <Button variant="contained" onClick={() => fetchSummary(false)} disabled={loading}>
                 Ачаалах
               </Button>
             </Box>
@@ -554,7 +602,12 @@ export default function AgentKpiPage() {
       {tab === 1 && (
         <Card>
           <CardContent>
-            <Button variant="contained" onClick={fetchProducts} disabled={loading} sx={{ mb: 2 }}>
+            <Button
+              variant="contained"
+              onClick={() => fetchProducts(false)}
+              disabled={loading}
+              sx={{ mb: 2 }}
+            >
               Ачаалах
             </Button>
             {loading && products.length === 0 ? (
@@ -599,7 +652,7 @@ export default function AgentKpiPage() {
               onChange={(e) => setMultiDate(e.target.value)}
               sx={{ mr: 2, mb: 2 }}
             />
-            <Button variant="contained" onClick={fetchMulti} disabled={loading}>
+            <Button variant="contained" onClick={() => fetchMulti(false)} disabled={loading}>
               Ачаалах
             </Button>
             <Table size="small" sx={{ mt: 2 }}>

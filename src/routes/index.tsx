@@ -76,19 +76,7 @@ export default function AppRoutes() {
               {/* Reports */}
               <Route path="/reports/sales" element={<SalesReportPage />} />
               <Route path="/reports/credit-status" element={<CreditStatusReportPage />} />
-              <Route
-                element={
-                  <ProtectedRoute
-                    allowedRoles={[
-                      'Admin',
-                      'Manager',
-                      'SalesAgent',
-                      'MarketSalesperson',
-                      'StoreSalesperson',
-                    ]}
-                  />
-                }
-              >
+              <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
                 <Route path="/reports/agent-kpi" element={<AgentKpiPage />} />
               </Route>
               <Route element={<ProtectedRoute allowedRoles={['Admin', 'Manager']} />}>

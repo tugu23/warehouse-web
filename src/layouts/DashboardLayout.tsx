@@ -60,7 +60,7 @@ const menuItems: MenuItem[] = [
     text: 'Агент KPI',
     icon: <ReportIcon />,
     path: '/reports/agent-kpi',
-    roles: ['Admin', 'Manager', 'SalesAgent', 'MarketSalesperson', 'StoreSalesperson'],
+    roles: ['Admin'],
   },
   {
     text: 'Борлуулалтын KPI',

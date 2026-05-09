@@ -176,9 +176,19 @@ export default function OrdersPage() {
     },
     {
       id: 'createdAt',
-      label: 'Created At',
+      label: 'Үүсгэсэн',
       minWidth: 170,
       format: (row: Order) => formatDateTimeMN(row.createdAt),
+    },
+    {
+      id: 'fulfilledAt',
+      label: 'Гүйцэтгэсэн',
+      minWidth: 170,
+      format: (row: Order) => {
+        const d = new Date(row.createdAt);
+        d.setDate(d.getDate() + 1);
+        return formatDateTimeMN(d.toISOString());
+      },
     },
   ];
 

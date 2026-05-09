@@ -42,6 +42,7 @@ interface FormState {
   name: string;
   type: PromotionType;
   discountPercent: string;
+  minQuantity: string;
   buyQty: string;
   freeQty: string;
   startDate: string;
@@ -82,6 +83,7 @@ function defaultFormState(): FormState {
     name: '',
     type: 'PERCENT_DISCOUNT',
     discountPercent: '10',
+    minQuantity: '',
     buyQty: '1',
     freeQty: '1',
     startDate: toDateTimeLocalValue(now.toISOString()),
@@ -92,7 +94,12 @@ function defaultFormState(): FormState {
 
 function describePromotion(p: Promotion): string {
   if (p.type === 'PERCENT_DISCOUNT') {
-    return `${Number(p.discountPercent ?? 0)}% хөнгөлөлт`;
+    const pct = Number(p.discountPercent ?? 0);
+    const mq = p.minQuantity;
+    if (mq && mq > 1) {
+      return `${mq}+ш авбал ${pct}% хөнгөлөлт`;
+    }
+    return `${pct}% хөнгөлөлт`;
   }
   return `${p.buyQty ?? 0}+${p.freeQty ?? 0}`;
 }
@@ -167,6 +174,7 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
       name: promotion.name,
       type: promotion.type,
       discountPercent: promotion.discountPercent != null ? String(promotion.discountPercent) : '',
+      minQuantity: promotion.minQuantity != null ? String(promotion.minQuantity) : '',
       buyQty: promotion.buyQty != null ? String(promotion.buyQty) : '',
       freeQty: promotion.freeQty != null ? String(promotion.freeQty) : '',
       startDate: toDateTimeLocalValue(promotion.startDate),
@@ -200,6 +208,12 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
       if (!Number.isFinite(dp) || dp <= 0 || dp > 100) {
         errs.discountPercent = '0-100 хооронд тоо оруулна уу';
       }
+      if (form.minQuantity) {
+        const mq = Number(form.minQuantity);
+        if (!Number.isFinite(mq) || mq < 1) {
+          errs.minQuantity = '1 буюу түүнээс их тоо оруулна уу';
+        }
+      }
     } else {
       const bx = Number(form.buyQty);
       const fy = Number(form.freeQty);
@@ -217,6 +231,8 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
       name: form.name.trim(),
       type: form.type,
       discountPercent: form.type === 'PERCENT_DISCOUNT' ? Number(form.discountPercent) : null,
+      minQuantity:
+        form.type === 'PERCENT_DISCOUNT' && form.minQuantity ? Number(form.minQuantity) : null,
       buyQty: form.type === 'BUY_X_GET_Y' ? Number(form.buyQty) : null,
       freeQty: form.type === 'BUY_X_GET_Y' ? Number(form.freeQty) : null,
       startDate: fromDateTimeLocalValue(form.startDate),
@@ -331,19 +347,35 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
             </Grid>
 
             {form.type === 'PERCENT_DISCOUNT' ? (
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Хөнгөлөлтийн хувь (%)"
-                  fullWidth
-                  size="small"
-                  type="number"
-                  inputProps={{ min: 0, max: 100, step: 1 }}
-                  value={form.discountPercent}
-                  onChange={(e) => setForm({ ...form, discountPercent: e.target.value })}
-                  error={!!errors.discountPercent}
-                  helperText={errors.discountPercent}
-                />
-              </Grid>
+              <>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    label="Хөнгөлөлтийн хувь (%)"
+                    fullWidth
+                    size="small"
+                    type="number"
+                    inputProps={{ min: 0, max: 100, step: 1 }}
+                    value={form.discountPercent}
+                    onChange={(e) => setForm({ ...form, discountPercent: e.target.value })}
+                    error={!!errors.discountPercent}
+                    helperText={errors.discountPercent}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    label="Доод тоо ширхэг (minQuantity)"
+                    fullWidth
+                    size="small"
+                    type="number"
+                    inputProps={{ min: 1, step: 1 }}
+                    value={form.minQuantity}
+                    onChange={(e) => setForm({ ...form, minQuantity: e.target.value })}
+                    error={!!errors.minQuantity}
+                    helperText={errors.minQuantity || 'Байхгүй юм бол хоосон орхино'}
+                    placeholder="Жишээ: 50"
+                  />
+                </Grid>
+              </>
             ) : (
               <>
                 <Grid size={{ xs: 6, sm: 3 }}>

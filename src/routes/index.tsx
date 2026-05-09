@@ -26,6 +26,7 @@ const CategoriesPage = lazy(() => import('../features/categories/CategoriesPage'
 const DeliveryPlansPage = lazy(() => import('../features/delivery/DeliveryPlansPage'));
 const ForbiddenPage = lazy(() => import('../features/auth/ForbiddenPage'));
 const NotFoundPage = lazy(() => import('../features/auth/NotFoundPage'));
+const ProfilePage = lazy(() => import('../features/profile/ProfilePage'));
 
 const LoadingFallback = () => (
   <Box
@@ -100,6 +101,9 @@ export default function AppRoutes() {
               <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
                 <Route path="/employees" element={<EmployeesPage />} />
               </Route>
+
+              {/* Profile - accessible to all authenticated users */}
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>
 

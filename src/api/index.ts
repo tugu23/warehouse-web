@@ -87,6 +87,12 @@ export const employeesApi = {
   update: (id: number, data: UpdateEmployeeRequest) =>
     api.put<ApiResponse<{ employee: Employee }>>(`/api/employees/${id}`, data),
   delete: (id: number) => api.delete<ApiResponse<void>>(`/api/employees/${id}`),
+  // Profile endpoints
+  getMe: () => api.get<ApiResponse<{ employee: Employee }>>('/api/employees/me'),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.post<ApiResponse<void>>('/api/employees/me/password', data),
+  changeEmail: (data: { newEmail: string; password: string }) =>
+    api.put<ApiResponse<void>>('/api/employees/me/email', data),
 };
 
 // Products API

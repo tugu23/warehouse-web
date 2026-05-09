@@ -83,6 +83,8 @@ export interface Promotion {
   type: PromotionType;
   /** PERCENT_DISCOUNT үед 0-100 хооронд */
   discountPercent: number | null;
+  /** Хөнгөлөлт үйлчлэхэд шаардагдах доод тоо ширхэг (тогтмол хөнгөлөлт бол null) */
+  minQuantity: number | null;
   /** BUY_X_GET_Y үед: хэдэн ширхэг авбал */
   buyQty: number | null;
   /** BUY_X_GET_Y үед: хэдэн ширхэг үнэгүй авах */
@@ -98,6 +100,7 @@ export interface CreatePromotionRequest {
   name: string;
   type: PromotionType;
   discountPercent?: number | null;
+  minQuantity?: number | null;
   buyQty?: number | null;
   freeQty?: number | null;
   startDate: string;
@@ -109,6 +112,7 @@ export interface UpdatePromotionRequest {
   name?: string;
   type?: PromotionType;
   discountPercent?: number | null;
+  minQuantity?: number | null;
   buyQty?: number | null;
   freeQty?: number | null;
   startDate?: string;

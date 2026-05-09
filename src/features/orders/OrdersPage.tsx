@@ -3,19 +3,12 @@ import {
   Box,
   Button,
   Chip,
-  IconButton,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
-  Tooltip,
   Typography,
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  Clear as ClearIcon,
-  Print as PrintIcon,
-  Refresh as RefreshIcon,
-} from '@mui/icons-material';
+import { Add as AddIcon, Print as PrintIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -43,10 +36,9 @@ export default function OrdersPage() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [ebarimtListFilter, setEbarimtListFilter] = useState<EbarimtListFilter>('all');
-  /** `YYYY-MM-DD` — эхлэх/дуусах өдрөөр интервал шүүх */
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
-  /** A4 ачааны жагсаалтын өдөр — хүснэгтийн e-barimt шүүлтүүрт нөлөөлөхгүй */
+  /** Сонгосон өдөр - defaulting to today */
+  const [selectedDate, setSelectedDate] = useState<string>(() => todayLocalYmd());
+  /** A4 ачааны жагсаалтын өдөр */
   const [printListDate, setPrintListDate] = useState<string>(() => todayLocalYmd());
 
   useEffect(() => {
@@ -117,20 +109,12 @@ export default function OrdersPage() {
       const ymd = orderLocalYmd(o.createdAt);
       if (!ymd) return false;
 
-      const hasDayRange = Boolean(dateFrom || dateTo);
-      if (hasDayRange) {
-        let from = dateFrom;
-        let to = dateTo;
-        if (from && to && from > to) {
-          [from, to] = [to, from];
-        }
-        if (from && ymd < from) return false;
-        if (to && ymd > to) return false;
-      }
+      // Filter by selected day only
+      if (selectedDate && ymd !== selectedDate) return false;
 
       return true;
     });
-  }, [orders, ebarimtListFilter, dateFrom, dateTo]);
+  }, [orders, ebarimtListFilter, selectedDate]);
 
   const columns = [
     {
@@ -238,37 +222,13 @@ export default function OrdersPage() {
             <TextField
               type="date"
               size="small"
-              label="Эхлэх огноо"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              label="Өдөр"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
-              inputProps={{ 'aria-label': 'Интервалын эхлэх огноо' }}
+              inputProps={{ 'aria-label': 'Сонгосон өдөр' }}
               sx={{ minWidth: 158 }}
             />
-            <TextField
-              type="date"
-              size="small"
-              label="Дуусах огноо"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ 'aria-label': 'Интервалын дуусах огноо' }}
-              sx={{ minWidth: 158 }}
-            />
-            {dateFrom || dateTo ? (
-              <Tooltip title="Огнооны шүүлтүүрийг цэвэрлэх">
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    setDateFrom('');
-                    setDateTo('');
-                  }}
-                  aria-label="Огнооны шүүлтүүрийг цэвэрлэх"
-                >
-                  <ClearIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            ) : null}
             <TextField
               type="date"
               size="small"

@@ -34,6 +34,7 @@ import {
   Category as CategoryIcon,
   Assessment as ReportIcon,
   Receipt as ReceiptIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../config/ThemeProvider';
@@ -104,6 +105,11 @@ export default function DashboardLayout() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleProfile = () => {
+    navigate('/profile');
+    setAnchorEl(null);
   };
 
   const handleNavigation = (path: string) => {
@@ -204,6 +210,13 @@ export default function DashboardLayout() {
                 {user?.role}
               </Typography>
             </Box>
+            <Divider />
+            <MenuItem onClick={handleProfile}>
+              <ListItemIcon>
+                <PersonIcon fontSize="small" />
+              </ListItemIcon>
+              Профайл
+            </MenuItem>
             <Divider />
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>

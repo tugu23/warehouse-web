@@ -1,4 +1,4 @@
-import api from '../lib/axios';
+﻿import api from '../lib/axios';
 import { toast } from 'react-hot-toast';
 
 const getReceiptPdfPath = (orderId: number) => `/api/orders/${orderId}/receipt/pdf`;
@@ -42,11 +42,11 @@ class ReceiptService {
       }
 
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      toast.success('Баримт нээгдэж байна...');
+      toast.success('Ð‘Ð°Ñ€Ð¸Ð¼Ñ‚ Ð½ÑÑÐ³Ð´ÑÐ¶ Ð±Ð°Ð¹Ð½Ð°...');
     } catch (error) {
       previewWindow?.close();
       console.error('Error viewing receipt:', error);
-      toast.error('Баримт нээхэд алдаа гарлаа');
+      toast.error('Ð‘Ð°Ñ€Ð¸Ð¼Ñ‚ Ð½ÑÑÑ…ÑÐ´ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°');
       throw error;
     }
   }
@@ -68,10 +68,10 @@ class ReceiptService {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success('Баримт татаж авах үйлдэл эхэллээ');
+      toast.success('Ð‘Ð°Ñ€Ð¸Ð¼Ñ‚ Ñ‚Ð°Ñ‚Ð°Ð¶ Ð°Ð²Ð°Ñ… Ò¯Ð¹Ð»Ð´ÑÐ» ÑÑ…ÑÐ»Ð»ÑÑ');
     } catch (error) {
       console.error('Error downloading receipt:', error);
-      toast.error('Баримт татахад алдаа гарлаа');
+      toast.error('Ð‘Ð°Ñ€Ð¸Ð¼Ñ‚ Ñ‚Ð°Ñ‚Ð°Ñ…Ð°Ð´ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°');
       throw error;
     }
   }
@@ -87,7 +87,7 @@ class ReceiptService {
       return response.data;
     } catch (error) {
       console.error('Error fetching receipt blob:', error);
-      toast.error('Баримт татахад алдаа гарлаа');
+      toast.error('Ð‘Ð°Ñ€Ð¸Ð¼Ñ‚ Ñ‚Ð°Ñ‚Ð°Ñ…Ð°Ð´ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°');
       throw error;
     }
   }
@@ -109,13 +109,13 @@ class ReceiptService {
           // Clean up blob URL after printing
           setTimeout(() => URL.revokeObjectURL(url), 1000);
         };
-        toast.success('Хэвлэх цонх нээгдэж байна...');
+        toast.success('Ð¥ÑÐ²Ð»ÑÑ… Ñ†Ð¾Ð½Ñ… Ð½ÑÑÐ³Ð´ÑÐ¶ Ð±Ð°Ð¹Ð½Ð°...');
       } else {
-        toast.error('Pop-up цонх блоклогдсон байна');
+        toast.error('Pop-up Ñ†Ð¾Ð½Ñ… Ð±Ð»Ð¾ÐºÐ»Ð¾Ð³Ð´ÑÐ¾Ð½ Ð±Ð°Ð¹Ð½Ð°');
       }
     } catch (error) {
       console.error('Error printing receipt:', error);
-      toast.error('Хэвлэхэд алдаа гарлаа');
+      toast.error('Ð¥ÑÐ²Ð»ÑÑ…ÑÐ´ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°');
       throw error;
     }
   }
@@ -132,22 +132,22 @@ class ReceiptService {
         });
 
         await navigator.share({
-          title: `Баримт №${orderId}`,
-          text: 'Зарлагын падаан',
+          title: `Ð‘Ð°Ñ€Ð¸Ð¼Ñ‚ â„–${orderId}`,
+          text: 'Борлуулалтын баримт',
           files: [file],
         });
 
-        toast.success('Баримт хуваалцлаа');
+        toast.success('Ð‘Ð°Ñ€Ð¸Ð¼Ñ‚ Ñ…ÑƒÐ²Ð°Ð°Ð»Ñ†Ð»Ð°Ð°');
       } else {
         // Fallback: Copy link to clipboard
         const url = new URL(this.getReceiptPdfUrl(orderId), window.location.origin).toString();
         await navigator.clipboard.writeText(url);
-        toast.success('Линк хуулагдлаа');
+        toast.success('Ð›Ð¸Ð½Ðº Ñ…ÑƒÑƒÐ»Ð°Ð³Ð´Ð»Ð°Ð°');
       }
     } catch (error: unknown) {
       if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Error sharing receipt:', error);
-        toast.error('Хуваалцахад алдаа гарлаа');
+        toast.error('Ð¥ÑƒÐ²Ð°Ð°Ð»Ñ†Ð°Ñ…Ð°Ð´ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°');
       }
       throw error;
     }
@@ -169,3 +169,4 @@ class ReceiptService {
 
 export const receiptService = new ReceiptService();
 export default receiptService;
+

@@ -49,6 +49,13 @@ class OrdersService {
   }
 
   /**
+   * Delete order permanently
+   */
+  async delete(id: number): Promise<void> {
+    await apiClient.delete(`/orders/${id}`);
+  }
+
+  /**
    * Get orders by customer
    */
   async getByCustomer(customerId: string): Promise<Order[]> {

@@ -30,6 +30,13 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiProxyTarget,
           changeOrigin: true,
+          timeout: 120000,
+        },
+        '/agent-kpi': {
+          target: apiProxyTarget,
+          changeOrigin: true,
+          rewrite: (path) => `/api${path}`,
+          timeout: 120000,
         },
         '/posapi': {
           target: posApiProxyTarget,

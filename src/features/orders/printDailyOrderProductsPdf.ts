@@ -8,8 +8,14 @@ const MARGIN = 14;
 
 /**
  * Өдрийн нэгтгэсэн барааны жагсаалтыг A4 босоо PDF болгон хадгална (Монгол текст Roboto).
+ *
+ * багана: № | Барааны нэр | Хайрцаг | Ширхэг | Шалгах
  */
-export function printDailyOrderProductsPdf(rows: DailyAggregatedProduct[], dateYmd: string): void {
+export function printDailyOrderProductsPdf(
+  rows: DailyAggregatedProduct[],
+  dateYmd: string,
+  employeeName?: string
+): void {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   try {
@@ -27,31 +33,41 @@ export function printDailyOrderProductsPdf(rows: DailyAggregatedProduct[], dateY
   doc.setFont('Roboto', 'bold');
   doc.setFontSize(16);
   doc.text(title, pageW / 2, MARGIN, { align: 'center' });
+  if (employeeName) {
+    doc.setFont('Roboto', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Ажилтан: ${employeeName}`, pageW / 2, MARGIN + 6, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+  }
 
   doc.setFont('Roboto', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(60, 60, 60);
-  doc.text(`Огноо: ${dateYmd}`, pageW / 2, MARGIN + 8, { align: 'center' });
+  doc.text(`Огноо: ${dateYmd}`, pageW / 2, employeeName ? MARGIN + 13 : MARGIN + 8, {
+    align: 'center',
+  });
   doc.setTextColor(0, 0, 0);
 
   const body = rows.map((r, i) => [
     String(i + 1),
     r.name,
-    r.barcode,
-    r.boxesLabel,
-    '', // гараар чеклэх хоосон зай
+    r.boxesDisplay,     // хайрцаг
+    r.piecesDisplay,    // ширхэг
+    '',                 // шалгах (хоосон чеклэх зай)
   ]);
 
   const pageInnerW = doc.internal.pageSize.getWidth() - 2 * MARGIN;
-  const c0 = 9;
-  const c2 = 35;
-  const c3 = 22;
-  const c4 = 20;
-  const c1 = Math.max(28, pageInnerW - c0 - c2 - c3 - c4);
+  // № | Нэр | Хайрцаг | Ширхэг | Шалгах
+  const c0 = 9;    // №
+  const c3 = 22;   // хайрцаг
+  const c4 = 22;   // ширхэг
+  const c5 = 20;   // шалгах
+  const c1 = Math.max(40, pageInnerW - c0 - c3 - c4 - c5);
 
   autoTable(doc, {
-    startY: MARGIN + 16,
-    head: [['№', 'Барааны нэр', 'Баркод', 'Хайрцаг', 'Шалгах']],
+    startY: employeeName ? MARGIN + 21 : MARGIN + 16,
+    head: [['№', 'Барааны нэр', 'Хайрцаг', 'Ширхэг', 'Шалгах']],
     body,
     theme: 'grid',
     tableWidth: pageInnerW,
@@ -71,9 +87,9 @@ export function printDailyOrderProductsPdf(rows: DailyAggregatedProduct[], dateY
     columnStyles: {
       0: { cellWidth: c0, halign: 'center' },
       1: { cellWidth: c1, halign: 'left' },
-      2: { cellWidth: c2, halign: 'center' },
-      3: { cellWidth: c3, halign: 'center' },
-      4: { cellWidth: c4, halign: 'center', minCellHeight: 8 },
+      2: { cellWidth: c3, halign: 'center' },
+      3: { cellWidth: c4, halign: 'center' },
+      4: { cellWidth: c5, halign: 'center', minCellHeight: 8 },
     },
     margin: { left: MARGIN, right: MARGIN },
   });

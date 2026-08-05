@@ -45,8 +45,6 @@ interface FormState {
   minQuantity: string;
   buyQty: string;
   freeQty: string;
-  startDate: string;
-  endDate: string;
   isActive: boolean;
 }
 
@@ -55,30 +53,7 @@ const PROMOTION_TYPE_LABEL: Record<PromotionType, string> = {
   BUY_X_GET_Y: 'X+Y (Авбал үнэгүй)',
 };
 
-function toDateTimeLocalValue(iso?: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  const mm = pad(d.getMonth() + 1);
-  const dd = pad(d.getDate());
-  const hh = pad(d.getHours());
-  const mi = pad(d.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-}
-
-function fromDateTimeLocalValue(value: string): string {
-  if (!value) return '';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toISOString();
-}
-
 function defaultFormState(): FormState {
-  const now = new Date();
-  const end = new Date();
-  end.setDate(end.getDate() + 7);
   return {
     name: '',
     type: 'PERCENT_DISCOUNT',
@@ -86,8 +61,6 @@ function defaultFormState(): FormState {
     minQuantity: '',
     buyQty: '1',
     freeQty: '1',
-    startDate: toDateTimeLocalValue(now.toISOString()),
-    endDate: toDateTimeLocalValue(end.toISOString()),
     isActive: true,
   };
 }
@@ -102,18 +75,6 @@ function describePromotion(p: Promotion): string {
     return `${pct}% хөнгөлөлт`;
   }
   return `${p.buyQty ?? 0}+${p.freeQty ?? 0}`;
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString('mn-MN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 function extractApiErrorMessage(error: unknown): string {
@@ -165,7 +126,9 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
   };
 
   const openCreate = () => {
-    resetForm();
+    setForm(defaultFormState());
+    setEditingId(null);
+    setErrors({});
     setShowForm(true);
   };
 
@@ -177,8 +140,6 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
       minQuantity: promotion.minQuantity != null ? String(promotion.minQuantity) : '',
       buyQty: promotion.buyQty != null ? String(promotion.buyQty) : '',
       freeQty: promotion.freeQty != null ? String(promotion.freeQty) : '',
-      startDate: toDateTimeLocalValue(promotion.startDate),
-      endDate: toDateTimeLocalValue(promotion.endDate),
       isActive: promotion.isActive,
     });
     setEditingId(promotion.id);
@@ -194,15 +155,6 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = 'Нэр оруулна уу';
-    if (!form.startDate) errs.startDate = 'Эхлэх огноо';
-    if (!form.endDate) errs.endDate = 'Дуусах огноо';
-    if (form.startDate && form.endDate) {
-      const s = new Date(form.startDate).getTime();
-      const e = new Date(form.endDate).getTime();
-      if (Number.isFinite(s) && Number.isFinite(e) && e <= s) {
-        errs.endDate = 'Дуусах огноо нь эхлэх огнооноос хойш байх ёстой';
-      }
-    }
     if (form.type === 'PERCENT_DISCOUNT') {
       const dp = Number(form.discountPercent);
       if (!Number.isFinite(dp) || dp <= 0 || dp > 100) {
@@ -235,8 +187,6 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
         form.type === 'PERCENT_DISCOUNT' && form.minQuantity ? Number(form.minQuantity) : null,
       buyQty: form.type === 'BUY_X_GET_Y' ? Number(form.buyQty) : null,
       freeQty: form.type === 'BUY_X_GET_Y' ? Number(form.freeQty) : null,
-      startDate: fromDateTimeLocalValue(form.startDate),
-      endDate: fromDateTimeLocalValue(form.endDate),
       isActive: form.isActive,
     };
 
@@ -285,10 +235,6 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
       toast.error('Төлөв шинэчлэхэд алдаа гарлаа');
     }
   };
-
-  const now = Date.now();
-  const isExpired = (p: Promotion) => new Date(p.endDate).getTime() < now;
-  const isUpcoming = (p: Promotion) => new Date(p.startDate).getTime() > now;
 
   if (loading) {
     return (
@@ -406,33 +352,6 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
                 </Grid>
               </>
             )}
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Эхлэх огноо"
-                fullWidth
-                size="small"
-                type="datetime-local"
-                value={form.startDate}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                error={!!errors.startDate}
-                helperText={errors.startDate}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Дуусах огноо"
-                fullWidth
-                size="small"
-                type="datetime-local"
-                value={form.endDate}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                error={!!errors.endDate}
-                helperText={errors.endDate}
-              />
-            </Grid>
           </Grid>
 
           <Stack direction="row" spacing={1} mt={2} justifyContent="flex-end">
@@ -458,17 +377,13 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
       ) : (
         <Stack spacing={1.5}>
           {promotions.map((p) => {
-            const expired = isExpired(p);
-            const upcoming = isUpcoming(p);
-            const activeNow = p.isActive && !expired && !upcoming;
             return (
               <Paper
                 key={p.id}
                 variant="outlined"
                 sx={{
                   p: 2,
-                  opacity: expired ? 0.6 : 1,
-                  borderColor: activeNow ? 'success.main' : undefined,
+                  borderColor: p.isActive ? 'success.main' : undefined,
                 }}
               >
                 <Stack
@@ -489,31 +404,22 @@ export default function PromotionManagement({ productId, onUpdate }: PromotionMa
                         label={describePromotion(p)}
                         variant="filled"
                       />
-                      {expired ? (
-                        <Chip size="small" color="default" label="Дууссан" />
-                      ) : upcoming ? (
-                        <Chip size="small" color="warning" label="Хүлээгдэж буй" />
-                      ) : p.isActive ? (
-                        <Chip size="small" color="success" label="Идэвхтэй" />
-                      ) : (
-                        <Chip size="small" color="default" label="Идэвхгүй" />
-                      )}
+                      <Chip
+                        size="small"
+                        color={p.isActive ? 'success' : 'default'}
+                        label={p.isActive ? 'Идэвхтэй' : 'Идэвхгүй'}
+                      />
                     </Stack>
-                    <Typography variant="caption" color="text.secondary" component="div" mt={0.5}>
-                      {formatDate(p.startDate)} – {formatDate(p.endDate)}
-                    </Typography>
                   </Box>
                   <Stack direction="row" spacing={0.5}>
-                    {!expired && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color={p.isActive ? 'warning' : 'success'}
-                        onClick={() => handleToggleActive(p)}
-                      >
-                        {p.isActive ? 'Идэвхгүй' : 'Идэвхжүүлэх'}
-                      </Button>
-                    )}
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color={p.isActive ? 'warning' : 'success'}
+                      onClick={() => handleToggleActive(p)}
+                    >
+                      {p.isActive ? 'Идэвхгүй' : 'Идэвхжүүлэх'}
+                    </Button>
                     <IconButton size="small" onClick={() => openEdit(p)} disabled={showForm}>
                       <EditIcon fontSize="small" />
                     </IconButton>

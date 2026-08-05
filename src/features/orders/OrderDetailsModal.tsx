@@ -59,16 +59,18 @@ export default function OrderDetailsModal({
     setConfirmDialogOpen(true);
   };
 
+  const handleFulfillAndPrintEbarimt = async () => {
+    setNewStatus('Fulfilled');
+    setConfirmDialogOpen(true);
+  };
+
   const confirmStatusChange = async () => {
     try {
       await onUpdateStatus(order.id, newStatus);
       setConfirmDialogOpen(false);
 
       if (newStatus === 'Fulfilled' && !order.ebarimtRegistered) {
-        const response = await ordersApi.getById(order.id);
-        if (response.data.data?.order) {
-          setEbarimtPrintOpen(true);
-        }
+        setEbarimtPrintOpen(true);
       }
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -94,9 +96,8 @@ export default function OrderDetailsModal({
     }
   };
 
-  const canPrintEbarimt = order.status === 'Fulfilled' && !order.ebarimtRegistered;
   const canEditBeforeEbarimt =
-    order.status === 'Pending' &&
+    order.status !== 'Cancelled' &&
     !order.ebarimtRegistered &&
     (canManage || (currentUserId != null && order.createdById === currentUserId));
 
@@ -196,6 +197,7 @@ export default function OrderDetailsModal({
               <TableCell align="center">Тоо ширхэг</TableCell>
               <TableCell align="right">Нэгж үнэ</TableCell>
               <TableCell align="right">Дүн</TableCell>
+              <TableCell align="center">Урамшуулал</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -205,6 +207,20 @@ export default function OrderDetailsModal({
                 <TableCell align="center">{item.quantity}</TableCell>
                 <TableCell align="right">₮{Number(item.unitPrice).toLocaleString()}</TableCell>
                 <TableCell align="right">₮{Number(item.subtotal).toLocaleString()}</TableCell>
+                <TableCell align="center">
+                  {item.bonusFreeQty && item.bonusFreeQty > 0 ? (
+                    <Chip
+                      label={`+${item.bonusFreeQty} ширхэг үнэгүй`}
+                      color="success"
+                      size="small"
+                      variant="outlined"
+                    />
+                  ) : item.promotionId ? (
+                    <Chip label="Идэвхтэй" color="info" size="small" variant="outlined" />
+                  ) : (
+                    <Typography variant="caption" color="text.secondary">—</Typography>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
             <TableRow>
@@ -249,20 +265,9 @@ export default function OrderDetailsModal({
           </Button>
         )}
 
-        {/* eBarimt хэвлэх — зөвхөн Fulfilled, хэвлэгдээгүй тохиолдолд */}
-        {canPrintEbarimt && (
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<ReceiptIcon />}
-            onClick={() => setEbarimtPrintOpen(true)}
-          >
-            eBarimt хэвлэх
-          </Button>
-        )}
 
-        {/* Төлөв өөрчлөх */}
-        {canUpdateStatus && order.status === 'Pending' && (
+        {/* Төлөв өөрчлөх — Fulfilled болон eBarimt бүртгэгдээгүй тохиолдолд */}
+        {canUpdateStatus && order.status === 'Pending' && !order.ebarimtRegistered && (
           <>
             <Button
               variant="outlined"
@@ -274,11 +279,23 @@ export default function OrderDetailsModal({
             <Button
               variant="contained"
               color="success"
-              onClick={() => handleStatusChange('Fulfilled')}
+              onClick={handleFulfillAndPrintEbarimt}
             >
-              Гүйцэтгэсэн
+              Гүйцэтгэх
             </Button>
           </>
+        )}
+
+        {/* eBarimt шууд хэвлэх — хэрэв захиалга Fulfilled боловч eBarimt бүртгэгдээгүй бол */}
+        {order.status === 'Fulfilled' && !order.ebarimtRegistered && (
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<ReceiptIcon />}
+            onClick={() => setEbarimtPrintOpen(true)}
+          >
+            Э-баримт хэвлэх
+          </Button>
         )}
       </Box>
 

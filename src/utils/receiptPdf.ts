@@ -1,5 +1,7 @@
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
+import type { Promotion } from '../types';
+import { getPromotionDisplayInfo } from './promotionUtils';
 
 export interface ReceiptEbarimtData {
   id: string;
@@ -16,11 +18,13 @@ export interface ReceiptProduct {
   name: string;
   price: number;
   barCode: string;
+  promotions?: Promotion[];
 }
 
 export interface ReceiptOrderItem {
   productId: number;
   quantity: number;
+  promotionId?: number | null; // explicitly selected promotion
 }
 
 export interface ReceiptCustomerInfo {
@@ -44,7 +48,7 @@ export async function generateReceiptPDF(
   const boldFont = 'helvetica';
   const regularFont = 'helvetica';
   const width = doc.internal.pageSize.getWidth();
-  let y = 15;
+  let y = 10;
 
   const drawLine = (yPos: number, thickness = 0.5) => {
     doc.setDrawColor(0);
@@ -52,78 +56,119 @@ export async function generateReceiptPDF(
     doc.line(10, yPos, width - 10, yPos);
   };
 
-  // 1. Date
-  doc.setFont(regularFont, 'normal');
-  doc.setFontSize(10);
-  doc.text(`Date: ${ebarimtData.date || new Date().toISOString().split('T')[0]}`, 10, y);
-  y += 7;
+  // Format date: yyyy.MM.dd HH:mm
+  const formatDate = (dateStr?: string) => {
+    const date = dateStr ? new Date(dateStr) : new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}.${month}.${day} ${hours}:${minutes}`;
+  };
 
-  // 2. Title
-  doc.setFontSize(16);
+  // 1. Title (moved up)
+  doc.setFontSize(20);
   doc.setFont(boldFont, 'bold');
-  doc.text('SALES RECEIPT', width / 2, y, { align: 'center' });
-  y += 5;
+  doc.text('Төлбөрийн баримт', width / 2, y, { align: 'center' });
+
+  // 2. Date (right side, next to title)
+  doc.setFont(regularFont, 'normal');
+  doc.setFontSize(11);
+  doc.text(formatDate(ebarimtData.date), width - 10, y, { align: 'right' });
+  y += 8;
   drawLine(y, 0.6);
   y += 10;
 
   // 3. Document Info & Customer
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setFont(boldFont, 'bold');
-  doc.text('Receipt Information', 10, y);
-  doc.text('Customer Details', width / 2 + 10, y);
-  y += 5;
+  doc.text('Баримтын мэдээлэл', 10, y);
+  doc.text('Харилцагч', width / 2 + 10, y);
+  y += 6;
 
   doc.setFont(regularFont, 'normal');
-  doc.setFontSize(9);
-  doc.text(`Receipt No:   ${ebarimtData.id}`, 10, y);
-  doc.text(`Payment:      ${paymentMethod || 'Cash'}`, 10, y + 10);
+  doc.setFontSize(10);
+  doc.text(`Баримтын дугаар:   ${ebarimtData.id}`, 10, y);
+  doc.text(`Төлбөр:            ${paymentMethod || 'Бэлэн'}`, 10, y + 6);
 
   const rightX = width / 2 + 10;
-  doc.text(`Name:  ${customerInfo?.name || 'Customer'}`, rightX, y);
+  doc.text(`Нэр:     ${customerInfo?.name || 'Харилцагч'}`, rightX, y);
   if (customerInfo?.regNo) {
-    doc.text(`Reg No: ${customerInfo.regNo}`, rightX, y + 5);
+    doc.text(`Регистр: ${customerInfo.regNo}`, rightX, y + 6);
   }
-  y += 20;
+  y += 18;
 
   // 4. Seller Section
   doc.setFont(boldFont, 'bold');
-  doc.setFontSize(10);
-  doc.text('Seller Information', 10, y);
-  y += 5;
+  doc.setFontSize(11);
+  doc.text('Борлуулагчийн мэдээлэл', 10, y);
+  y += 6;
   doc.setFont(regularFont, 'normal');
-  doc.setFontSize(9);
-  doc.text('Company: GLF LLC OASIS Wholesale Center', 10, y);
-  doc.text('Address: 27-49, 6th Khoroo, Sukhbaatar District, Ulaanbaatar, MN', 10, y + 5);
-  doc.text('Phone:   70121128, 88048350, 89741277', 10, y + 10);
-  y += 20;
+  doc.setFontSize(10);
+  doc.text('Компани: Жи Эл Эф ххк', 10, y);
+  doc.text('Хаяг: 27-49, 6-р хороо, Сүхбаатар дүүрэг, Улаанбаатар', 10, y + 5);
+  doc.text('Утас: 70121128, 88048350, 89741277', 10, y + 10);
+  doc.text('Банк: Хаан банк', 10, y + 15);
+  y += 23;
   drawLine(y, 0.4);
   y += 7;
 
-  // 5. Table Header
+  // 5. Table Header (reduced barcode column width)
+  doc.setFontSize(10);
   doc.setFont(boldFont, 'bold');
-  doc.text('No', 10, y);
-  doc.text('Item Description', 20, y);
-  doc.text('Barcode', 75, y);
-  doc.text('Qty', 115, y, { align: 'center' });
-  doc.text('Unit Price', 145, y, { align: 'right' });
-  doc.text('Total Amount', 185, y, { align: 'right' });
+  doc.text('№', 10, y);
+  doc.text('Барааны нэр', 20, y);
+  doc.text('Баркод', 90, y);
+  doc.text('Тоо', 125, y, { align: 'center' });
+  doc.text('Нэгж үнэ', 155, y, { align: 'right' });
+  doc.text('Нийт дүн', 185, y, { align: 'right' });
   y += 3;
   doc.setLineWidth(0.2);
   doc.line(10, y, width - 10, y);
   y += 7;
 
-  // 6. Items List
+  // 6. Items List with 1+1, 2+1, 3+1 promotion support
+  doc.setFontSize(10);
   doc.setFont(regularFont, 'normal');
-  orderItems.forEach((item, index) => {
+  let mainItemNumber = 0;
+
+  orderItems.forEach((item) => {
     const product = products.find((p) => p.id === item.productId);
     if (product) {
-      doc.text(`${index + 1}`, 10, y);
-      doc.text(product.name.substring(0, 30), 20, y);
-      doc.text(product.barCode || '', 75, y);
-      doc.text(`${item.quantity}`, 115, y, { align: 'center' });
-      doc.text(`${product.price.toLocaleString()}`, 145, y, { align: 'right' });
+      mainItemNumber++;
+      // Only show bonus rows if a promotion was EXPLICITLY selected for this item
+      const [, freeItemCount] = getPromotionDisplayInfo(
+        item.quantity,
+        product.promotions,
+        { promotionId: item.promotionId }
+      );
+
+      // Main item row
+      doc.text(`${mainItemNumber}`, 10, y);
+      doc.text(product.name.substring(0, 35), 20, y);
+      doc.text((product.barCode || '').substring(0, 15), 90, y);
+      doc.text(`${item.quantity}`, 125, y, { align: 'center' });
+      doc.text(`${product.price.toLocaleString()}`, 155, y, { align: 'right' });
       doc.text(`${(product.price * item.quantity).toLocaleString()}`, 185, y, { align: 'right' });
       y += 8;
+
+      // Promotion rows (free items) - showing each free item separately
+      if (freeItemCount > 0) {
+        doc.setFont(regularFont, 'italic');
+        doc.setTextColor(0, 100, 0); // Dark green
+        for (let i = 0; i < freeItemCount; i++) {
+          doc.text('', 10, y);
+          doc.text(`${product.name.substring(0, 35)} (Урамшуулал)`, 20, y);
+          doc.text((product.barCode || '').substring(0, 15), 90, y);
+          doc.text('1', 125, y, { align: 'center' });
+          doc.text('0', 155, y, { align: 'right' });
+          doc.text('0', 185, y, { align: 'right' });
+          y += 8;
+        }
+        doc.setTextColor(0, 0, 0); // Reset to black
+        doc.setFont(regularFont, 'normal');
+      }
     }
   });
 
@@ -131,69 +176,71 @@ export async function generateReceiptPDF(
   drawLine(y, 0.2);
   y += 10;
 
-  // 7. QR Code & Totals
+  // 7. QR Code & Totals (QR increased from 35x35 to 50x50)
   if (ebarimtData.qrData) {
-    const qrDataUrl = await QRCode.toDataURL(ebarimtData.qrData);
-    doc.addImage(qrDataUrl, 'PNG', 10, y, 35, 35);
-    doc.setFontSize(8);
-    doc.text('Scan QR to', 12, y + 40);
-    doc.text('verify receipt', 12, y + 44);
+    const qrDataUrl = await QRCode.toDataURL(ebarimtData.qrData, { width: 200 });
+    doc.addImage(qrDataUrl, 'PNG', 10, y, 50, 50);
+    doc.setFontSize(10);
+    doc.text('QR код уншуулж', 12, y + 55);
+    doc.text('баримт шалгах', 12, y + 60);
 
-    const infoX = 50;
+    const infoX = 70;
     if (ebarimtData.lottery) {
-      doc.setFontSize(10);
+      doc.setFontSize(11);
       doc.setFont(boldFont, 'bold');
-      doc.text('Lottery No:', infoX, y + 12);
-      doc.setFontSize(14);
-      doc.text(`${ebarimtData.lottery}`, infoX, y + 20);
-      doc.setFontSize(8);
+      doc.text('Сугалааны дугаар:', infoX, y + 12);
+      doc.setFontSize(16);
+      doc.text(`${ebarimtData.lottery}`, infoX, y + 22);
+      doc.setFontSize(10);
       doc.setFont(regularFont, 'normal');
-      doc.text('Keep this receipt for lottery', infoX, y + 26);
+      doc.text('Сугалаанд оролцохын тулд баримтаа хадгална уу', infoX, y + 30);
     } else {
-      doc.setFontSize(10);
+      doc.setFontSize(11);
       doc.setFont(boldFont, 'bold');
-      doc.text('E-Barimt: No lottery', infoX, y + 15);
+      doc.text('E-Barimt: Сугалаагүй', infoX, y + 15);
     }
   }
 
-  // Totals Section
+  // Totals Section (font size increased)
   const totalX = 140;
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setFont(regularFont, 'normal');
-  doc.text('Subtotal:', totalX, y);
+  doc.text('НӨАТ-гүй үнэ:', totalX, y);
   doc.text(`${ebarimtData.totalAmount.toLocaleString()}`, 185, y, { align: 'right' });
 
   y += 7;
-  doc.text('VAT (10%):', totalX, y);
+  doc.text('НӨАТ (10%):', totalX, y);
   doc.text(`${ebarimtData.totalVAT.toLocaleString()}`, 185, y, { align: 'right' });
 
   if (ebarimtData.totalCityTax) {
     y += 7;
-    doc.text('City Tax (2%):', totalX, y);
+    doc.text('Хотын татвар (2%):', totalX, y);
     doc.text(`${ebarimtData.totalCityTax.toLocaleString()}`, 185, y, { align: 'right' });
   }
 
-  y += 7;
+  y += 8;
+  doc.setFontSize(12);
   doc.setFont(boldFont, 'bold');
-  doc.text('GRAND TOTAL:', totalX, y);
+  doc.text('НИЙТ ДҮН:', totalX, y);
   doc.text(`${ebarimtData.totalAmount.toLocaleString()}`, 185, y, { align: 'right' });
 
-  y += 35;
+  y += 40;
 
   // 8. Signatures
   doc.setFont(regularFont, 'normal');
-  doc.setFontSize(9);
-  doc.text('Issued by: .........................../...........................', width / 2, y, {
+  doc.setFontSize(10);
+  doc.text('Гаргасан: .........................../...........................', width / 2, y, {
     align: 'center',
   });
   y += 10;
-  doc.text('Received by: .........................../...........................', width / 2, y, {
+  doc.text('Хүлээн авсан: .........................../...........................', width / 2, y, {
     align: 'center',
   });
 
   y += 20;
+  doc.setFontSize(11);
   doc.setFont(boldFont, 'bold');
-  doc.text('Thank you for your business!', width / 2, y, { align: 'center' });
+  doc.text('Баярлалаа!', width / 2, y, { align: 'center' });
 
   // Open in new tab for printing
   const blobUrl = doc.output('bloburl');

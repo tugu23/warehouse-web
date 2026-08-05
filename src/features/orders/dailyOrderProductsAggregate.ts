@@ -14,19 +14,39 @@ export interface DailyAggregatedProduct {
   barcode: string;
   /** Барааны нэг хайрцагт хэдэн ширхэг (байхгүй бол null) */
   unitsPerBox: number | null;
-  /** Хайрцаг + үлдэгдэл ширхэг — жишээ 2+5ш эсвэл зөвхөн 3 */
+  /** Бүтэн хайрцаг — жишээ 2 эсвэл 0 (remainder нь 0 үед) */
+  boxes: number;
+  /** Үлдэгдэл ширхэг (хүрэхгүй бол 0) */
+  pieces: number;
+  /** "N хайрцаг M ширхэг" форматтай текст */
   boxesLabel: string;
+  /** Зөвхөн хайрцаг тоо */
+  boxesDisplay: string;
+  /** Зөвхөн ширхэг тоо */
+  piecesDisplay: string;
   /** Агуулахад байгаа хайрцаг + ширхэг */
   stockBoxesLabel: string;
 }
 
+/**
+ * Нэг мөрөн дотроо хайрцаг + ширхэг харьцуулах string үүсгэнэ.
+ * Жишээ: "2 хайрцаг 5 ширхэг" эсвэл "3 хайрцаг 0 ширхэг"
+ */
 function formatBoxesLine(totalPieces: number, unitsPerBox: number | null | undefined): string {
   const upb = unitsPerBox != null && unitsPerBox > 0 ? unitsPerBox : null;
   if (!upb) return '—';
   const full = Math.floor(totalPieces / upb);
   const rem = totalPieces % upb;
-  if (rem === 0) return String(full);
-  return `${full}+${rem}ш`;
+  return `${full} хайрцаг ${rem} ширхэг`;
+}
+
+/** Агуулах库存т хайрцаг + ширхэг текст */
+function formatStockLine(totalPieces: number, unitsPerBox: number | null | undefined): string {
+  const upb = unitsPerBox != null && unitsPerBox > 0 ? unitsPerBox : null;
+  if (!upb) return '—';
+  const full = Math.floor(totalPieces / upb);
+  const rem = totalPieces % upb;
+  return `${full} хайрцаг ${rem} ширхэг`;
 }
 
 /**
@@ -80,15 +100,27 @@ export function aggregateDailyOrderProducts(
   }
 
   return Array.from(map.entries())
-    .map(([productId, v]) => ({
-      productId,
-      name: v.name,
-      quantity: v.quantity,
-      barcode: v.barcode,
-      unitsPerBox: v.unitsPerBox,
-      boxesLabel: formatBoxesLine(v.quantity, v.unitsPerBox),
-      stockBoxesLabel: formatBoxesLine(v.stockQuantity, v.unitsPerBox),
-    }))
+    .map(([productId, v]) => {
+      const upb = v.unitsPerBox;
+      const full = upb != null && upb > 0 ? Math.floor(v.quantity / upb) : 0;
+      const rem = upb != null && upb > 0 ? v.quantity % upb : v.quantity;
+      const boxesDisplay = upb != null && upb > 0 ? String(full) : '—';
+      const piecesDisplay = upb != null && upb > 0 ? String(rem) : '—';
+      return {
+        productId,
+        name: v.name,
+        quantity: v.quantity,
+        barcode: v.barcode,
+        unitsPerBox: v.unitsPerBox,
+        boxes: full,
+        pieces: rem,
+        boxesLabel: formatBoxesLine(v.quantity, v.unitsPerBox),
+        boxesDisplay,
+        piecesDisplay,
+        stockBoxesLabel:
+          v.stockQuantity > 0 ? formatStockLine(v.stockQuantity, v.unitsPerBox) : '—',
+      };
+    })
     .sort((a, b) => a.name.localeCompare(b.name, 'mn', { sensitivity: 'base' }));
 }
 

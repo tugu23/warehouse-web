@@ -14,14 +14,29 @@ import {
 import { Print as PrintIcon, PictureAsPdf as PdfIcon } from '@mui/icons-material';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { Fragment } from 'react';
 import { Order } from '../../types';
 import { generateOrderReceiptPDF } from '../../utils/pdfGenerator';
+import { getPromotionDisplayInfo } from '../../utils/promotionUtils';
 
 interface OrderReceiptProps {
   order: Order;
 }
 
 export default function OrderReceipt({ order }: OrderReceiptProps) {
+  let calculatedSubtotal = 0;
+  let calculatedVat = 0;
+  const sellerName = order.agent?.name || order.createdBy?.name || '-';
+  const sellerPhone = order.agent?.phoneNumber || order.createdBy?.phoneNumber || '-';
+  const buyerSystemName = order.customer?.organizationName || order.customer?.name || '-';
+  const buyerAddress = order.customer?.address || '-';
+
+  order.orderItems?.forEach((item) => {
+    calculatedSubtotal += Number(item.subtotal);
+  });
+
+  calculatedVat = calculatedSubtotal * 0.1;
+
   const handlePrint = () => {
     window.print();
   };
@@ -39,10 +54,7 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
     }
   };
 
-  const totalAmount = Number(order.totalAmount);
-  // Calculate VAT (10%) if not provided
-  const vatAmount = order.vatAmount || totalAmount * 0.1;
-  const cityTax = 0; // Assuming 0 for now as per example, or could be part of calculation
+  const cityTax = 0;
 
   return (
     <Box>
@@ -73,14 +85,14 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
         sx={{
           p: 3,
           width: '100%',
-          maxWidth: '148mm', // A5 width (210mm x 148mm)
+          maxWidth: '210mm',
           margin: '0 auto',
           fontFamily: 'Arial, sans-serif',
           '@media print': {
             boxShadow: 'none',
             p: 0,
-            width: '148mm',
-            maxWidth: '148mm',
+            width: '210mm',
+            maxWidth: '210mm',
             margin: 0,
           },
         }}
@@ -99,11 +111,13 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
           </Typography>
         </Box>
 
-        {/* Receipt Number Header */}
+        {/* Top Summary */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-            Зарлагын падаан № {order.eReceiptNumber || order.id}
+            Борлуулалтын баримт
           </Typography>
+          <Typography variant="body2">Борлуулагч: {sellerName}</Typography>
+          <Typography variant="body2">Утас: {sellerPhone}</Typography>
         </Box>
 
         {/* 1. General Receipt Info */}
@@ -113,9 +127,15 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
           </Typography>
           <Box sx={{ pl: 2 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
-              <Typography variant="body2">• Баримтын дугаар:</Typography>
+              <Typography variant="body2">• Борлуулагч:</Typography>
               <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                № {order.eReceiptNumber || order.id}
+                {sellerName}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="body2">• Утас:</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                {sellerPhone}
               </Typography>
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
@@ -151,29 +171,10 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* 2. Seller Info */}
+        {/* 2. Buyer Info */}
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-            2. Борлуулагчийн мэдээлэл
-          </Typography>
-          <Box sx={{ pl: 2 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
-              <Typography variant="body2">• Нэр:</Typography>
-              <Typography variant="body2">{order.createdBy?.name || 'Мөнгөншагай'}</Typography>
-            </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5 }}>
-              <Typography variant="body2">• Утас:</Typography>
-              <Typography variant="body2">{order.createdBy?.phoneNumber || '89741277'}</Typography>
-            </Box>
-          </Box>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* 3. Buyer Info */}
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-            3. Худалдан авагчийн мэдээлэл
+            2. Худалдан авагчийн мэдээлэл
           </Typography>
           <Box sx={{ pl: 2 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
@@ -184,26 +185,32 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
               <Typography variant="body2">• Утас:</Typography>
               <Typography variant="body2">{order.customer?.phoneNumber || '-'}</Typography>
             </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mt: 0.5 }}>
+              <Typography variant="body2">• Хаяг:</Typography>
+              <Typography variant="body2">{buyerAddress}</Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mt: 0.5 }}>
+              <Typography variant="body2">• Системийн нэр:</Typography>
+              <Typography variant="body2">{buyerSystemName}</Typography>
+            </Box>
           </Box>
         </Box>
 
         <Divider sx={{ my: 2 }} />
 
-        {/* 4. Store/Company Info */}
+        {/* 3. Store/Company Info */}
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-            4. Дэлгүүр / Байгууллагын мэдээлэл
+            3. Дэлгүүр / Байгууллагын мэдээлэл
           </Typography>
           <Box sx={{ pl: 2 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
               <Typography variant="body2">• Нэр:</Typography>
-              <Typography variant="body2">GLF LLC OASIS Бөөний төв</Typography>
+              <Typography variant="body2">Жи Эл Эф ххк</Typography>
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
-              <Typography variant="body2">• Хаяг:</Typography>
-              <Typography variant="body2">
-                Монгол, Улаанбаатар, Сүхбаатар дүүрэг, 6-р хороо, 27-49
-              </Typography>
+              <Typography variant="body2">• Данс:</Typography>
+              <Typography variant="body2">13000500 5070262037</Typography>
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5 }}>
               <Typography variant="body2">• Утас:</Typography>
@@ -214,10 +221,10 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* 5. Items List */}
+        {/* 4. Items List */}
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-            5. Худалдан авсан барааны жагсаалт
+            4. Худалдан авсан барааны жагсаалт
           </Typography>
           <Table
             size="small"
@@ -247,37 +254,63 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {order.orderItems?.map((item, index) => (
-                <TableRow key={item.id}>
-                  <TableCell align="center">{index + 1}</TableCell>
-                  <TableCell>{item.product?.nameMongolian || 'N/A'}</TableCell>
-                  <TableCell sx={{ fontSize: '10px' }}>{item.product?.barcode || '-'}</TableCell>
-                  <TableCell align="center">{item.quantity}</TableCell>
-                  <TableCell align="right">{Number(item.unitPrice).toLocaleString()}</TableCell>
-                  <TableCell align="right">{Number(item.subtotal).toLocaleString()}</TableCell>
-                </TableRow>
-              ))}
+              {order.orderItems?.map((item, index) => {
+                const [, freeItemCount] = getPromotionDisplayInfo(
+                  item.quantity,
+                  item.product?.promotions,
+                  { promotionId: item.promotionId }
+                );
+                const mainItemNumber = index + 1;
+                return (
+                  <Fragment key={item.id}>
+                    <TableRow>
+                      <TableCell align="center">{mainItemNumber}</TableCell>
+                      <TableCell>{item.product?.nameMongolian || 'N/A'}</TableCell>
+                      <TableCell sx={{ fontSize: '10px' }}>{item.product?.barcode || '-'}</TableCell>
+                      <TableCell align="center">{item.quantity}</TableCell>
+                      <TableCell align="right">{Number(item.unitPrice).toLocaleString()}</TableCell>
+                      <TableCell align="right">{Number(item.subtotal).toLocaleString()}</TableCell>
+                    </TableRow>
+                    {/* Урамшуулалтай бол нэмэлт мөр нэмэх (2+1, 3+1 гэх мэт) */}
+                    {freeItemCount > 0 && Array.from({ length: freeItemCount }).map((_, i) => (
+                      <TableRow
+                        key={`promo-${item.id}-${i}`}
+                        sx={{ backgroundColor: '#f5f5f5', opacity: 0.7 }}
+                      >
+                        <TableCell align="center"></TableCell>
+                        <TableCell sx={{ fontStyle: 'italic', color: '#666' }}>
+                          {item.product?.nameMongolian} (Урамшуулал)
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '10px' }}></TableCell>
+                        <TableCell align="center">1</TableCell>
+                        <TableCell align="right">0</TableCell>
+                        <TableCell align="right">0</TableCell>
+                      </TableRow>
+                    ))}
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </Box>
 
         <Divider sx={{ my: 2 }} />
 
-        {/* 6. VAT Info */}
+        {/* 5. VAT Info */}
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-            6. НӨАТ мэдээлэл
+            5. НӨАТ мэдээлэл
           </Typography>
           <Box sx={{ pl: 2 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
               <Typography variant="body2">• НӨАТ-тэй дүн:</Typography>
               <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                {totalAmount.toLocaleString()}₮
+                {calculatedSubtotal.toLocaleString()}₮
               </Typography>
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5, mb: 0.5 }}>
               <Typography variant="body2">• НӨАТ:</Typography>
-              <Typography variant="body2">{vatAmount.toFixed(2).toLocaleString()}₮</Typography>
+              <Typography variant="body2">{calculatedVat.toFixed(2).toLocaleString()}₮</Typography>
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0.5 }}>
               <Typography variant="body2">• НХАТ:</Typography>
@@ -288,10 +321,10 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* 7. E-Receipt Info */}
+        {/* 6. E-Receipt Info */}
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 2, mb: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-            7. И-Баримт мэдээлэл
+            6. И-Баримт мэдээлэл
           </Typography>
           <Box
             sx={{
@@ -311,11 +344,6 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
           {order.eReceiptId && (
             <Typography variant="caption" sx={{ fontSize: '9px', mt: 0.5 }}>
               YF: {order.eReceiptId}
-            </Typography>
-          )}
-          {order.eReceiptNumber && (
-            <Typography variant="caption" sx={{ mt: 0.5 }}>
-              Баримтын дугаар: {order.eReceiptNumber}
             </Typography>
           )}
           <Typography variant="body2" sx={{ mt: 2, textAlign: 'center', fontStyle: 'italic' }}>
@@ -341,7 +369,7 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
       <style>{`
         @media print {
           @page {
-            size: A5 portrait;
+            size: A4 portrait;
             margin: 10mm;
           }
           body {
@@ -358,7 +386,7 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
             position: absolute;
             left: 0;
             top: 0;
-            width: 148mm;
+            width: 210mm;
             padding: 5mm;
           }
         }

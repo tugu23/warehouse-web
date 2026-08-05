@@ -46,7 +46,14 @@ import {
   ProductPrice,
 } from '../../types';
 import { EbarimtParams } from '../../types/ebarimt';
-import { customersApi, productsApi, employeesApi, productPricesApi, ordersApi } from '../../api';
+import {
+  customersApi,
+  productsApi,
+  employeesApi,
+  productPricesApi,
+  ordersApi,
+  etaxApi,
+} from '../../api';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { createEbarimtRequest } from '../../api/ebarimt';
@@ -71,6 +78,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('Market');
+  const [orderDate, setOrderDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
   const [productPricesCache, setProductPricesCache] = useState<Record<number, ProductPrice[]>>({});
@@ -137,7 +145,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const fetchData = async () => {
     try {
       const [productsRes, customersRes, employeesRes] = await Promise.all([
-        productsApi.getAll({ limit: 'all', include: 'prices,category' }),
+        productsApi.getAll({ limit: 'all', include: 'prices,category,promotions' }),
         customersApi.getAll({ limit: 'all', forOrder: true }),
         employeesApi.getAll({ limit: 'all' }),
       ]);
@@ -152,7 +160,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
   const handleRegNumberLookup = async () => {
     const trimmed = regNumber.trim();
     if (!trimmed) {
-      setRegError('Регистрийн дугаар оруулна уу');
+      setRegError('?????????? ?????? ??????? ??');
       return;
     }
     setIsLookingUp(true);
@@ -172,36 +180,27 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
           vatPayer: found.isVatPayer ?? false,
           customerId: found.id,
         });
-        toast.success(`Байгууллага олдлоо: ${found.name}`);
+        toast.success(`??????????? ??????: ${found.name}`);
         return;
       }
-      const tinRes = await fetch(
-        `https://api.ebarimt.mn/api/info/check/getTinInfo?regNo=${trimmed}`
-      );
-      const tinData = await tinRes.json();
-      if (!tinData || tinData.status !== 200) {
-        setRegError('TIN олдсонгүй');
+
+      const orgResponse = await etaxApi.getOrganizationByRegno(trimmed);
+      const company = orgResponse.data.data?.organization;
+      if (!company?.name) {
+        setRegError('???????????? ???????? ?????????');
         return;
       }
-      const tin = tinData.data;
-      const infoRes = await fetch(`https://api.ebarimt.mn/api/info/check/getInfo?tin=${tin}`);
-      const infoData = await infoRes.json();
-      console.log('infoData:', infoData);
-      if (!infoData || infoData.status !== 200) {
-        setRegError('Байгууллагын мэдээлэл олдсонгүй');
-        return;
-      }
-      const company = infoData.data;
+
       setRegLookupResult({
         name: company.name,
         registrationNumber: trimmed,
-        vatPayer: company.vatpayer ?? false,
+        vatPayer: company.vatPayer ?? false,
         customerId: undefined,
       });
-      toast('Системд бүртгэлгүй байгууллага. eBarimt-с мэдээлэл авлаа.', { icon: 'ℹ️' });
+      toast('??????? ?????????? ???????????. eBarimt-? ???????? ?????.', { icon: '??' });
     } catch (error) {
-      console.error('Регистр хайхад алдаа:', error);
-      setRegError('Хайлт амжилтгүй. Дахин оролдоно уу.');
+      console.error('??????? ?????? ?????:', error);
+      setRegError('????? ?????????. ????? ???????? ??.');
     } finally {
       setIsLookingUp(false);
     }
@@ -266,9 +265,11 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
         ...(data.customerId && data.customerId > 0 ? { customerId: data.customerId } : {}),
         distributorId: data.distributorId,
         paymentMethod: data.paymentMethod,
+        ebarimtReceiptType: customerKind === 'organization' ? 'B2B' : 'B2C',
         paidAmount: data.paidAmount || 0,
         creditTermDays: data.creditTermDays,
         orderType,
+        orderDate: new Date(orderDate).toISOString(), // Add orderDate
         items: data.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -320,11 +321,12 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
           });
 
           const posResult = await ebarimtRes.json();
+          const receiptId = posResult?.receipts?.[0]?.id || posResult?.id;
 
-          if (posResult?.id) {
+          if (receiptId) {
             setEbarimtResult({
               success: true,
-              billId: posResult.id,
+              billId: receiptId,
               lottery: posResult.lottery,
               qrData: posResult.qrData,
             });
@@ -332,8 +334,8 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
             // Save eBarimt info to backend
             try {
               await ordersApi.updateEbarimt(orderResponse.id, {
-                ebarimtId: posResult.id,
-                ebarimtBillId: posResult.billId || posResult.id,
+                ebarimtId: receiptId,
+                ebarimtBillId: receiptId,
                 ebarimtDate: posResult.date || new Date().toISOString(),
               });
             } catch (saveErr) {
@@ -343,7 +345,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
             // Generate and print PDF receipt
             await generateReceiptPDF(
               {
-                id: posResult.id,
+                id: receiptId,
                 lottery: posResult.lottery,
                 qrData: posResult.qrData,
                 date: posResult.date,
@@ -489,6 +491,21 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
             <Alert severity="info">Хувь хүний захиалга — eBarimt хувь хүн баримт хэвлэгдэнэ.</Alert>
           </Grid>
         )}
+
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <TextField
+            label="Захиалгын огноо *"
+            type="date"
+            value={orderDate}
+            onChange={(e) => setOrderDate(e.target.value)}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            inputProps={{
+              max: format(new Date(), 'yyyy-MM-dd'), // Cannot select future dates
+            }}
+            helperText="Захиалга хийгдсэн өдрийг сонгоно уу"
+          />
+        </Grid>
 
         <Grid size={{ xs: 12, sm: 4 }}>
           <Controller
@@ -767,7 +784,7 @@ export default function OrderForm({ onSubmit, onCancel }: OrderFormProps) {
                 НӨАТ (10%): ₮{vatAmount.toLocaleString()}
               </Typography>
               <Typography variant="h6" fontWeight="bold">
-                Нийт төлөх: ₮{totalWithVat.toLocaleString()}
+                Нийт төлөх: ₮{totalAmount.toLocaleString()}
               </Typography>
             </>
           )}

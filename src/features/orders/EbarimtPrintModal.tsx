@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useEffect, useState, Fragment } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
@@ -8,16 +8,18 @@ import {
   createEbarimtRequest,
   getEbarimtInfoByTin,
   getTinInfo,
+  lookupEbarimtByRegNo,
   lookupEbarimtOrganizationBySevenDigitReg,
 } from '../../api/ebarimt';
 import { Order, OrderItem } from '../../types';
 import { RobotoRegular } from '../../fonts/Roboto-Regular';
 import { RobotoBold } from '../../fonts/Roboto-Bold';
+import { buildOrderItemBonusMap } from '../../utils/promotionUtils';
 
 const COMPANY = {
-  name: 'GLF LLC OASIS Бөөний төв',
-  address: 'Монгол, Улаанбаатар, Сүхбаатар дүүрэг, 6-р хороо, 27-49',
-  phones: '70121128, 88048350, 89741277',
+  name: 'Жи Эл Эф ххк',
+  address: '13000500 5070262037',
+  phones: '88049870',
   tin: '5317878',
 };
 
@@ -39,6 +41,7 @@ type JsPDFWithAutoTable = import('jspdf').jsPDF & { lastAutoTable: { finalY: num
 
 /** Худалдан авагчийн хаяг, холбоо, регистр, ТТД — PDF-д хэвлэнэ */
 interface BuyerPdfInfo {
+  systemName?: string;
   address?: string;
   phone?: string;
   registrationNumber?: string;
@@ -60,8 +63,8 @@ const PDF = {
   lineAfterTitle: 3,
   colHeaderAfter: 3,
   sellerRow: 3.35,
-  buyerLineMin: 3.2,
-  buyerLinePerWrap: 2.85,
+    buyerLineMin: 3.2,
+    buyerLinePerWrap: 3.1,
   blockAfter: 2.2,
   tableHeadMm: 6.5,
   tableRowMm: 4.35,
@@ -115,7 +118,7 @@ function getReceiptLayout(itemCount: number): ReceiptLayout {
       labelW: 17,
       rowH: 2.85,
       buyerLineMin: 2.45,
-      buyerLinePerWrap: 2.35,
+      buyerLinePerWrap: 2.65,
       blockAfter: 1.8,
       dateAfter: 2.6,
       titleAfter: 2,
@@ -198,6 +201,9 @@ function estimateBuyerBlockHeightMm(
     h += Math.max(layout.buyerLineMin, ln * layout.buyerLinePerWrap);
   };
   step('Нэр:', customerName || '—');
+  if (buyer?.systemName) {
+    step('Системийн нэр:', buyer.systemName);
+  }
   if (buyer) {
     step('Хаяг:', buyer.address || '');
     step('Утас:', buyer.phone || '');
@@ -224,72 +230,51 @@ function getTableBodyRowCount(itemCount: number, layout: ReceiptLayout): number 
   return itemCount;
 }
 
-// ── PDF generator ────────────────────────────────────────────────────
-async function generateEbarimtPDF(
-  data: EbarimtReceiptPdfData,
-  orderItems: { name: string; barCode: string; qty: number; unitPrice: number }[],
-  customerName: string,
-  paymentLabel: string,
-  orderNumber: string,
-  isB2B: boolean,
-  buyer?: BuyerPdfInfo
+type EbarimtPdfDrawContext = {
+  data: EbarimtReceiptPdfData;
+  orderItems: { id?: number; name: string; barCode: string; qty: number; unitPrice: number }[];
+  customerName: string;
+  sellerName: string;
+  sellerPhone: string;
+  paymentLabel: string;
+  orderNumber: string;
+  isB2B: boolean;
+  bonusFreeQtyMap: Map<number, number>;
+  buyer?: BuyerPdfInfo;
+  layout: ReceiptLayout;
+  compactReceipt: boolean;
+  tableBodyRowCount: number;
+  tableData: string[][];
+};
+
+/** Нэг хуудас дээр баримтын агуулгыг зурна */
+async function drawEbarimtReceiptPage(
+  doc: jsPDF,
+  ctx: EbarimtPdfDrawContext,
+  showLottery: boolean,
+  copySubtitle?: string,
+  options?: { showQr?: boolean }
 ) {
-  const layout = getReceiptLayout(orderItems.length);
-  const compactReceipt = orderItems.length < 9;
-  const tableBodyRowCount = getTableBodyRowCount(orderItems.length, layout);
+  const {
+    data,
+    customerName,
+    sellerName,
+    sellerPhone,
+    paymentLabel,
+    isB2B,
+    layout,
+    compactReceipt,
+    tableData,
+    buyer,
+  } = ctx;
 
   const L = PDF.marginX;
   const R = PAGE_W_MM - PDF.marginX;
   const W = PAGE_W_MM;
   const midX = W / 2 + 4;
-  const labelWR = 12;
+  const labelWR = 24;
   const valMaxW = R - midX - labelWR - 2;
-
-  const sellerRowsCount = 7;
-  const sellerBlockH = sellerRowsCount * layout.rowH;
-  const buyerBlockH = estimateBuyerBlockHeightMm(buyer, data, isB2B, customerName, valMaxW, layout);
-  const headerTopH =
-    8 +
-    layout.dateAfter +
-    layout.titleAfter +
-    1 +
-    layout.lineAfterTitle +
-    layout.colHeaderAfter +
-    Math.max(sellerBlockH, buyerBlockH) +
-    layout.blockAfter +
-    0.5;
-  const tableBodyH = layout.tableHeadMm + tableBodyRowCount * layout.tableRowMm;
-  const footerH =
-    layout.afterTable +
-    layout.qrSize +
-    3 * layout.totalsLine +
-    4 +
-    2 * layout.sigGap +
-    layout.bottomPad;
-  const estimatedHmm = Math.ceil(headerTopH + tableBodyH + footerH + (compactReceipt ? 12 : 28));
-
-  // Зөвхөн босоо A4: бага бараа = нэг бүтэн A4 хуудас (доод хэсэг цагаан), их бараа = A4-аас урт эсвэл бүтэн A4
-  let pageHmm: number;
-  if (compactReceipt) {
-    pageHmm = FULL_A4_H_MM;
-  } else {
-    pageHmm = Math.max(FULL_A4_H_MM, Math.min(2000, estimatedHmm));
-  }
-
-  const doc =
-    pageHmm === FULL_A4_H_MM
-      ? new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      : new jsPDF({ orientation: 'portrait', unit: 'mm', format: [PAGE_W_MM, pageHmm] });
-
-  try {
-    doc.addFileToVFS('Roboto-Regular.ttf', RobotoRegular);
-    doc.addFileToVFS('Roboto-Bold.ttf', RobotoBold);
-    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
-    doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
-    doc.setFont('Roboto', 'normal');
-  } catch {
-    doc.setFont('helvetica', 'normal');
-  }
+  const showQr = options?.showQr ?? showLottery;
 
   let y = PDF.marginX;
 
@@ -301,7 +286,6 @@ async function generateEbarimtPDF(
   const bold = () => doc.setFont('Roboto', 'bold');
   const normal = () => doc.setFont('Roboto', 'normal');
 
-  // Огноо
   normal();
   doc.setFontSize(layout.dateFont);
   doc.setTextColor(60, 100, 180);
@@ -309,15 +293,21 @@ async function generateEbarimtPDF(
   doc.setTextColor(0);
   y += layout.dateAfter;
 
-  // Гарчиг
   bold();
   doc.setFontSize(layout.titleFont);
   doc.text('ТӨЛБӨРИЙН БАРИМТ', W / 2, y, { align: 'center' });
   y += layout.titleAfter;
+  if (copySubtitle) {
+    normal();
+    doc.setFontSize(compactReceipt ? 6 : 7);
+    doc.setTextColor(80, 80, 80);
+    doc.text(copySubtitle, W / 2, y, { align: 'center' });
+    doc.setTextColor(0);
+    y += compactReceipt ? 2.5 : 3;
+  }
   drawLine(y, 0.8);
   y += layout.lineAfterTitle;
 
-  // Хоёр багана: Борлуулагч (зүүн) | Худалдан авагч (баруун)
   bold();
   doc.setFontSize(layout.sectionHeader);
   doc.text('Борлуулагч', L, y);
@@ -325,15 +315,15 @@ async function generateEbarimtPDF(
   y += layout.colHeaderAfter;
   const rowH = layout.rowH;
   const labelW = layout.labelW;
-  // Зүүн тал: Борлуулагч мэдээлэл + баримтын мэдээлэл
   const sellerRows: [string, string, boolean][] = [
     ['Байгуулга:', COMPANY.name, false],
-    ['Хаяг:', COMPANY.address, false],
+    ['Данс:', COMPANY.address, false],
     ['Утас:', COMPANY.phones, false],
     ['ДДТД:', data.id || '', true],
     ['ТТД:', COMPANY.tin, false],
     ['Төлбөр:', paymentLabel, false],
-    ['Захиалга:', orderNumber, false],
+    ['Борлуулагч:', sellerName || '', false],
+    ['Утас:', sellerPhone || '', false],
   ];
   const startY = y;
   sellerRows.forEach(([lbl, val, small], i) => {
@@ -350,7 +340,6 @@ async function generateEbarimtPDF(
     }
   });
 
-  // Баруун багана: Худалдан авагч (хаяг олон мөр болж болно)
   let buyerY = startY;
   const buyerLine = (label: string, value: string) => {
     const v = value?.trim();
@@ -362,42 +351,19 @@ async function generateEbarimtPDF(
     doc.setFontSize(layout.sellerFont);
     const lines = doc.splitTextToSize(v, valMaxW);
     doc.text(lines, midX + labelWR, buyerY);
-    buyerY += Math.max(layout.buyerLineMin, lines.length * layout.buyerLinePerWrap);
+    buyerY += Math.max(layout.buyerLineMin, lines.length * layout.buyerLinePerWrap) + 0.8;
   };
   buyerLine('Нэр:', customerName || '—');
+  if (buyer?.systemName) {
+    buyerLine('Системийн нэр:', buyer.systemName);
+  }
   if (buyer) {
     buyerLine('Хаяг:', buyer.address || '');
     buyerLine('Утас:', buyer.phone || '');
     buyerLine('Регистр:', buyer.registrationNumber || '');
-    const tinShow =
-      (buyer.tin || '').trim() ||
-      (data.customerTin != null && String(data.customerTin).trim() !== ''
-        ? String(data.customerTin)
-        : '');
-    buyerLine('ТТД:', tinShow);
-  } else if (isB2B && data.customerTin) {
-    buyerLine('ТТД:', String(data.customerTin));
   }
 
   y = Math.max(startY + sellerRows.length * rowH, buyerY) + (compactReceipt ? 0.6 : 1);
-
-  // Хүснэгт — тогтмол мөр (12 эсвэл A4-д багтах хүртэл); багана мм-ээр тэнцвэртэй
-  const tableData: string[][] = [];
-  for (let i = 0; i < tableBodyRowCount; i++) {
-    if (i < orderItems.length) {
-      const item = orderItems[i]!;
-      tableData.push([
-        String(i + 1),
-        item.name,
-        item.barCode,
-        String(item.qty),
-        item.unitPrice.toLocaleString(),
-        (item.unitPrice * item.qty).toLocaleString(),
-      ]);
-    } else {
-      tableData.push([String(i + 1), '', '', '', '', '']);
-    }
-  }
 
   const tableInnerW = W - 2 * L;
   const cwNo = 7;
@@ -452,26 +418,26 @@ async function generateEbarimtPDF(
 
   y = (doc as JsPDFWithAutoTable).lastAutoTable.finalY + layout.afterTable;
 
-  // QR + Дүн
   const qrSize = layout.qrSize;
   const qrX = L + 2;
   const totalsX = W / 2 + 4;
 
-  let qrDataUrl: string | null = null;
-  try {
-    const qrContent = data.qrData || JSON.stringify({ id: data.id, date: data.date });
-    qrDataUrl = await QRCode.toDataURL(qrContent, { width: layout.qrImagePx, margin: 1 });
-  } catch {
-    /* ignore */
+  if (showQr) {
+    let qrDataUrl: string | null = null;
+    try {
+      const qrContent = data.qrData || JSON.stringify({ id: data.id, date: data.date });
+      qrDataUrl = await QRCode.toDataURL(qrContent, { width: layout.qrImagePx, margin: 1 });
+    } catch {
+      /* ignore */
+    }
+    if (qrDataUrl) doc.addImage(qrDataUrl, 'PNG', qrX, y, qrSize, qrSize);
   }
 
-  if (qrDataUrl) doc.addImage(qrDataUrl, 'PNG', qrX, y, qrSize, qrSize);
-
-  const lotteryX = qrX + qrSize + 3;
+  const lotteryX = showQr ? qrX + qrSize + 3 : qrX + 2;
   const lotY1 = compactReceipt ? 5 : 7;
   const lotY2 = compactReceipt ? 10 : 15;
   const lotY3 = compactReceipt ? 15 : 21;
-  if (data.lottery) {
+  if (showLottery && data.lottery) {
     bold();
     doc.setFontSize(compactReceipt ? 7 : 8);
     doc.text('Сугалаа:', lotteryX, y + lotY1);
@@ -481,6 +447,12 @@ async function generateEbarimtPDF(
     normal();
     doc.setFontSize(compactReceipt ? 6 : 7);
     doc.text('Сугалаанд оролцоно уу!', lotteryX, y + lotY3);
+  } else if (!showLottery && data.lottery) {
+    normal();
+    doc.setFontSize(compactReceipt ? 6.5 : 7.5);
+    doc.text('Сугалаагүй хувь', lotteryX, y + (compactReceipt ? 8 : 11));
+    doc.setFontSize(compactReceipt ? 6 : 6.5);
+    doc.text('(ажилтан хадгалах)', lotteryX, y + (compactReceipt ? 13 : 17));
   } else if (isB2B) {
     normal();
     doc.setFontSize(compactReceipt ? 6.5 : 7.5);
@@ -492,16 +464,18 @@ async function generateEbarimtPDF(
     doc.setFontSize(compactReceipt ? 6.5 : 7.5);
     doc.text('E-Barimt бүртгэлгүй', lotteryX, y + (compactReceipt ? 9 : 13));
   }
-  normal();
-  doc.setFontSize(compactReceipt ? 5.8 : 6.5);
-  doc.text(
-    'QR код уншуулж баримт шалгана уу',
-    qrX + qrSize / 2,
-    y + qrSize + (compactReceipt ? 2 : 3),
-    {
-      align: 'center',
-    }
-  );
+  if (showQr) {
+    normal();
+    doc.setFontSize(compactReceipt ? 5.8 : 6.5);
+    doc.text(
+      'QR код уншуулж баримт шалгана уу',
+      qrX + qrSize / 2,
+      y + qrSize + (compactReceipt ? 2 : 3),
+      {
+        align: 'center',
+      }
+    );
+  }
 
   const grossWithVat = Number(data.totalAmount) || 0;
   const vat = Number(data.totalVAT) || 0;
@@ -520,7 +494,6 @@ async function generateEbarimtPDF(
     doc.text(val, R, ty, { align: 'right' });
   });
 
-  // Гарын үсэг: дүнгийн яг доор
   const sigY = y + (compactReceipt ? 2 : 3) + totalRows.length * layout.totalsLine + layout.sigGap;
   normal();
   doc.setFontSize(layout.sigFont);
@@ -535,11 +508,170 @@ async function generateEbarimtPDF(
       align: 'center',
     }
   );
+}
+
+function buildEbarimtTableData(
+  orderItems: { id?: number; name: string; barCode: string; qty: number; unitPrice: number }[],
+  bonusFreeQtyMap: Map<number, number>,
+  tableBodyRowCount: number
+): string[][] {
+  const tableData: string[][] = [];
+  let itemIndex = 0;
+  for (let i = 0; i < tableBodyRowCount; i++) {
+    if (itemIndex < orderItems.length) {
+      const item = orderItems[itemIndex]!;
+      tableData.push([
+        String(itemIndex + 1),
+        item.name,
+        item.barCode,
+        String(item.qty),
+        item.unitPrice.toLocaleString(),
+        (item.unitPrice * item.qty).toLocaleString(),
+      ]);
+      const bonusRows = item.id ? bonusFreeQtyMap.get(item.id) || 0 : 0;
+      if (bonusRows > 0) {
+        tableData.push([
+          '',
+          `${item.name} (\u0423\u0440\u0430\u043c\u0448\u0443\u0443\u043b\u0430\u043b)`,
+          '',
+          String(bonusRows),
+          '0',
+          '0',
+        ]);
+      }
+      itemIndex++;
+    } else {
+      tableData.push([String(itemIndex + 1), '', '', '', '', '']);
+      itemIndex++;
+    }
+  }
+  return tableData;
+}
+
+// ── PDF generator ────────────────────────────────────────────────────
+async function generateEbarimtPDF(
+  data: EbarimtReceiptPdfData,
+  orderItems: { id?: number; name: string; barCode: string; qty: number; unitPrice: number }[],
+  customerName: string,
+  sellerName: string,
+  sellerPhone: string,
+  paymentLabel: string,
+  orderNumber: string,
+  isB2B: boolean,
+  bonusFreeQtyMap: Map<number, number>,
+  buyer?: BuyerPdfInfo,
+  options?: { printTwoCopies?: boolean }
+) {
+  const layout = getReceiptLayout(orderItems.length);
+  const compactReceipt = orderItems.length < 9;
+  // Урамшуулалтай мөрүүдийг нэмж тооцох
+  const totalRowsWithPromotions = orderItems.reduce((count, item) => {
+    const bonus = item.id ? bonusFreeQtyMap.get(item.id) || 0 : 0;
+    return count + 1 + (bonus > 0 ? 1 : 0);
+  }, 0);
+  const tableBodyRowCount = getTableBodyRowCount(totalRowsWithPromotions, layout);
+  const tableData = buildEbarimtTableData(orderItems, bonusFreeQtyMap, tableBodyRowCount);
+
+  const printTwoCopies = Boolean(options?.printTwoCopies);
+
+  const R = PAGE_W_MM - PDF.marginX;
+  const midX = PAGE_W_MM / 2 + 4;
+  const labelWR = 12;
+  const valMaxW = R - midX - labelWR - 2;
+
+  const sellerRowsCount = 8;
+  const sellerBlockH = sellerRowsCount * layout.rowH;
+  const buyerBlockH = estimateBuyerBlockHeightMm(buyer, data, isB2B, customerName, valMaxW, layout);
+  const copySubtitleExtra = printTwoCopies ? 3 : 0;
+  const headerTopH =
+    8 +
+    layout.dateAfter +
+    layout.titleAfter +
+    copySubtitleExtra +
+    1 +
+    layout.lineAfterTitle +
+    layout.colHeaderAfter +
+    Math.max(sellerBlockH, buyerBlockH) +
+    layout.blockAfter +
+    0.5;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  try {
+    doc.addFileToVFS('Roboto-Regular.ttf', RobotoRegular);
+    doc.addFileToVFS('Roboto-Bold.ttf', RobotoBold);
+    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+    doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+    doc.setFont('Roboto', 'normal');
+  } catch {
+    doc.setFont('helvetica', 'normal');
+  }
+
+  const drawCtx: EbarimtPdfDrawContext = {
+    data,
+    orderItems,
+    customerName,
+    sellerName,
+    sellerPhone,
+    paymentLabel,
+    orderNumber,
+    isB2B,
+    bonusFreeQtyMap,
+    buyer,
+    layout,
+    compactReceipt,
+    tableBodyRowCount,
+    tableData,
+  };
+
+  if (printTwoCopies) {
+    if (isB2B) {
+      await drawEbarimtReceiptPage(
+        doc,
+        drawCtx,
+        true,
+        '1-р хувь — байгууллагын'
+      );
+      doc.addPage();
+      await drawEbarimtReceiptPage(
+        doc,
+        drawCtx,
+        true,
+        '2-р хувь — байгууллагын',
+        { showQr: false }
+      );
+    } else {
+      await drawEbarimtReceiptPage(
+        doc,
+        drawCtx,
+        true,
+        '1-р хувь — сугалаатай'
+      );
+      doc.addPage();
+      await drawEbarimtReceiptPage(
+        doc,
+        drawCtx,
+        false,
+        '2-р хувь — сугалаагүй'
+      );
+    }
+  } else {
+    await drawEbarimtReceiptPage(doc, drawCtx, true);
+  }
 
   const blobUrl = doc.output('bloburl');
   const pdfWindow = window.open(blobUrl);
   if (pdfWindow) {
-    pdfWindow.onload = () => pdfWindow.print();
+    const triggerPrint = () => {
+      try {
+        pdfWindow.focus();
+        pdfWindow.print();
+      } catch {
+        /* ignore */
+      }
+    };
+
+    pdfWindow.onload = triggerPrint;
+    setTimeout(triggerPrint, 500);
   } else {
     doc.save(`ebarimt_${data.id || 'receipt'}.pdf`);
   }
@@ -678,15 +810,30 @@ interface Props {
   onSuccess: () => void;
 }
 
+function isIndividualRegistrationNumber(regNo: string): boolean {
+  const trimmed = regNo.trim();
+  return /^[A-Za-z\u0410-\u042f\u0430-\u044f\u0401\u0451\u04e8\u04e9\u04ae\u04af]{2}\d{8}$/.test(trimmed);
+}
+
 export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) {
   const customerRegNo = String(order.customer?.registrationNumber || '').trim();
-  const [customerKind, setCustomerKind] = useState<'organization' | 'individual'>('organization');
-  const [useCustomerRegNo, setUseCustomerRegNo] = useState(Boolean(customerRegNo));
-  const [regNumber, setRegNumber] = useState(customerRegNo);
+  const initialCustomerKind =
+    order.ebarimtReceiptType === 'B2B'
+      ? 'organization'
+      : order.ebarimtReceiptType === 'B2C'
+        ? 'individual'
+        : isIndividualRegistrationNumber(customerRegNo)
+          ? 'individual'
+          : 'organization';
+  const [customerKind, setCustomerKind] = useState<'organization' | 'individual'>(
+    initialCustomerKind
+  );
+  const [useCustomerRegNo, setUseCustomerRegNo] = useState(Boolean(customerRegNo) && initialCustomerKind === 'organization');
+  const [regNumber, setRegNumber] = useState(initialCustomerKind === 'individual' ? '' : customerRegNo);
   const [regResult, setRegResult] = useState<{ name: string; tin: string } | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [regError, setRegError] = useState('');
-  const [individualReg, setIndividualReg] = useState('');
+  const [individualReg, setIndividualReg] = useState(initialCustomerKind === 'individual' ? customerRegNo : '');
   const [individualLookupResult, setIndividualLookupResult] = useState<{
     name: string;
     tin: string;
@@ -695,10 +842,32 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
   const [individualLookupInfo, setIndividualLookupInfo] = useState('');
   const [individualLookingUp, setIndividualLookingUp] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'BankTransfer' | 'Card'>('Cash');
+  const [printTwoCopies, setPrintTwoCopies] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   // Feature flag: Backend API ашиглах эсэх (туршилтын үе)
   const [useBackendApi] = useState(true);
+  useEffect(() => {
+    const nextKind =
+      order.ebarimtReceiptType === 'B2B'
+        ? 'organization'
+        : order.ebarimtReceiptType === 'B2C'
+          ? 'individual'
+          : isIndividualRegistrationNumber(customerRegNo)
+            ? 'individual'
+            : 'organization';
+    setCustomerKind(nextKind);
+    setUseCustomerRegNo(Boolean(customerRegNo) && nextKind === 'organization');
+    setRegNumber(nextKind === 'individual' ? '' : customerRegNo);
+    setRegResult(null);
+    setRegError('');
+    setIndividualReg(nextKind === 'individual' ? customerRegNo : '');
+    setIndividualLookupResult(null);
+    setIndividualLookupError('');
+    setIndividualLookupInfo('');
+  }, [order.id, order.ebarimtReceiptType, customerRegNo]);
+
+
+  const bonusFreeQtyMap = buildOrderItemBonusMap(order.orderItems);
 
   const paymentMap = { Cash: 'CASH', BankTransfer: 'BANK_TRANSFER', Card: 'PAYMENT_CARD' } as const;
   const paymentLabels = { Cash: 'Бэлэн', BankTransfer: 'Шилжүүлэг', Card: 'Карт' };
@@ -738,7 +907,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
   const handleIndividualLookup = async () => {
     const trimmed = individualReg.trim();
     if (!trimmed) {
-      setIndividualLookupError('Дугаар оруулна уу');
+      setIndividualLookupError('\u0414\u0443\u0433\u0430\u0430\u0440 \u043e\u0440\u0443\u0443\u043b\u043d\u0430 \u0443\u0443');
       setIndividualLookupInfo('');
       return;
     }
@@ -751,23 +920,38 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         const { name, tin } = await getEbarimtInfoByTin(trimmed);
         setIndividualLookupResult({ name, tin });
         setIndividualLookupInfo('');
-        toast.success('ТТД (getInfo)-ээр нэр, ТТД татагдлаа');
+        toast.success(
+          '\u0422\u0422\u0414 (getInfo)-\u044d\u044d\u0440 \u043d\u044d\u0440, \u0422\u0422\u0414 \u0442\u0430\u0442\u0430\u0433\u0434\u043b\u0430\u0430'
+        );
+      } else if (/^[A-Za-z\u0410-\u042f\u0430-\u044f\u0401\u0451\u04e8\u04e9\u04ae\u04af]{2}\d{8}$/.test(trimmed)) {
+        const { name, tin } = await lookupEbarimtByRegNo(trimmed);
+        setIndividualLookupResult({ name, tin });
+        setIndividualLookupInfo('');
+        toast.success(
+          '\u0425\u0443\u0432\u044c \u0445\u04af\u043d\u0438\u0439 \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u044d\u044d\u0441 \u0422\u0422\u0414, \u043d\u044d\u0440 \u0442\u0430\u0442\u0430\u0433\u0434\u043b\u0430\u0430'
+        );
       } else if (/^\d{7}$/.test(trimmed)) {
         const { name, tin } = await lookupEbarimtOrganizationBySevenDigitReg(trimmed);
         setIndividualLookupResult({ name, tin });
         setIndividualLookupInfo('');
-        toast.success('eBarimt-аас байгууллагын мэдээлэл татагдлаа');
+        toast.success(
+          'eBarimt-\u0430\u0430\u0441 \u0431\u0430\u0439\u0433\u0443\u0443\u043b\u043b\u0430\u0433\u044b\u043d \u043c\u044d\u0434\u044d\u044d\u043b\u044d\u043b \u0442\u0430\u0442\u0430\u0433\u0434\u043b\u0430\u0430'
+        );
       } else if (/^\d{8}$/.test(trimmed)) {
         setIndividualLookupInfo(
-          '8 оронтой нь И-баримт апп-ын хэрэглэгчийн дугаар. Гадаад API-аар нэр татдаггүй; баримтад шууд дамжуулна.'
+          '8 \u043e\u0440\u043e\u043d\u0442\u043e\u0439 \u043d\u044c \u0418-\u0431\u0430\u0440\u0438\u043c\u0442 \u0430\u043f\u043f-\u044b\u043d \u0445\u044d\u0440\u044d\u0433\u043b\u044d\u0433\u0447\u0438\u0439\u043d \u0434\u0443\u0433\u0430\u0430\u0440. \u0413\u0430\u0434\u0430\u0430\u0434 API-\u0430\u0430\u0440 \u043d\u044d\u0440 \u0442\u0430\u0442\u0434\u0430\u0433\u0433\u04af\u0439; \u0431\u0430\u0440\u0438\u043c\u0442\u0430\u0434 \u0448\u0443\u0443\u0434 \u0434\u0430\u043c\u0436\u0443\u0443\u043b\u043d\u0430.'
         );
       } else {
         setIndividualLookupError(
-          '7 орон — байгууллага, 8 орон — И-баримт хэрэглэгчийн дугаар, 10–12 орон — ТТД (getInfo)'
+          '7 \u043e\u0440\u043e\u043d \u2014 \u0431\u0430\u0439\u0433\u0443\u0443\u043b\u043b\u0430\u0433\u0430, 8 \u043e\u0440\u043e\u043d \u2014 \u0418-\u0431\u0430\u0440\u0438\u043c\u0442 \u0445\u044d\u0440\u044d\u0433\u043b\u044d\u0433\u0447\u0438\u0439\u043d \u0434\u0443\u0433\u0430\u0430\u0440, 10\u201312 \u043e\u0440\u043e\u043d \u2014 \u0422\u0422\u0414, 2 \u04af\u0441\u044d\u0433 + 8 \u0442\u043e\u043e \u2014 \u0445\u0443\u0432\u044c \u0445\u04af\u043d\u0438\u0439 \u0440\u0435\u0433\u0438\u0441\u0442\u0440'
         );
       }
     } catch (e) {
-      setIndividualLookupError(e instanceof Error ? e.message : 'Хайлт амжилтгүй');
+      setIndividualLookupError(
+        e instanceof Error
+          ? e.message
+          : '\u0425\u0430\u0439\u043b\u0442 \u0430\u043c\u0436\u0438\u043b\u0442\u0433\u04af\u0439'
+      );
     } finally {
       setIndividualLookingUp(false);
     }
@@ -790,7 +974,8 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
 
     setIsSubmitting(true);
     try {
-      const ebarimtItems = order.orderItems.map((oi) => ({
+      const ebarimtItems = (order.orderItems || []).map((oi) => ({
+        id: oi.id,
         name: oi.product?.nameMongolian || 'Бараа',
         barCode: oi.product?.barcode || '',
         classificationCode: oi.product?.classificationCode || '2399421',
@@ -802,7 +987,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
 
       if (isB2B && !resolvedTin && activeRegNo) {
         try {
-          const tinInfo = await getTinInfo(Number(activeRegNo));
+          const tinInfo = await getTinInfo(activeRegNo);
           resolvedTin = tinInfo.tinNumber;
           if (!regResult) {
             setRegResult({ name: tinInfo.tinName, tin: tinInfo.tinNumber });
@@ -829,7 +1014,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         type: isB2B ? 'B2B_RECEIPT' : 'B2C_RECEIPT',
         consumerNo: consumerNoB2C,
         customerTin: resolvedTin,
-        regNo: isB2B && activeRegNo ? Number(activeRegNo) : undefined,
+        regNo: isB2B && activeRegNo ? activeRegNo : undefined,
       });
 
       const res = await fetch('/posapi/rest/receipt', {
@@ -838,7 +1023,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         body: JSON.stringify(payload),
       });
       const raw = await res.text();
-      let data: { id?: string; date?: string; message?: string } = {};
+      let data: { id?: string; date?: string; message?: string; receipts?: Array<{ id?: string }> } = {};
       try {
         data = raw ? JSON.parse(raw) : {};
       } catch {
@@ -860,16 +1045,18 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         return;
       }
 
-      if (!data?.id) {
+      const receiptId = data.receipts?.[0]?.id || data.id;
+
+      if (!receiptId) {
         toast.error(data?.message || 'eBarimt үүсгэхэд алдаа гарлаа');
         return;
       }
 
       // Backend-д ebarimt мэдээлэл хадгалах
       await ordersApi.markEbarimt(order.id, {
-        ebarimtBillId: data.id,
+        ebarimtBillId: receiptId,
         ebarimtDate: data.date ?? '',
-        ebarimtId: data.id,
+        ebarimtId: receiptId,
         ebarimtType: isB2B ? 'B2B' : 'B2C',
       });
 
@@ -883,26 +1070,32 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         [cust?.district, cust?.address].filter(Boolean).join(', ') || cust?.address || '';
       const pdfData: EbarimtReceiptPdfData = {
         ...data,
+        id: receiptId,
         customerTin: resolvedTin ?? undefined,
         totalAmount: grandTotal,
         totalVAT: vatNum,
         subtotalExVat,
       };
-      await generateEbarimtPDF(
-        pdfData,
-        ebarimtItems,
-        custName,
-        paymentLabels[paymentMethod],
-        orderNum,
-        isB2B,
-        {
-          address: addressStr,
-          phone: cust?.phoneNumber ?? '',
-          registrationNumber: isB2B
-            ? (cust?.registrationNumber ?? '')
+        await generateEbarimtPDF(
+          pdfData,
+          ebarimtItems,
+          custName,
+          order.agent?.name || '',
+          order.agent?.phoneNumber || '',
+          paymentLabels[paymentMethod],
+          orderNum,
+          isB2B,
+        bonusFreeQtyMap,
+          {
+            systemName: cust?.name ?? '',
+            address: addressStr,
+            phone: cust?.phoneNumber ?? '',
+            registrationNumber: isB2B
+              ? (cust?.registrationNumber ?? '')
             : individualReg.trim() || cust?.registrationNumber || '',
           tin: isB2B ? (resolvedTin ?? '') : (individualLookupResult?.tin ?? ''),
-        }
+        },
+        { printTwoCopies }
       );
 
       toast.success('eBarimt амжилттай хэвлэгдлээ!');
@@ -937,7 +1130,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
 
       if (isB2B && !resolvedTin && activeRegNo) {
         try {
-          const tinInfo = await getTinInfo(Number(activeRegNo));
+          const tinInfo = await getTinInfo(activeRegNo);
           resolvedTin = String(tinInfo.tinNumber);
           if (!regResult) {
             setRegResult({ name: tinInfo.tinName, tin: tinInfo.tinNumber });
@@ -969,8 +1162,10 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         return;
       }
 
-      // PDF хэвлэх
-      const ebarimtItems = order.orderItems.map((oi) => ({
+      // PDF хэвлэх — урамшуулалтай барааг PDF-д харуулахын тулд БҮХ барааг дамжуулах
+      // generateEbarimtPDF функц нь өөрөө "(Урамшуулал)" мөрийг нэмж харуулна
+      const ebarimtItems = (order.orderItems || []).map((oi) => ({
+        id: oi.id,
         name: oi.product?.nameMongolian || 'Бараа',
         barCode: oi.product?.barcode || '',
         qty: oi.quantity,
@@ -1001,21 +1196,26 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         subtotalExVat: undefined,
       };
 
-      await generateEbarimtPDF(
-        pdfData,
-        ebarimtItems,
-        custName,
-        paymentLabels[paymentMethod],
-        orderNum,
-        isB2B,
-        {
-          address: addressStr,
-          phone: cust?.phoneNumber ?? '',
-          registrationNumber: isB2B
-            ? (cust?.registrationNumber ?? '')
+        await generateEbarimtPDF(
+          pdfData,
+          ebarimtItems,
+          custName,
+          order.agent?.name || '',
+          order.agent?.phoneNumber || '',
+          paymentLabels[paymentMethod],
+          orderNum,
+          isB2B,
+        bonusFreeQtyMap,
+          {
+            systemName: cust?.name ?? '',
+            address: addressStr,
+            phone: cust?.phoneNumber ?? '',
+            registrationNumber: isB2B
+              ? (cust?.registrationNumber ?? '')
             : individualReg.trim() || cust?.registrationNumber || '',
           tin: isB2B ? (resolvedTinForPdf ?? '') : (individualLookupResult?.tin ?? ''),
-        }
+        },
+        { printTwoCopies }
       );
 
       toast.success('eBarimt амжилттай хэвлэгдлээ! (Backend API)');
@@ -1058,25 +1258,45 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
                 const unit = Number(oi.unitPrice);
                 const lineGross = lineGrossTotal(oi);
                 return (
-                  <div
-                    key={oi.id ?? i}
-                    style={{
-                      ...st.itemRow,
-                      ...(i === (order.orderItems?.length || 0) - 1 ? { border: 'none' } : {}),
-                    }}
-                  >
-                    <span style={{ flex: 1, paddingRight: 8 }}>
-                      {oi.product?.nameMongolian || 'Бараа'}
-                    </span>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ color: '#cbd5e1' }}>
-                        {oi.quantity} × {unit.toLocaleString()}₮
-                      </div>
-                      <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                        = {lineGross.toLocaleString()}₮
+                  <Fragment key={oi.id ?? i}>
+                    <div
+                      style={{
+                        ...st.itemRow,
+                        ...(i === (order.orderItems?.length || 0) - 1 ? { border: 'none' } : {}),
+                      }}
+                    >
+                      <span style={{ flex: 1, paddingRight: 8 }}>
+                        {oi.product?.nameMongolian || 'Бараа'}
+                      </span>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ color: '#cbd5e1' }}>
+                          {oi.quantity} × {unit.toLocaleString()}₮
+                        </div>
+                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                          = {lineGross.toLocaleString()}₮
+                        </div>
                       </div>
                     </div>
-                  </div>
+                    {(bonusFreeQtyMap.get(oi.id) || 0) > 0 && (
+                      <div
+                        key={`bonus-${oi.id}`}
+                        style={{
+                          ...st.itemRow,
+                          opacity: 0.6,
+                          fontStyle: 'italic',
+                          borderBottom: '1px solid #2d3348',
+                        }}
+                      >
+                        <span style={{ flex: 1, paddingRight: 8 }}>
+                          {oi.product?.nameMongolian} ({'\u0423\u0440\u0430\u043c\u0448\u0443\u0443\u043b\u0430\u043b'})
+                        </span>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ color: '#94a3b8' }}>{bonusFreeQtyMap.get(oi.id) || 0} x 0</div>
+                          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>= 0</div>
+                        </div>
+                      </div>
+                    )}
+                  </Fragment>
                 );
               })}
               <div
@@ -1188,14 +1408,13 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
           ) : (
             <div style={{ marginBottom: 14 }}>
               <label style={st.label}>
-                ТТД (10–12 орон), эсвэл 7 орон байгууллага, эсвэл 8 орон И-баримт хэрэглэгчийн
-                дугаар
+                Регистр, эсвэл И-баримт хэрэглэгчийн дугаар
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   style={st.input}
                   value={individualReg}
-                  placeholder="Жишээ: 111655202982 (ТТД) эсвэл 1234567 / 12345678"
+                  placeholder="Жишээ: 111655202982,(Регистр):АА00000000"
                   onChange={(e) => {
                     setIndividualReg(e.target.value);
                     setIndividualLookupResult(null);
@@ -1239,6 +1458,34 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
               <option value="BankTransfer">Дансанд шилжүүлэх</option>
               <option value="Card">Карт</option>
             </select>
+          </div>
+
+          <div
+            style={{
+              marginBottom: 14,
+              padding: '10px 12px',
+              background: '#252838',
+              borderRadius: 8,
+              border: '1px solid #3d4460',
+            }}
+          >
+            <label style={{ ...st.radioLabel, cursor: 'pointer', margin: 0 }}>
+              <input
+                type="checkbox"
+                checked={printTwoCopies}
+                onChange={(e) => setPrintTwoCopies(e.target.checked)}
+              />
+              <span style={{ fontSize: 13 }}>
+                {customerKind === 'organization'
+                  ? '2 хувь хэвлэх (1-р: QR-тай, 2-р: QR-гүй байгууллагын хувь)'
+                  : '2 хувь хэвлэх (1-р: сугалаатай, 2-р: сугалаагүй)'}
+              </span>
+            </label>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 6, marginLeft: 22 }}>
+              {customerKind === 'organization'
+                ? 'Идэвхтэй үед PDF 2 хуудас'
+                : 'Идэвхтэй үед PDF 2 хуудас'}
+            </div>
           </div>
 
           {/* API сонголт (туршилтын үе) */}
@@ -1288,3 +1535,5 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
     </div>
   );
 }
+
+

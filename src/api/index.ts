@@ -62,14 +62,20 @@ import {
   AgentKpiSummaryData,
   AgentKpiProductRow,
   AgentKpiMultiAgentRow,
+  AgentKpiDashboardSummary,
+  AgentKpiRankingRow,
+  AgentKpiCategoryRow,
+  AgentKpiTrendRow,
   AgentKpiTarget,
   CreateAgentKpiTargetRequest,
   UpdateAgentKpiTargetRequest,
   AgentKpiGranularity,
+  SalesByBrandGranularity,
   SalesKpiData,
   Promotion,
   CreatePromotionRequest,
   UpdatePromotionRequest,
+  SalesByBrandResult,
 } from '../types';
 
 // Authentication API
@@ -415,6 +421,7 @@ export const etaxApi = {
       ApiResponse<{
         organization: {
           regno: string;
+          tin?: string;
           name: string;
           address?: string;
           vatPayer?: boolean;
@@ -539,25 +546,55 @@ export const agentKpiApi = {
     to: string;
     agentId?: number;
     granularity?: AgentKpiGranularity;
-  }) => api.get<ApiResponse<AgentKpiSummaryData>>('/api/agent-kpi/summary', { params }),
+  }) => api.get<ApiResponse<AgentKpiSummaryData>>('/agent-kpi/summary', { params }),
   getByProduct: (params: { from: string; to: string; agentId?: number }) =>
-    api.get<ApiResponse<{ products: AgentKpiProductRow[] }>>('/api/agent-kpi/by-product', {
+    api.get<ApiResponse<{ products: AgentKpiProductRow[] }>>('/agent-kpi/by-product', {
       params,
     }),
-  getMultiAgentDaily: (params: { date: string }) =>
-    api.get<ApiResponse<{ date: string; agents: AgentKpiMultiAgentRow[] }>>(
-      '/api/agent-kpi/multi-agent-daily',
+  getDashboardSummary: (params: { from: string; to: string; agentId?: number }) =>
+    api.get<ApiResponse<AgentKpiDashboardSummary>>('/agent-kpi/dashboard-summary', {
+      params,
+    }),
+  getRanking: (params: {
+    from: string;
+    to: string;
+    sortBy?: 'amount' | 'boxes' | 'orders';
+  }) =>
+    api.get<ApiResponse<{ ranking: AgentKpiRankingRow[] }>>('/agent-kpi/ranking', {
+      params,
+    }),
+  getCategoryAnalysis: (params: { from: string; to: string; agentId?: number }) =>
+    api.get<ApiResponse<{ categories: AgentKpiCategoryRow[] }>>(
+      '/agent-kpi/category-analysis',
       { params }
     ),
+  getTrendData: (params: {
+    from: string;
+    to: string;
+    agentId?: number;
+    granularity?: 'day' | 'month';
+  }) => api.get<ApiResponse<{ trend: AgentKpiTrendRow[] }>>('/agent-kpi/trend-data', { params }),
+  getMultiAgentDaily: (params: { date: string }) =>
+    api.get<ApiResponse<{ date: string; agents: AgentKpiMultiAgentRow[] }>>(
+      '/agent-kpi/multi-agent-daily',
+      { params }
+    ),
+  getSalesByBrand: (params: {
+    from: string;
+    to: string;
+    agentId?: number;
+    granularity?: SalesByBrandGranularity;
+  }) =>
+    api.get<ApiResponse<SalesByBrandResult>>('/agent-kpi/sales-by-brand', { params }),
   getTargets: (employeeId: number) =>
-    api.get<ApiResponse<{ targets: AgentKpiTarget[] }>>('/api/agent-kpi/targets', {
+    api.get<ApiResponse<{ targets: AgentKpiTarget[] }>>('/agent-kpi/targets', {
       params: { employeeId },
     }),
   createTarget: (data: CreateAgentKpiTargetRequest) =>
-    api.post<ApiResponse<{ target: AgentKpiTarget }>>('/api/agent-kpi/targets', data),
+    api.post<ApiResponse<{ target: AgentKpiTarget }>>('/agent-kpi/targets', data),
   updateTarget: (id: number, data: UpdateAgentKpiTargetRequest) =>
-    api.patch<ApiResponse<{ target: AgentKpiTarget }>>(`/api/agent-kpi/targets/${id}`, data),
-  deleteTarget: (id: number) => api.delete<ApiResponse<null>>(`/api/agent-kpi/targets/${id}`),
+    api.patch<ApiResponse<{ target: AgentKpiTarget }>>(`/agent-kpi/targets/${id}`, data),
+  deleteTarget: (id: number) => api.delete<ApiResponse<null>>(`/agent-kpi/targets/${id}`),
 };
 
 export const salesKpiApi = {

@@ -89,8 +89,8 @@ export interface Promotion {
   buyQty: number | null;
   /** BUY_X_GET_Y үед: хэдэн ширхэг үнэгүй авах */
   freeQty: number | null;
-  startDate: string;
-  endDate: string;
+  startDate?: string | null;
+  endDate?: string | null;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -103,8 +103,8 @@ export interface CreatePromotionRequest {
   minQuantity?: number | null;
   buyQty?: number | null;
   freeQty?: number | null;
-  startDate: string;
-  endDate: string;
+  startDate?: string | null;
+  endDate?: string | null;
   isActive?: boolean;
 }
 
@@ -115,8 +115,8 @@ export interface UpdatePromotionRequest {
   minQuantity?: number | null;
   buyQty?: number | null;
   freeQty?: number | null;
-  startDate?: string;
-  endDate?: string;
+  startDate?: string | null;
+  endDate?: string | null;
   isActive?: boolean;
 }
 
@@ -324,12 +324,18 @@ export interface OrderItem {
   quantity: number;
   unitPrice: string | number;
   subtotal: string | number;
+  /** Захиалга үүсгэх үед сонгогдсон урамшууллын ID */
+  promotionId?: number | null;
+  /** Урамшууллын нэмэлт ширхэг (challenge ширхэг авсан үед) */
+  bonusFreeQty?: number;
 }
 
 export interface CreateOrderRequest {
   customerId?: number;
   distributorId?: number;
   orderType?: OrderType;
+  orderDate?: string; // Захиалгын огноо (ISO string)
+  ebarimtReceiptType?: 'B2B' | 'B2C';
   paymentMethod: PaymentMethod;
   paidAmount?: number;
   creditTermDays?: number;
@@ -340,6 +346,8 @@ export interface CreateOrderRequest {
     priceMode?: 'auto' | 'wholesale' | 'retail' | 'defaultPrice' | 'custom' | 'customerType';
     customUnitPrice?: number;
     unitPrice?: number;
+    /** Сонгогдсон урамшууллын ID */
+    promotionId?: number;
   }[];
 }
 
@@ -897,6 +905,78 @@ export interface AgentKpiMultiAgentRow {
   units: number;
 }
 
+export interface AgentKpiDashboardSummary {
+  totalAmount: number;
+  totalBoxes: number;
+  totalOrders: number;
+  avgOrderValue: number;
+  topAgent: {
+    id: number;
+    name: string;
+    amount: number;
+  };
+  topProduct: {
+    id: number;
+    name: string;
+    amount: number;
+  };
+  topCategory: {
+    id: number;
+    name: string;
+    amount: number;
+  };
+  dailyTrend: Array<{
+    date: string;
+    amount: number;
+    boxes: number;
+  }>;
+  achievementSummary: {
+    dailyAvg: number;
+    monthlyAvg: number;
+    overallPct: number;
+  };
+  previousPeriodTotals?: {
+    totalAmount: number;
+    totalBoxes: number;
+    totalOrders: number;
+  } | null;
+  missedTargets?: Array<{
+    agentId: number;
+    agentName: string;
+    target: number;
+    actual: number;
+    shortfall: number;
+  }>;
+}
+
+export interface AgentKpiRankingRow {
+  rank: number;
+  agentId: number;
+  agentName: string;
+  amount: number;
+  boxes: number;
+  orders: number;
+  achievementPct: number;
+}
+
+export interface AgentKpiCategoryRow {
+  categoryId: number;
+  categoryName: string;
+  amount: number;
+  boxes: number;
+  units: number;
+  contributionPct: number;
+}
+
+export interface AgentKpiTrendRow {
+  period: string;
+  amount: number;
+  boxes: number;
+  orders: number;
+  target: number;
+  achievementPct: number;
+}
+
 export interface AgentKpiTarget {
   id: number;
   employeeId: number;
@@ -952,4 +1032,56 @@ export interface SalesKpiData {
     totalAmount: number;
     orderCount: number;
   }>;
+}
+
+// Sales by Brand/Product/Supplier Report Types
+export type SalesByBrandGranularity = 'day' | 'month' | 'year';
+
+export interface SalesByBrandPeriodValue {
+  key: string;
+  label: string;
+  boxes: number;
+  amount: number;
+}
+
+export interface SalesByBrandProductRow {
+  productId: number;
+  productName: string;
+  categoryId: number;
+  categoryName: string;
+  supplierId: number;
+  supplierName: string;
+  periodData: SalesByBrandPeriodValue[];
+  totalBoxes: number;
+  totalAmount: number;
+}
+
+export interface SalesByBrandSupplierRow {
+  supplierId: number;
+  supplierName: string;
+  products: SalesByBrandProductRow[];
+  totalBoxes: number;
+  totalAmount: number;
+  periodData?: SalesByBrandPeriodValue[];
+}
+
+export interface SalesByBrandData {
+  categoryId: number;
+  categoryName: string;
+  suppliers: SalesByBrandSupplierRow[];
+  totalBoxes: number;
+  totalAmount: number;
+  periodData?: SalesByBrandPeriodValue[];
+}
+
+export interface SalesByBrandResult {
+  granularity: SalesByBrandGranularity;
+  periods: Array<{
+    key: string;
+    label: string;
+  }>;
+  brands: SalesByBrandData[];
+  grandTotalBoxes: number;
+  grandTotalAmount: number;
+  grandPeriodData?: SalesByBrandPeriodValue[];
 }

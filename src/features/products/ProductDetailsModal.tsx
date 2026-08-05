@@ -56,9 +56,10 @@ export default function ProductDetailsModal({
 
   const now = Date.now();
   const activePromotions = (product.promotions || []).filter((p) => {
-    const start = new Date(p.startDate).getTime();
-    const end = new Date(p.endDate).getTime();
-    return p.isActive && start <= now && end >= now;
+    if (!p.isActive) return false;
+    const start = p.startDate ? new Date(p.startDate).getTime() : 0;
+    const end = p.endDate ? new Date(p.endDate).getTime() : Number.MAX_SAFE_INTEGER;
+    return start <= now && end >= now;
   });
 
   return (

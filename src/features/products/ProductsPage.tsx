@@ -33,7 +33,7 @@ export default function ProductsPage() {
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [promotionModalOpen, setPromotionModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('active');
 
   useEffect(() => {
     fetchProducts();

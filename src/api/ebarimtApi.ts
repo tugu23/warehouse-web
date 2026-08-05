@@ -80,6 +80,20 @@ export interface EBarimtReturnResult {
   success: boolean;
   orderId?: number;
   returnId?: string;
+  ebarimtBillId?: string;
+  receiptType?: string; // "B2B" | "B2C"
+  isB2B?: boolean;
+  status?: string;
+  paymentStatus?: string;
+  remainingAmount?: number | null;
+  refundedAmount?: number;
+  refundedItems?: number;
+  alreadyReturned?: boolean;
+  returnedAt?: string;
+  returnedBy?: number | null;
+  reason?: string | null;
+  note?: string | null;
+  restocked?: boolean;
   message?: string;
 }
 
@@ -205,9 +219,10 @@ export const ebarimtApi = {
   /**
    * Return/cancel eBarimt bill
    */
-  returnOrder: (orderId: number, reason?: string) =>
+  returnOrder: (orderId: number, reason?: string, note?: string) =>
     api.post<{ status: string; data: EBarimtReturnResult }>(`/api/ebarimt/return/${orderId}`, {
       reason,
+      note,
     }),
 
   /**

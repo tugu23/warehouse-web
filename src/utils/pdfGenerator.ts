@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+﻿import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { Order } from '../types';
@@ -62,6 +62,21 @@ interface PDFOptions {
   filename?: string;
 }
 
+function getSellerInfo(order: Order) {
+  return {
+    name: order.agent?.name || order.createdBy?.name || '-',
+    phone: order.agent?.phoneNumber || order.createdBy?.phoneNumber || '-',
+  };
+}
+
+function getBuyerSystemName(order: Order) {
+  return order.customer?.organizationName || order.customer?.name || '-';
+}
+
+function getBuyerAddress(order: Order) {
+  return order.customer?.address || '-';
+}
+
 export const generateOrderReceiptPDF = async (
   order: Order,
   options: PDFOptions = { download: true }
@@ -70,11 +85,14 @@ export const generateOrderReceiptPDF = async (
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: 'a5', // 148 x 210 mm
+    format: 'a4',
   });
 
   // Load Cyrillic font support
   await loadCyrillicFont(doc);
+  const seller = getSellerInfo(order);
+  const buyerSystemName = getBuyerSystemName(order);
+  const buyerAddress = getBuyerAddress(order);
 
   // Margins
   const margin = 10;
@@ -96,7 +114,7 @@ export const generateOrderReceiptPDF = async (
   ) => {
     const {
       align = 'left',
-      fontSize = 10,
+      fontSize = 11,
       fontStyle = 'normal',
       maxWidth = contentWidth,
     } = options;
@@ -125,7 +143,7 @@ export const generateOrderReceiptPDF = async (
   // Title
   yPosition = addText('Агуулахын бараа бүртгэлийн систем', pageWidth / 2, yPosition, {
     align: 'center',
-    fontSize: 14,
+    fontSize: 16,
     fontStyle: 'bold',
   });
   yPosition += 3;
@@ -133,22 +151,11 @@ export const generateOrderReceiptPDF = async (
   // Subtitle
   yPosition = addText('Э-Баримт / Төлбөрийн баримт', pageWidth / 2, yPosition, {
     align: 'center',
-    fontSize: 10,
+    fontSize: 11,
   });
   yPosition += 8;
 
-  // Receipt Number Header
-  yPosition = addText(
-    `Зарлагын падаан № ${order.eReceiptNumber || order.id}`,
-    pageWidth / 2,
-    yPosition,
-    {
-      align: 'center',
-      fontSize: 12,
-      fontStyle: 'bold',
-    }
-  );
-  yPosition += 8;
+  yPosition += 3;
 
   // Calculate VAT
   const totalAmount = Number(order.totalAmount);
@@ -163,7 +170,8 @@ export const generateOrderReceiptPDF = async (
   yPosition += 5;
 
   const generalInfo = [
-    ['  • Баримтын дугаар:', `№ ${order.eReceiptNumber || order.id}`],
+    ['  • Борлуулагч:', seller.name],
+    ['  • Утас:', seller.phone],
     ['  • ДДТД:', order.eReceiptId || '-'],
     ['  • ТТД:', '5317878'],
     ['  • Баримт бүртгэгдсэн огноо:', format(new Date(order.createdAt), 'yyyy-MM-dd')],
@@ -197,8 +205,8 @@ export const generateOrderReceiptPDF = async (
   yPosition += 5;
 
   const sellerInfo = [
-    ['  • Нэр:', order.createdBy?.name || 'Мөнгөншагай'],
-    ['  • Утас:', order.createdBy?.phoneNumber || '89741277'],
+    ['  • Нэр:', seller.name],
+    ['  • Утас:', seller.phone],
   ];
 
   sellerInfo.forEach(([label, value]) => {
@@ -223,6 +231,8 @@ export const generateOrderReceiptPDF = async (
   const buyerInfo = [
     ['  • Нэр:', order.customer?.name || '-'],
     ['  • Утас:', order.customer?.phoneNumber || '-'],
+    ['  • Хаяг:', buyerAddress],
+    ['  • Системийн нэр:', buyerSystemName],
   ];
 
   buyerInfo.forEach(([label, value]) => {
@@ -245,8 +255,8 @@ export const generateOrderReceiptPDF = async (
   yPosition += 5;
 
   const storeInfo = [
-    ['  • Нэр:', 'GLF LLC OASIS Бөөний төв'],
-    ['  • Хаяг:', 'Монгол, Улаанбаатар, Сүхбаатар дүүрэг, 6-р хороо, 27-49'],
+    ['  • Нэр:', 'Жи Эл Эф ххк'],
+    ['  • Данс:', '13000500 5070262037'],
     ['  • Утас:', '70121128, 88048350, 89741277'],
   ];
 
@@ -288,7 +298,7 @@ export const generateOrderReceiptPDF = async (
     theme: 'grid',
     styles: {
       font: 'Roboto',
-      fontSize: 8,
+      fontSize: 9,
       cellPadding: 2,
     },
     headStyles: {
@@ -300,7 +310,7 @@ export const generateOrderReceiptPDF = async (
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
       1: { cellWidth: 40 },
-      2: { cellWidth: 25, fontSize: 7 },
+      2: { cellWidth: 25, fontSize: 8 },
       3: { cellWidth: 15, halign: 'center' },
       4: { cellWidth: 20, halign: 'right' },
       5: { cellWidth: 20, halign: 'right' },
@@ -354,19 +364,11 @@ export const generateOrderReceiptPDF = async (
   yPosition += 15;
 
   // E-Receipt Number
-  if (order.eReceiptNumber) {
-    yPosition = addText(`Баримтын дугаар: ${order.eReceiptNumber}`, pageWidth / 2, yPosition, {
-      align: 'center',
-      fontSize: 8,
-    });
-    yPosition += 4;
-  }
-
   // E-Receipt ID
   if (order.eReceiptId) {
     yPosition = addText(`YF: ${order.eReceiptId}`, pageWidth / 2, yPosition, {
       align: 'center',
-      fontSize: 7,
+      fontSize: 8,
     });
     yPosition += 5;
   }
@@ -374,7 +376,7 @@ export const generateOrderReceiptPDF = async (
   // Thank you message
   yPosition = addText('Баярлалаа / Thank you', pageWidth / 2, yPosition, {
     align: 'center',
-    fontSize: 10,
+    fontSize: 9,
     fontStyle: 'bold',
   });
   yPosition += 8;
@@ -386,7 +388,7 @@ export const generateOrderReceiptPDF = async (
 
   addText('Төлбөрийн баримт', pageWidth / 2, yPosition, {
     align: 'center',
-    fontSize: 7,
+    fontSize: 8,
   });
 
   // Download or return PDF

@@ -47,23 +47,40 @@ const getDesignTokens = (mode: 'light' | 'dark'): ThemeOptions => ({
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontSize: 15, // Default 14 -> 15
     h1: {
       fontWeight: 700,
+      fontSize: '2.75rem', // Larger heading
     },
     h2: {
       fontWeight: 700,
+      fontSize: '2.25rem',
     },
     h3: {
       fontWeight: 600,
+      fontSize: '1.875rem',
     },
     h4: {
       fontWeight: 600,
+      fontSize: '1.5rem',
     },
     h5: {
       fontWeight: 500,
+      fontSize: '1.25rem',
     },
     h6: {
       fontWeight: 500,
+      fontSize: '1.125rem',
+    },
+    body1: {
+      fontSize: '1rem', // 15px base
+    },
+    body2: {
+      fontSize: '0.9375rem', // ~14px
+    },
+    button: {
+      fontSize: '1rem',
+      fontWeight: 600,
     },
   },
   shape: {

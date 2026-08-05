@@ -262,7 +262,7 @@ export default function PosIntegrationPage() {
                 {loading && syncType === 'orders' ? 'Синхрончилж байна...' : 'Синхрончлох'}
               </Button>
             </CardContent>
-          </Card>
+          </Card>con
         </Grid>
 
         <Grid size={{ xs: 12, md: 3 }}>
@@ -404,6 +404,7 @@ export default function PosIntegrationPage() {
                           label={getSyncTypeLabel(history.type)}
                           size="small"
                           color={history.type === 'ereceipt' ? 'primary' : 'default'}
+                          variant="outlined"
                         />
                       </TableCell>
                       <TableCell>

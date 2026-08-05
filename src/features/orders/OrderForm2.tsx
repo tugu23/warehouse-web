@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+﻿import { useState, useEffect, useMemo, useRef } from 'react';
 import { productsApi, customersApi, customerTypesApi, ordersApi } from '../../api';
 import {
   Customer,
@@ -8,6 +8,7 @@ import {
   type Promotion,
 } from '../../types';
 import { toast } from 'react-hot-toast';
+import { getBuyXGetYBonus, isPromotionCurrentlyActive } from '../../utils/promotionUtils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 /** Харилцагчийн төрөл тус бүрийн үнэ (product_prices) */
@@ -190,6 +191,10 @@ const s: Record<string, React.CSSProperties> = {
   },
   itemRowWarning: { border: `1px solid ${C.yellow}` },
   itemRowDuplicate: { border: `1px solid ${C.red}` },
+  itemRowPromo: {
+    border: `1px solid ${C.green}`,
+    borderLeft: `4px solid ${C.green}`,
+  },
   itemGrid: {
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 2fr) 152px 170px 100px 36px',
@@ -276,6 +281,7 @@ function SearchSelect<T extends string | number>({
   options,
   onSelect,
   emptyText = 'Сонголт олдсонгүй',
+  matchMode = 'includes',
 }: {
   value?: T | '';
   valueLabel?: string;
@@ -284,6 +290,7 @@ function SearchSelect<T extends string | number>({
   options: Array<SearchSelectOption<T>>;
   onSelect: (option: SearchSelectOption<T>) => void;
   emptyText?: string;
+  matchMode?: 'includes' | 'startsWith';
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
@@ -299,12 +306,20 @@ function SearchSelect<T extends string | number>({
     const normalized = query.trim().toLowerCase();
     if (!normalized) return options;
     return options.filter((option) => {
-      const haystack =
-        option.searchText ||
-        [option.label, option.description, option.meta].filter(Boolean).join(' ');
-      return haystack.toLowerCase().includes(normalized);
+      const label = String(option.label || '')
+        .toLowerCase()
+        .trim();
+      const extraFields = [option.description, option.meta, option.searchText]
+        .filter(Boolean)
+        .map((field) => String(field).toLowerCase().trim());
+
+      if (matchMode === 'startsWith') {
+        return label.startsWith(normalized) || extraFields.some((field) => field.includes(normalized));
+      }
+
+      return [label, ...extraFields].some((field) => field.includes(normalized));
     });
-  }, [options, query]);
+  }, [matchMode, options, query]);
 
   useEffect(() => {
     if (!open) return;
@@ -494,8 +509,22 @@ function pickCustomerMatchingInput(value: string, list: Customer[]): Customer | 
   const fromPhone = pickBest(byPhone);
   if (fromPhone) return fromPhone;
 
-  const byPartialName = list.filter((c) => c.name.toLowerCase().includes(vLower));
-  return pickBest(byPartialName);
+  const byRegistration = list.filter((c) => (c.registrationNumber || '').toLowerCase() === vLower);
+  const fromRegistration = pickBest(byRegistration);
+  if (fromRegistration) return fromRegistration;
+
+  const byPartialName = list.filter((c) => c.name.toLowerCase().startsWith(vLower));
+  const fromPartialName = pickBest(byPartialName);
+  if (fromPartialName) return fromPartialName;
+
+  const byPartialPhone = list.filter((c) => (c.phoneNumber || '').includes(trimmed));
+  const fromPartialPhone = pickBest(byPartialPhone);
+  if (fromPartialPhone) return fromPartialPhone;
+
+  const byPartialRegistration = list.filter((c) =>
+    (c.registrationNumber || '').toLowerCase().includes(vLower)
+  );
+  return pickBest(byPartialRegistration);
 }
 
 function resolveCustomerTypeId(c: Customer | undefined): number | undefined {
@@ -675,6 +704,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         priceMode: 'custom',
         priceModeInput: 'Гараар үнэ',
         customUnitPrice: Number(item.unitPrice || 0),
+        promotionId: item.promotionId ?? undefined,
       })) || [];
 
     setOrderItems(
@@ -779,13 +809,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   /** Барааны идэвхтэй (одоо хүчин төгөлдөр) урамшууллыг буцаана */
   const getActivePromotionsFor = (p?: ProductOption | null): Promotion[] => {
     if (!p?.promotions?.length) return [];
-    const now = Date.now();
-    return p.promotions.filter((pr) => {
-      if (!pr.isActive) return false;
-      const s = new Date(pr.startDate).getTime();
-      const e = new Date(pr.endDate).getTime();
-      return Number.isFinite(s) && Number.isFinite(e) && s <= now && e >= now;
-    });
+    return p.promotions.filter((pr) => isPromotionCurrentlyActive(pr));
   };
 
   /** OrderItem дээр сонгогдсон урамшууллыг (хүчин төгөлдөр бол) олно */
@@ -793,7 +817,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     if (oi.promotionId == null) return null;
     const p = getProduct(oi.productId);
     const active = getActivePromotionsFor(p);
-    return active.find((pr) => pr.id === oi.promotionId) ?? null;
+    // Тийм төрөлтэй гаргаж буй учраас String-р харьцуулна
+    return active.find((pr) => pr.id === Number(oi.promotionId)) ?? null;
   };
 
   const getUnitPrice = (oi: OrderItem): number => {
@@ -833,12 +858,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   const getBonusQty = (oi: OrderItem): number => {
     const promo = getSelectedPromotion(oi);
     if (promo?.type !== 'BUY_X_GET_Y') return 0;
-    const buyQty = Number(promo.buyQty || 0);
-    const freeQty = Number(promo.freeQty || 0);
-    if (buyQty < 1 || freeQty < 1) return 0;
-    const qty = getPieceQty(oi);
-    if (qty < buyQty) return 0;
-    return Math.floor(qty / buyQty) * freeQty;
+    return getBuyXGetYBonus(getPieceQty(oi), [promo], { promotionId: promo.id }).freeQty;
   };
 
   /** Хайрцаг + ширхэг холилдсон мөрийн дүн (урамшуулал тооцсон) */
@@ -1069,18 +1089,17 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         items: validItems.map((oi) => {
           const p = getProduct(oi.productId);
           const baseQty = getPieceQty(oi);
-          const bonusQty = getBonusQty(oi);
-          const totalQty = baseQty + bonusQty;
           const line = getLineSubtotal(oi);
           const promo = getSelectedPromotion(oi);
-          // Урамшуулал хэрэглэгдсэн бол дундаж нэгжийн үнийг гаргаж "custom" хэлбэрээр илгээнэ
+          // Урамшуулал хэрэглэгдсэн бол зөвхөн авсан ширхэгийг хадгална (bonus ширхэг нэмэгдэхгүй)
+          // Үнэгүй авах ширхэг зөвхөн хэвлэлтэнд "(Урамшуулал)" гэж харагдана
           if (promo) {
-            const avg = totalQty > 0 ? Math.round((line / totalQty) * 100) / 100 : 0;
             return {
               productId: Number(oi.productId),
-              quantity: totalQty,
+              quantity: baseQty,  // bonus ширхэг нэмэгдэхгүй
               priceMode: 'custom' as const,
-              customUnitPrice: avg,
+              customUnitPrice: getUnitPrice(oi),  // бүтэн үнэ
+              promotionId: promo.id,  // сонгогдсон урамшууллыг хадгална
             };
           }
           if (oi.priceMode === 'custom') {
@@ -1089,6 +1108,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
               quantity: baseQty,
               priceMode: 'custom' as const,
               customUnitPrice: Number(oi.customUnitPrice || 0),
+              promotionId: oi.promotionId,
             };
           }
           if (needsWeightedUnitForApi(oi, p) && baseQty > 0) {
@@ -1098,6 +1118,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
               quantity: baseQty,
               priceMode: 'custom' as const,
               customUnitPrice: avg,
+              promotionId: oi.promotionId,
             };
           }
           return {
@@ -1105,6 +1126,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
             quantity: baseQty,
             priceMode: oi.priceMode,
             customUnitPrice: undefined,
+            promotionId: oi.promotionId,
           };
         }),
       };
@@ -1161,10 +1183,12 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                 valueLabel={selectedCustomer?.name}
                 placeholder="Харилцагч сонгоно уу"
                 searchPlaceholder="Нэр, утас, регистр..."
+                matchMode="startsWith"
                 options={customersForForm.map((c) => ({
                   value: c.id,
                   label: c.name,
-                  meta: c.phoneNumber || c.registrationNumber || '',
+                  meta: [c.phoneNumber, c.registrationNumber].filter(Boolean).join(' • '),
+                  searchText: `${(c.phoneNumber || '').trim()} ${(c.registrationNumber || '').trim()}`.trim(),
                 }))}
                 onSelect={(opt) => {
                   setSelectedCustomerId(opt.value);
@@ -1235,6 +1259,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
               const selectedPromo = getSelectedPromotion(oi);
               const bonusQty = prod ? getBonusQty(oi) : 0;
               const totalQtyWithBonus = pieceQty + bonusQty;
+              const isPromoItem = selectedPromo?.type === 'BUY_X_GET_Y' && bonusQty > 0;
               const stockStatus = prod
                 ? prod.stock === 0
                   ? 'out'
@@ -1288,7 +1313,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                   key={idx}
                   style={{
                     ...s.itemRow,
-                    ...(dup ? s.itemRowDuplicate : over ? s.itemRowWarning : {}),
+                    ...(dup ? s.itemRowDuplicate : over ? s.itemRowWarning : isPromoItem ? s.itemRowPromo : {}),
                   }}
                 >
                   <div style={s.itemGrid}>
@@ -1565,6 +1590,33 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                       )}
                     </div>
                   )}
+
+                  {/* 1+1 урамшуулалтай барааны нэмэлт мөр */}
+                  {isPromoItem && prod && (
+                    <div
+                      style={{
+                        ...s.itemRow,
+                        ...s.itemRowPromo,
+                        marginTop: -4,
+                        marginBottom: 0,
+                        padding: '8px 14px',
+                        background: '#0f1f12',
+                      }}
+                    >
+                      <div style={s.itemGrid}>
+                        <div style={{ fontSize: 12, color: C.green }}>
+                          <span style={{ color: C.green, fontWeight: 700 }}>(Урамшуулал)</span>
+                          <span style={{ color: C.textMuted, marginLeft: 6 }}>
+                            {selectedPromo?.name || '1+1 Урамшуулал'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: C.green, textAlign: 'center' }}>1</div>
+                        <div style={{ fontSize: 12, color: C.green, textAlign: 'right' }}>0₮/ш</div>
+                        <div style={{ fontSize: 12, color: C.green, textAlign: 'right' }}>0₮</div>
+                        <div />
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1667,3 +1719,6 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     </div>
   );
 }
+
+
+

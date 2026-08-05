@@ -14,5 +14,5 @@ export type EbarimtParams = {
   type?: 'B2C_RECEIPT' | 'B2B_RECEIPT';
   consumerNo?: string | null;
   customerTin?: string | null;
-  regNo?: number | null;
+  regNo?: number | string | null;
 };

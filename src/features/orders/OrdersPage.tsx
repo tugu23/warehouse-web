@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Chip,
+  MenuItem,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -17,6 +18,7 @@ import { ordersApi } from '../../api';
 import { Order } from '../../types';
 import OrderForm2 from './OrderForm2';
 import OrderDetailsModal from './OrderDetailsModal';
+import EbarimtPrintModal from './EbarimtPrintModal';
 import { TableSkeleton } from '../../components/LoadingSkeletons';
 import { formatDateTimeMN } from '../../utils/dateFormatter';
 import {
@@ -25,17 +27,22 @@ import {
   todayLocalYmd,
 } from './dailyOrderProductsAggregate';
 import { printDailyOrderProductsPdf } from './printDailyOrderProductsPdf';
+import { employeesApi } from '../../api';
 
 type EbarimtListFilter = 'all' | 'returned' | 'active';
 
 export default function OrdersPage() {
   const { canManage, user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [employees, setEmployees] = useState<{ id: number; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [editOrder, setEditOrder] = useState<Order | null>(null);
+  const [autoPrintOrder, setAutoPrintOrder] = useState<Order | null>(null);
   const [ebarimtListFilter, setEbarimtListFilter] = useState<EbarimtListFilter>('all');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('all');
   /** Сонгосон өдөр - defaulting to today */
   const [selectedDate, setSelectedDate] = useState<string>(() => todayLocalYmd());
   /** A4 ачааны жагсаалтын өдөр */
@@ -56,6 +63,24 @@ export default function OrdersPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const response = await employeesApi.getAll({ limit: 'all' });
+        const list = response.data?.data?.employees || [];
+        setEmployees(
+          list
+            .map((employee) => ({ id: employee.id, name: employee.name }))
+            .sort((a, b) => a.name.localeCompare(b.name, 'mn', { sensitivity: 'base' }))
+        );
+      } catch (error) {
+        console.error('Error loading employees:', error);
+      }
+    };
+
+    loadEmployees();
+  }, []);
 
   const handleUpdateStatus = async (orderId: number, status: string) => {
     try {
@@ -84,18 +109,82 @@ export default function OrdersPage() {
     handleViewDetails(order);
   };
 
+  const handleDeleteOrder = async (orderId: number) => {
+    if (!window.confirm('Та энэ захиалгыг бүрмösөн устгах уу? Энэ үйлдлийг буцаах боломжгүй!')) {
+      return;
+    }
+
+    try {
+      await ordersApi.delete(orderId);
+      toast.success('Захиалга амжилттай устгагдлаа');
+      await fetchOrders();
+    } catch (error: unknown) {
+      console.error('Error deleting order:', error);
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Захиалга устгахад алдаа гарлаа';
+      toast.error(message);
+    }
+  };
+
+  const handleEditOrder = async (order: Order) => {
+    try {
+      const response = await ordersApi.getById(order.id);
+      const fullOrder = response.data.data?.order || null;
+      setEditOrder(fullOrder);
+    } catch (error) {
+      console.error('Error fetching order for edit:', error);
+      toast.error('Захиалгын мэдээлэл татахад алдаа гарлаа');
+    }
+  };
+
+  const handleCreateSuccess = async (createdOrder?: Order) => {
+    setCreateModalOpen(false);
+
+    if (!createdOrder?.id) {
+      await fetchOrders();
+      return;
+    }
+
+    try {
+      await ordersApi.updateStatus(createdOrder.id, {
+        status: 'Fulfilled',
+      });
+
+      const response = await ordersApi.getById(createdOrder.id);
+      const freshOrder = response.data.data?.order || null;
+
+      if (freshOrder) {
+        setAutoPrintOrder(freshOrder);
+      } else {
+        toast.error('Захиалгын дэлгэрэнгүй мэдээлэл олдсонгүй');
+      }
+    } catch (error) {
+      console.error('Error preparing auto eBarimt print:', error);
+      toast.error('Захиалга үүссэн ч eBarimt хэвлэхэд бэлдэхэд алдаа гарлаа');
+    } finally {
+      await fetchOrders();
+    }
+  };
+
   const handlePrintDailyLoadList = () => {
     const ymd = printListDate.trim();
     if (!ymd) {
       toast.error('Өдөр сонгоно уу');
       return;
     }
-    const rows = aggregateDailyOrderProducts(orders, ymd);
+    const targetOrders =
+      selectedEmployeeId === 'all'
+        ? orders
+        : orders.filter((order) => String(order.createdBy?.id || order.createdById) === selectedEmployeeId);
+    const rows = aggregateDailyOrderProducts(targetOrders, ymd);
     if (rows.length === 0) {
       toast.error('Сонгосон өдөрт захиалгад орсон бараа олдсонгүй');
       return;
     }
-    printDailyOrderProductsPdf(rows, ymd);
+    const employeeName =
+      selectedEmployeeId === 'all'
+        ? undefined
+        : employees.find((employee) => String(employee.id) === selectedEmployeeId)?.name;
+    printDailyOrderProductsPdf(rows, ymd, employeeName);
   };
 
   const filteredOrders = useMemo(() => {
@@ -190,6 +279,38 @@ export default function OrdersPage() {
         return formatDateTimeMN(d.toISOString());
       },
     },
+    {
+      id: 'actions',
+      label: 'Үйлдэл',
+      align: 'center' as const,
+      minWidth: 180,
+      format: (row: Order) => (
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditOrder(row);
+            }}
+          >
+            Засах
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteOrder(row.id);
+            }}
+            disabled={!canManage}
+          >
+            Устгах
+          </Button>
+        </Box>
+      ),
+    },
   ];
 
   if (loading) {
@@ -229,6 +350,21 @@ export default function OrdersPage() {
               <ToggleButton value="returned">Буцаагдсан</ToggleButton>
               <ToggleButton value="active">Идэвхтэй баримт</ToggleButton>
             </ToggleButtonGroup>
+            <TextField
+              select
+              size="small"
+              label="Ажилтан"
+              value={selectedEmployeeId}
+              onChange={(e) => setSelectedEmployeeId(e.target.value)}
+              sx={{ minWidth: 170 }}
+            >
+              <MenuItem value="all">Бүх ажилтан</MenuItem>
+              {employees.map((employee) => (
+                <MenuItem key={employee.id} value={String(employee.id)}>
+                  {employee.name}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
               type="date"
               size="small"
@@ -280,9 +416,29 @@ export default function OrdersPage() {
       {createModalOpen && (
         <OrderForm2
           onClose={() => setCreateModalOpen(false)}
+          onSuccess={handleCreateSuccess}
+        />
+      )}
+
+      {autoPrintOrder && (
+        <EbarimtPrintModal
+          order={autoPrintOrder}
+          onClose={() => setAutoPrintOrder(null)}
           onSuccess={() => {
-            setCreateModalOpen(false);
+            setAutoPrintOrder(null);
             fetchOrders();
+          }}
+        />
+      )}
+
+      {editOrder && (
+        <OrderForm2
+          initialOrder={editOrder}
+          onClose={() => setEditOrder(null)}
+          onSuccess={async () => {
+            setEditOrder(null);
+            await fetchOrders();
+            toast.success('Захиалга шинэчлэгдлээ');
           }}
         />
       )}

@@ -21,6 +21,8 @@ import {
   IconButton,
   Tooltip,
   LinearProgress,
+  TextField,
+  TablePagination,
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -42,12 +44,16 @@ import EbarimtPrintModal from '../orders/EbarimtPrintModal';
 
 export default function EBarimtPage() {
   const [loading, setLoading] = useState(false);
-  const [info, setInfo] = useState<EBarimtInformation | null>(null);
+  const [eBarimtInfo, setEBarimtInfo] = useState<EBarimtInformation | null>(null);
   const [sendingData, setSendingData] = useState(false);
 
   // Захиалгын жагсаалт
   const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
   const [registeredOrders, setRegisteredOrders] = useState<Order[]>([]);
+  const [registeredSearch, setRegisteredSearch] = useState('');
+  const [registeredTypeFilter, setRegisteredTypeFilter] = useState<'all' | 'B2B' | 'B2C' | 'returned'>('all');
+  const [registeredPage, setRegisteredPage] = useState(0);
+  const [registeredRowsPerPage, setRegisteredRowsPerPage] = useState(10);
 
   // eBarimt хэвлэх modal
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
@@ -59,7 +65,7 @@ export default function EBarimtPage() {
   const fetchInfo = useCallback(async () => {
     try {
       const res = await ebarimtApi.getInformation();
-      setInfo(res.data.data);
+      setEBarimtInfo(res.data.data);
     } catch {
       // POS холбогдоогүй бол алдаа харуулахгүй
     }
@@ -127,40 +133,87 @@ export default function EBarimtPage() {
     }
   };
 
-  // B2B: хадгалагдсан баримтын төрөл эсвэл байгууллагын нэр (registrationNumber дангаар нь биш)
+  // B2B: хадгалагдсан баримтын төрөл эсвэл байгууллагын ТТД байгаа эсэх
   const isB2BOrder = (order: Order) => {
     const kind = order.ebarimtReceiptType || order.ebarimtType;
     if (kind === 'B2B') return true;
     if (kind === 'B2C') return false;
+    // Fallback: хэрэв төрөл тогтоогоогүй бол ТТД байвал B2B
     const c = order.customer;
-    return !!c?.organizationName?.trim();
+    return !!c?.registrationNumber?.trim();
   };
 
-  // eBarimt буцаалт — backend-ээр дамжуулж POS API руу илгээнэ
+  const filteredRegisteredOrders = registeredOrders.filter((order) => {
+    const isB2B = isB2BOrder(order);
+    const isReturned = !!order.ebarimtReturnId;
+    const q = registeredSearch.trim().toLowerCase();
+
+    if (registeredTypeFilter === 'B2B' && !isB2B) return false;
+    if (registeredTypeFilter === 'B2C' && isB2B) return false;
+    if (registeredTypeFilter === 'returned' && !isReturned) return false;
+
+    if (!q) return true;
+
+    const haystack = [
+      order.id,
+      order.ebarimtBillId,
+      order.customer?.name,
+      order.totalAmount,
+      order.paymentMethod,
+      order.status,
+      order.ebarimtDate,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    return haystack.includes(q);
+  });
+
+  useEffect(() => {
+    setRegisteredPage(0);
+  }, [registeredSearch, registeredTypeFilter, registeredOrders.length]);
+
+  const pagedRegisteredOrders = filteredRegisteredOrders.slice(
+    registeredPage * registeredRowsPerPage,
+    registeredPage * registeredRowsPerPage + registeredRowsPerPage
+  );
+
+  // eBarimt буцаалт — backend-ээр дамжуулж POS API руу илгээнэ (B2B, B2C хоёуланд)
   const handleEbarimtReturn = async (order: Order) => {
-    if (isB2BOrder(order)) {
-      toast.error('B2B баримт буцаалт хийх боломжгүй');
-      return;
-    }
-    if (
-      !window.confirm(
-        `Захиалга #${order.id}-ийн eBarimt баримтыг буцаах уу?\nBill ID: ${order.ebarimtBillId}`
-      )
-    )
-      return;
+    // Ask for reason first
+    const reason = window.prompt(
+      `Захиалга #${order.id}-ийн eBarimt баримтыг буцаах уу?\n\nБуцаалтын шалтгаан оруулна уу (заавал биш):`,
+      ''
+    );
+
+    // User cancelled
+    if (reason === null) return;
 
     setReturningId(order.id);
     try {
-      const res = await ebarimtApi.returnOrder(order.id);
+      const res = await ebarimtApi.returnOrder(order.id, reason || undefined);
       const result = res.data.data;
+
+      // Idempotent response — already returned
+      if (result?.alreadyReturned) {
+        // $FlowFixMe - react-hot-toast overload resolution issue in TypeScript
+        (toast as unknown as { (message: Parameters<typeof toast>[0], opts?: Parameters<typeof toast>[1]): string; info: (message: string) => string }).info(result?.message ?? 'Захиалга өмнө нь буцаагдсан байна');
+        fetchOrders();
+        return;
+      }
 
       // Backend амжилттай бол data.success === true байна
       if (result?.success) {
-        toast.success('eBarimt буцаалт амжилттай!');
+        const isB2B = result.receiptType === 'B2B';
+        toast.success(
+          isB2B
+            ? 'Байгууллагын баримт амжилттай буцаагдлаа!'
+            : 'Баримт амжилттай буцаагдлаа!'
+        );
         fetchOrders();
         fetchInfo();
       } else {
-        // Энэ хэсэгт хүрэх ёсгүй, учир нь backend алдаа шидэх ёстой
         toast.error(result?.message || 'eBarimt буцаалт амжилтгүй');
       }
     } catch (e: unknown) {
@@ -179,7 +232,7 @@ export default function EBarimtPage() {
     return 'success';
   };
 
-  const lotteryLevel = getLotteryWarningLevel(info?.lotteryCount);
+  const lotteryLevel = getLotteryWarningLevel(eBarimtInfo?.lotteryCount);
 
   return (
     <Box>
@@ -196,12 +249,12 @@ export default function EBarimtPage() {
       </Box>
 
       {/* Анхааруулга */}
-      {info?.warningMessage && (
+      {eBarimtInfo?.warningMessage && (
         <Alert severity="warning" icon={<WarningIcon />} sx={{ mb: 2 }}>
-          {info.warningMessage}
+          {eBarimtInfo.warningMessage}
         </Alert>
       )}
-      {info?.shouldSendNow && !info?.warningMessage && (
+      {eBarimtInfo?.shouldSendNow && !eBarimtInfo?.warningMessage && (
         <Alert severity="error" icon={<ErrorIcon />} sx={{ mb: 2 }}>
           3 хоногийн хугацаа дуусаж байна — нэгдсэн системд яаралтай илгээнэ үү!
         </Alert>
@@ -225,7 +278,7 @@ export default function EBarimtPage() {
                 )}
               </Stack>
               <Typography variant="h4" fontWeight="bold">
-                {info?.lotteryCount ?? '-'}
+                {eBarimtInfo?.lotteryCount ?? '-'}
               </Typography>
               {lotteryLevel !== 'ok' && (
                 <Typography
@@ -245,7 +298,7 @@ export default function EBarimtPage() {
           <Card
             sx={{
               borderLeft: 4,
-              borderColor: (info?.billCount || 0) > 0 ? 'warning.main' : 'grey.300',
+              borderColor: (eBarimtInfo?.billCount || 0) > 0 ? 'warning.main' : 'grey.300',
             }}
           >
             <CardContent>
@@ -256,11 +309,11 @@ export default function EBarimtPage() {
                 <InfoIcon color="info" />
               </Stack>
               <Typography variant="h4" fontWeight="bold">
-                {info?.billCount ?? 0}
+                {eBarimtInfo?.billCount ?? 0}
               </Typography>
-              {(info?.billAmount || 0) > 0 && (
+              {(eBarimtInfo?.billAmount || 0) > 0 && (
                 <Typography variant="caption" color="text.secondary">
-                  {info?.billAmount?.toLocaleString()}₮
+                  {eBarimtInfo?.billAmount?.toLocaleString()}₮
                 </Typography>
               )}
             </CardContent>
@@ -397,18 +450,59 @@ export default function EBarimtPage() {
             <Chip label={registeredOrders.length} size="small" color="success" />
           </Typography>
 
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1,
+              alignItems: 'center',
+              mb: 2,
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: 'background.default',
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <TextField
+              size="small"
+              placeholder="ДДТД, харилцагч, дүнгээр хайх"
+              value={registeredSearch}
+              onChange={(e) => setRegisteredSearch(e.target.value)}
+              sx={{ minWidth: { xs: '100%', md: 280 }, flex: 1 }}
+            />
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+              {[
+                { value: 'all', label: 'Бүгд' },
+                { value: 'B2B', label: 'B2B' },
+                { value: 'B2C', label: 'B2C' },
+                { value: 'returned', label: 'Буцаагдсан' },
+              ].map((chip) => (
+                <Chip
+                  key={chip.value}
+                  label={chip.label}
+                  clickable
+                  color={registeredTypeFilter === chip.value ? 'primary' : 'default'}
+                  variant={registeredTypeFilter === chip.value ? 'filled' : 'outlined'}
+                  onClick={() => setRegisteredTypeFilter(chip.value as typeof registeredTypeFilter)}
+                />
+              ))}
+            </Stack>
+          </Box>
+
           {loading ? (
             <LinearProgress />
-          ) : registeredOrders.length === 0 ? (
+          ) : filteredRegisteredOrders.length === 0 ? (
             <Alert severity="info">eBarimt бүртгэгдсэн захиалга байхгүй</Alert>
           ) : (
+            <>
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
                 <TableHead>
                   <TableRow>
                     <TableCell>#</TableCell>
-                    <TableCell>ДДТД (сүүлийн 12)</TableCell>
-                    <TableCell>eBarimt огноо</TableCell>
+                    <TableCell>ДДТД</TableCell>
+                    <TableCell>Огноо</TableCell>
                     <TableCell>Харилцагч</TableCell>
                     <TableCell>Төрөл</TableCell>
                     <TableCell align="right">Дүн</TableCell>
@@ -417,7 +511,7 @@ export default function EBarimtPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {registeredOrders.map((order) => {
+                  {pagedRegisteredOrders.map((order) => {
                     const isB2B = isB2BOrder(order);
                     const isReturned = !!order.ebarimtReturnId;
                     const isProcessing = returningId === order.id;
@@ -425,15 +519,19 @@ export default function EBarimtPage() {
                       <TableRow key={order.id} hover>
                         <TableCell>{order.id}</TableCell>
                         <TableCell>
-                          <Typography variant="caption" fontFamily="monospace">
-                            {order.ebarimtBillId?.slice(-12) || '-'}
-                          </Typography>
+                          <Stack spacing={0.25}>
+                            <Typography variant="caption" fontFamily="monospace">
+                              {order.ebarimtBillId || '-'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {order.ebarimtId ? `ID: ${order.ebarimtId.slice(-8)}` : ''}
+                            </Typography>
+                          </Stack>
                         </TableCell>
                         <TableCell>
-                          {order.ebarimtId ||
-                            (order.ebarimtDate
-                              ? format(new Date(order.ebarimtDate), 'MM/dd HH:mm')
-                              : '-')}
+                          {order.ebarimtDate
+                            ? format(new Date(order.ebarimtDate), 'MM/dd HH:mm')
+                            : '-'}
                         </TableCell>
                         <TableCell>{order.customer?.name || '-'}</TableCell>
                         <TableCell>
@@ -457,18 +555,18 @@ export default function EBarimtPage() {
                         <TableCell align="center">
                           <Tooltip
                             title={
-                              isB2B
-                                ? 'B2B баримт буцаалт хийх боломжгүй'
-                                : isReturned
-                                  ? 'Аль хэдийн буцаагдсан'
-                                  : 'eBarimt буцаах'
+                              isReturned
+                                ? 'Аль хэдийн буцаагдсан'
+                                : isB2B
+                                  ? 'B2B eBarimt буцаах'
+                                  : 'B2C eBarimt буцаах'
                             }
                           >
                             <span>
                               <IconButton
                                 color="error"
                                 size="small"
-                                disabled={isReturned || isB2B || isProcessing}
+                                disabled={isReturned || isProcessing}
                                 onClick={() => handleEbarimtReturn(order)}
                               >
                                 {isProcessing ? <CircularProgress size={20} /> : <ReturnIcon />}
@@ -482,6 +580,19 @@ export default function EBarimtPage() {
                 </TableBody>
               </Table>
             </TableContainer>
+            <TablePagination
+              component="div"
+              count={filteredRegisteredOrders.length}
+              page={registeredPage}
+              onPageChange={(_, nextPage) => setRegisteredPage(nextPage)}
+              rowsPerPage={registeredRowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRegisteredRowsPerPage(parseInt(e.target.value, 10));
+                setRegisteredPage(0);
+              }}
+              rowsPerPageOptions={[5, 10, 20, 50]}
+            />
+            </>
           )}
         </CardContent>
       </Card>

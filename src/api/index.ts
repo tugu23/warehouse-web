@@ -120,6 +120,7 @@ export const productsApi = {
     api.post<ApiResponse<{ product: Product }>>('/api/products', data),
   update: (id: number, data: UpdateProductRequest) =>
     api.put<ApiResponse<{ product: Product }>>(`/api/products/${id}`, data),
+  delete: (id: number) => api.delete<ApiResponse<{ message?: string }>>(`/api/products/${id}`),
   adjustInventory: (data: InventoryAdjustmentRequest) =>
     api.post<ApiResponse<{ product: Product }>>('/api/products/inventory/adjust', data),
   getMonthlyInventory: (month: string) =>
@@ -173,6 +174,7 @@ export const customersApi = {
     api.post<ApiResponse<{ customer: Customer }>>('/api/customers', data),
   update: (id: number, data: UpdateCustomerRequest) =>
     api.put<ApiResponse<{ customer: Customer }>>(`/api/customers/${id}`, data),
+  delete: (id: number) => api.delete<ApiResponse<{ message?: string }>>(`/api/customers/${id}`),
 };
 
 export const customerTypesApi = {
@@ -212,6 +214,7 @@ export const ordersApi = {
   getReceipt: (id: number) => api.get(`/api/orders/${id}/receipt`),
   getDocument: (id: number) => api.get(`/api/orders/${id}/document`),
   exportToExcel: (id: number) => api.get(`/api/orders/${id}/export`, { responseType: 'blob' }),
+  delete: (id: number) => api.delete<ApiResponse<{ message?: string }>>(`/api/orders/${id}`),
   // PDF Receipt API
   viewReceiptPDF: async (id: number, showVat: boolean = true) => {
     try {
@@ -555,19 +558,14 @@ export const agentKpiApi = {
     api.get<ApiResponse<AgentKpiDashboardSummary>>('/agent-kpi/dashboard-summary', {
       params,
     }),
-  getRanking: (params: {
-    from: string;
-    to: string;
-    sortBy?: 'amount' | 'boxes' | 'orders';
-  }) =>
+  getRanking: (params: { from: string; to: string; sortBy?: 'amount' | 'boxes' | 'orders' }) =>
     api.get<ApiResponse<{ ranking: AgentKpiRankingRow[] }>>('/agent-kpi/ranking', {
       params,
     }),
   getCategoryAnalysis: (params: { from: string; to: string; agentId?: number }) =>
-    api.get<ApiResponse<{ categories: AgentKpiCategoryRow[] }>>(
-      '/agent-kpi/category-analysis',
-      { params }
-    ),
+    api.get<ApiResponse<{ categories: AgentKpiCategoryRow[] }>>('/agent-kpi/category-analysis', {
+      params,
+    }),
   getTrendData: (params: {
     from: string;
     to: string;
@@ -584,8 +582,7 @@ export const agentKpiApi = {
     to: string;
     agentId?: number;
     granularity?: SalesByBrandGranularity;
-  }) =>
-    api.get<ApiResponse<SalesByBrandResult>>('/agent-kpi/sales-by-brand', { params }),
+  }) => api.get<ApiResponse<SalesByBrandResult>>('/agent-kpi/sales-by-brand', { params }),
   getTargets: (employeeId: number) =>
     api.get<ApiResponse<{ targets: AgentKpiTarget[] }>>('/agent-kpi/targets', {
       params: { employeeId },

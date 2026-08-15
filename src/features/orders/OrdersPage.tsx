@@ -30,6 +30,19 @@ import { printDailyOrderProductsPdf } from './printDailyOrderProductsPdf';
 import { employeesApi } from '../../api';
 
 type EbarimtListFilter = 'all' | 'returned' | 'active';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type EbarimtFilter = 'all' | 'registered' | 'not_registered' | 'returned';
+
+/**
+ * Check if an order can be deleted based on eBarimt status
+ * Deletable if:
+ * - eBarimt not registered yet
+ * - eBarimt has been returned
+ * - Order is already cancelled
+ */
+const canDeleteOrder = (order: Order): boolean => {
+  return !order.ebarimtRegistered || order.ebarimtReturnId != null || order.status === 'Cancelled';
+};
 
 export default function OrdersPage() {
   const { canManage, user } = useAuth();
@@ -43,6 +56,8 @@ export default function OrdersPage() {
   const [autoPrintOrder, setAutoPrintOrder] = useState<Order | null>(null);
   const [ebarimtListFilter, setEbarimtListFilter] = useState<EbarimtListFilter>('all');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('all');
+  /** Устгаж байгаа state */
+  const [isDeleting, setIsDeleting] = useState(false);
   /** Сонгосон өдөр - defaulting to today */
   const [selectedDate, setSelectedDate] = useState<string>(() => todayLocalYmd());
   /** A4 ачааны жагсаалтын өдөр */
@@ -110,18 +125,32 @@ export default function OrdersPage() {
   };
 
   const handleDeleteOrder = async (orderId: number) => {
+    // Шалгах: энэ захиалга устгаж болох эсэх
+    const order = orders.find((o) => o.id === orderId);
+    if (!order || !canDeleteOrder(order)) {
+      toast.error(
+        'И-баримт хэвлэгдсэн идэвхтэй захиалгыг устгах боломжгүй. Эхлээд И-баримтыг буцаагаад дараа нь устгах уу.'
+      );
+      return;
+    }
+
     if (!window.confirm('Та энэ захиалгыг бүрмösөн устгах уу? Энэ үйлдлийг буцаах боломжгүй!')) {
       return;
     }
 
+    setIsDeleting(true);
     try {
       await ordersApi.delete(orderId);
       toast.success('Захиалга амжилттай устгагдлаа');
       await fetchOrders();
     } catch (error: unknown) {
       console.error('Error deleting order:', error);
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Захиалга устгахад алдаа гарлаа';
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Захиалга устгахад алдаа гарлаа';
       toast.error(message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -174,7 +203,9 @@ export default function OrdersPage() {
     const targetOrders =
       selectedEmployeeId === 'all'
         ? orders
-        : orders.filter((order) => String(order.createdBy?.id || order.createdById) === selectedEmployeeId);
+        : orders.filter(
+            (order) => String(order.createdBy?.id || order.createdById) === selectedEmployeeId
+          );
     const rows = aggregateDailyOrderProducts(targetOrders, ymd);
     if (rows.length === 0) {
       toast.error('Сонгосон өдөрт захиалгад орсон бараа олдсонгүй');
@@ -304,7 +335,7 @@ export default function OrdersPage() {
               e.stopPropagation();
               handleDeleteOrder(row.id);
             }}
-            disabled={!canManage}
+            disabled={!canManage || isDeleting || !canDeleteOrder(row)}
           >
             Устгах
           </Button>
@@ -414,10 +445,7 @@ export default function OrdersPage() {
       />
 
       {createModalOpen && (
-        <OrderForm2
-          onClose={() => setCreateModalOpen(false)}
-          onSuccess={handleCreateSuccess}
-        />
+        <OrderForm2 onClose={() => setCreateModalOpen(false)} onSuccess={handleCreateSuccess} />
       )}
 
       {autoPrintOrder && (

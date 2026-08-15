@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Add as AddIcon, Refresh as RefreshIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import {
   Box,
   Button,
@@ -9,6 +9,10 @@ import {
   Typography,
   ToggleButtonGroup,
   ToggleButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
@@ -34,6 +38,7 @@ export default function ProductsPage() {
   const [promotionModalOpen, setPromotionModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('active');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -100,6 +105,22 @@ export default function ProductsPage() {
   const handleOpenPromotions = () => {
     setDetailsModalOpen(false);
     setPromotionModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedProduct) return;
+    try {
+      await productsApi.delete(selectedProduct.id);
+      toast.success('Бараа амжилттай устгагдлаа!');
+      setDeleteDialogOpen(false);
+      setDetailsModalOpen(false);
+      setSelectedProduct(null);
+      fetchProducts();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Устгах явцад алдаа гарлаа');
+    }
   };
 
   const handleCloseDetailsModal = () => {
@@ -251,9 +272,34 @@ export default function ProductsPage() {
           onManageInventory={handleOpenInventory}
           onManagePrices={handleOpenPrices}
           onManagePromotions={handleOpenPromotions}
+          onDelete={() => setDeleteDialogOpen(true)}
           canManage={canManage()}
         />
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Бараа устгах</DialogTitle>
+        <DialogContent>
+          <Typography>"{selectedProduct?.nameMongolian}" устагахдаа итгэлтэй байна уу?</Typography>
+          {canManage() && (
+            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+              ⚠️ Энэ үйлдэл буцаах боломжгүй!
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Болих</Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+            startIcon={<DeleteIcon />}
+          >
+            Устгах
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Modal
         open={editModalOpen}

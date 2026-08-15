@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Chip, Stack, Typography, Tooltip, IconButton } from '@mui/material';
-import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import {
+  Box,
+  Button,
+  Chip,
+  Stack,
+  Typography,
+  Tooltip,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
+import { Add as AddIcon, Refresh as RefreshIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -19,6 +31,7 @@ export default function CustomersPage() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   /** Шинэ харилцагчийн формыг бүрэн дахин монтлох (өмнөх засварын өгөгдөл үлдэхгүй) */
   const [createFormNonce, setCreateFormNonce] = useState(0);
 
@@ -75,6 +88,22 @@ export default function CustomersPage() {
     if (!selectedCustomer) return;
     const url = `https://www.google.com/maps?q=${selectedCustomer.locationLatitude},${selectedCustomer.locationLongitude}`;
     window.open(url, '_blank');
+  };
+
+  const handleDelete = async () => {
+    if (!selectedCustomer) return;
+    try {
+      await customersApi.delete(selectedCustomer.id);
+      toast.success('Харилцагч амжилттай устгагдлаа!');
+      setDeleteDialogOpen(false);
+      setDetailsModalOpen(false);
+      setSelectedCustomer(null);
+      fetchCustomers();
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Устгах явцад алдаа гарлаа');
+    }
   };
 
   const columns = [
@@ -254,9 +283,34 @@ export default function CustomersPage() {
           customer={selectedCustomer}
           onEdit={handleOpenEdit}
           onViewOnMap={handleViewOnMap}
+          onDelete={() => setDeleteDialogOpen(true)}
           canManage={canManage()}
         />
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Харилцагч устгах</DialogTitle>
+        <DialogContent>
+          <Typography>"{selectedCustomer?.name}" устагахдаа итгэлтэй байна уу?</Typography>
+          {canManage() && (
+            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+              ⚠️ Энэ үйлдэл буцаах боломжгүй!
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Болих</Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+            startIcon={<DeleteIcon />}
+          >
+            Устгах
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Edit Modal */}
       <Modal

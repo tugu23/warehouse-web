@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import {
   Edit as EditIcon,
+  Delete as DeleteIcon,
   Inventory2 as InventoryIcon,
   MonetizationOn as PriceIcon,
   LocalOffer as PromotionIcon,
@@ -24,6 +25,7 @@ interface ProductDetailsModalProps {
   onManageInventory: () => void;
   onManagePrices: () => void;
   onManagePromotions: () => void;
+  onDelete?: () => void;
   canManage: boolean;
 }
 
@@ -50,6 +52,7 @@ export default function ProductDetailsModal({
   onManageInventory,
   onManagePrices,
   onManagePromotions,
+  onDelete,
   canManage,
 }: ProductDetailsModalProps) {
   if (!product) return null;
@@ -251,6 +254,16 @@ export default function ProductDetailsModal({
                 >
                   Урамшуулал нэмэх
                 </Button>
+                {onDelete && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    onClick={onDelete}
+                  >
+                    Устгах
+                  </Button>
+                )}
               </Stack>
             </CardContent>
           </Card>

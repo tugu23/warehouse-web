@@ -63,8 +63,8 @@ const PDF = {
   lineAfterTitle: 3,
   colHeaderAfter: 3,
   sellerRow: 3.35,
-    buyerLineMin: 3.2,
-    buyerLinePerWrap: 3.1,
+  buyerLineMin: 3.2,
+  buyerLinePerWrap: 3.1,
   blockAfter: 2.2,
   tableHeadMm: 6.5,
   tableRowMm: 4.35,
@@ -583,6 +583,8 @@ async function generateEbarimtPDF(
   const sellerBlockH = sellerRowsCount * layout.rowH;
   const buyerBlockH = estimateBuyerBlockHeightMm(buyer, data, isB2B, customerName, valMaxW, layout);
   const copySubtitleExtra = printTwoCopies ? 3 : 0;
+  void copySubtitleExtra; // TODO: use this value
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const headerTopH =
     8 +
     layout.dateAfter +
@@ -625,34 +627,15 @@ async function generateEbarimtPDF(
 
   if (printTwoCopies) {
     if (isB2B) {
-      await drawEbarimtReceiptPage(
-        doc,
-        drawCtx,
-        true,
-        '1-р хувь — байгууллагын'
-      );
+      await drawEbarimtReceiptPage(doc, drawCtx, true, '1-р хувь — байгууллагын');
       doc.addPage();
-      await drawEbarimtReceiptPage(
-        doc,
-        drawCtx,
-        true,
-        '2-р хувь — байгууллагын',
-        { showQr: false }
-      );
+      await drawEbarimtReceiptPage(doc, drawCtx, true, '2-р хувь — байгууллагын', {
+        showQr: false,
+      });
     } else {
-      await drawEbarimtReceiptPage(
-        doc,
-        drawCtx,
-        true,
-        '1-р хувь — сугалаатай'
-      );
+      await drawEbarimtReceiptPage(doc, drawCtx, true, '1-р хувь — сугалаатай');
       doc.addPage();
-      await drawEbarimtReceiptPage(
-        doc,
-        drawCtx,
-        false,
-        '2-р хувь — сугалаагүй'
-      );
+      await drawEbarimtReceiptPage(doc, drawCtx, false, '2-р хувь — сугалаагүй');
     }
   } else {
     await drawEbarimtReceiptPage(doc, drawCtx, true);
@@ -810,9 +793,22 @@ interface Props {
   onSuccess: () => void;
 }
 
+// \u04105 \u0445\u04af\u0441\u043d\u044d\u0433\u0442\u044d\u0434 \u0431\u0430\u0433\u0442\u0430\u0445 \u043c\u04e9\u0440\u043d\u0438\u0439 \u0445\u044f\u0437\u0433\u0430\u0430\u0440 (\u043d\u0430\u0432\u0442\u0430\u0440 \u043a\u043e\u0434)
+const A5_TABLE_MAX_ROWS = 15;
+
+/** \u0425\u04af\u0441\u043d\u044d\u0433\u0442 \u04105 \u0445\u044d\u043c\u0436\u044d\u044d\u043d\u044d\u044d\u0441 \u0445\u044d\u0442\u044d\u0440\u0441\u044d\u043d \u044d\u0441\u044d\u0445\u0438\u0439\u0433 \u0448\u0430\u043b\u0433\u0430\u0445 */
+function checkIfNeedsA4(itemCount: number): boolean {
+  // \u0423\u0440\u0430\u043c\u0448\u0443\u0443\u043b\u0430\u043b\u0442\u0430\u0439 \u043c\u04e9\u0440\u04af\u04af\u0434\u0438\u0439\u0433 \u0442\u043e\u043e\u0446\u0432\u043e\u043b \u043d\u0438\u0439\u0442 \u043c\u04e9\u0440\u0438\u0439\u043d \u0442\u043e\u043e \u043d\u044d\u043c\u044d\u0433\u0434\u044d\u043d\u044d
+  // \u0414\u04e9\u0440\u0432\u04e9\u043b\u0436\u0438\u043b\u0441\u04e9\u043d \u0442\u043e\u043e\u0446\u043e\u043e: itemCount * 1.2 ~= \u043d\u0438\u0439\u0442 \u043c\u04e9\u0440 (uramjuulalt + bonus)
+  const estimatedRows = Math.ceil(itemCount * 1.2);
+  return estimatedRows > A5_TABLE_MAX_ROWS;
+}
+
 function isIndividualRegistrationNumber(regNo: string): boolean {
   const trimmed = regNo.trim();
-  return /^[A-Za-z\u0410-\u042f\u0430-\u044f\u0401\u0451\u04e8\u04e9\u04ae\u04af]{2}\d{8}$/.test(trimmed);
+  return /^[A-Za-z\u0410-\u042f\u0430-\u044f\u0401\u0451\u04e8\u04e9\u04ae\u04af]{2}\d{8}$/.test(
+    trimmed
+  );
 }
 
 export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) {
@@ -828,12 +824,18 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
   const [customerKind, setCustomerKind] = useState<'organization' | 'individual'>(
     initialCustomerKind
   );
-  const [useCustomerRegNo, setUseCustomerRegNo] = useState(Boolean(customerRegNo) && initialCustomerKind === 'organization');
-  const [regNumber, setRegNumber] = useState(initialCustomerKind === 'individual' ? '' : customerRegNo);
+  const [useCustomerRegNo, setUseCustomerRegNo] = useState(
+    Boolean(customerRegNo) && initialCustomerKind === 'organization'
+  );
+  const [regNumber, setRegNumber] = useState(
+    initialCustomerKind === 'individual' ? '' : customerRegNo
+  );
   const [regResult, setRegResult] = useState<{ name: string; tin: string } | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [regError, setRegError] = useState('');
-  const [individualReg, setIndividualReg] = useState(initialCustomerKind === 'individual' ? customerRegNo : '');
+  const [individualReg, setIndividualReg] = useState(
+    initialCustomerKind === 'individual' ? customerRegNo : ''
+  );
   const [individualLookupResult, setIndividualLookupResult] = useState<{
     name: string;
     tin: string;
@@ -865,7 +867,6 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
     setIndividualLookupError('');
     setIndividualLookupInfo('');
   }, [order.id, order.ebarimtReceiptType, customerRegNo]);
-
 
   const bonusFreeQtyMap = buildOrderItemBonusMap(order.orderItems);
 
@@ -907,7 +908,9 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
   const handleIndividualLookup = async () => {
     const trimmed = individualReg.trim();
     if (!trimmed) {
-      setIndividualLookupError('\u0414\u0443\u0433\u0430\u0430\u0440 \u043e\u0440\u0443\u0443\u043b\u043d\u0430 \u0443\u0443');
+      setIndividualLookupError(
+        '\u0414\u0443\u0433\u0430\u0430\u0440 \u043e\u0440\u0443\u0443\u043b\u043d\u0430 \u0443\u0443'
+      );
       setIndividualLookupInfo('');
       return;
     }
@@ -923,7 +926,11 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         toast.success(
           '\u0422\u0422\u0414 (getInfo)-\u044d\u044d\u0440 \u043d\u044d\u0440, \u0422\u0422\u0414 \u0442\u0430\u0442\u0430\u0433\u0434\u043b\u0430\u0430'
         );
-      } else if (/^[A-Za-z\u0410-\u042f\u0430-\u044f\u0401\u0451\u04e8\u04e9\u04ae\u04af]{2}\d{8}$/.test(trimmed)) {
+      } else if (
+        /^[A-Za-z\u0410-\u042f\u0430-\u044f\u0401\u0451\u04e8\u04e9\u04ae\u04af]{2}\d{8}$/.test(
+          trimmed
+        )
+      ) {
         const { name, tin } = await lookupEbarimtByRegNo(trimmed);
         setIndividualLookupResult({ name, tin });
         setIndividualLookupInfo('');
@@ -1023,7 +1030,12 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         body: JSON.stringify(payload),
       });
       const raw = await res.text();
-      let data: { id?: string; date?: string; message?: string; receipts?: Array<{ id?: string }> } = {};
+      let data: {
+        id?: string;
+        date?: string;
+        message?: string;
+        receipts?: Array<{ id?: string }>;
+      } = {};
       try {
         data = raw ? JSON.parse(raw) : {};
       } catch {
@@ -1076,22 +1088,22 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         totalVAT: vatNum,
         subtotalExVat,
       };
-        await generateEbarimtPDF(
-          pdfData,
-          ebarimtItems,
-          custName,
-          order.agent?.name || '',
-          order.agent?.phoneNumber || '',
-          paymentLabels[paymentMethod],
-          orderNum,
-          isB2B,
+      await generateEbarimtPDF(
+        pdfData,
+        ebarimtItems,
+        custName,
+        order.agent?.name || '',
+        order.agent?.phoneNumber || '',
+        paymentLabels[paymentMethod],
+        orderNum,
+        isB2B,
         bonusFreeQtyMap,
-          {
-            systemName: cust?.name ?? '',
-            address: addressStr,
-            phone: cust?.phoneNumber ?? '',
-            registrationNumber: isB2B
-              ? (cust?.registrationNumber ?? '')
+        {
+          systemName: cust?.name ?? '',
+          address: addressStr,
+          phone: cust?.phoneNumber ?? '',
+          registrationNumber: isB2B
+            ? (cust?.registrationNumber ?? '')
             : individualReg.trim() || cust?.registrationNumber || '',
           tin: isB2B ? (resolvedTin ?? '') : (individualLookupResult?.tin ?? ''),
         },
@@ -1196,22 +1208,22 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
         subtotalExVat: undefined,
       };
 
-        await generateEbarimtPDF(
-          pdfData,
-          ebarimtItems,
-          custName,
-          order.agent?.name || '',
-          order.agent?.phoneNumber || '',
-          paymentLabels[paymentMethod],
-          orderNum,
-          isB2B,
+      await generateEbarimtPDF(
+        pdfData,
+        ebarimtItems,
+        custName,
+        order.agent?.name || '',
+        order.agent?.phoneNumber || '',
+        paymentLabels[paymentMethod],
+        orderNum,
+        isB2B,
         bonusFreeQtyMap,
-          {
-            systemName: cust?.name ?? '',
-            address: addressStr,
-            phone: cust?.phoneNumber ?? '',
-            registrationNumber: isB2B
-              ? (cust?.registrationNumber ?? '')
+        {
+          systemName: cust?.name ?? '',
+          address: addressStr,
+          phone: cust?.phoneNumber ?? '',
+          registrationNumber: isB2B
+            ? (cust?.registrationNumber ?? '')
             : individualReg.trim() || cust?.registrationNumber || '',
           tin: isB2B ? (resolvedTinForPdf ?? '') : (individualLookupResult?.tin ?? ''),
         },
@@ -1250,6 +1262,38 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
           </button>
         </div>
         <div style={st.body}>
+          {/* А4 сануулга - хэрэв бараа их байвал */}
+          {(() => {
+            const needsA4 = checkIfNeedsA4(order.orderItems?.length || 0);
+            if (!needsA4) return null;
+            return (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: '12px 14px',
+                  background: '#2d1f00',
+                  border: '1px solid #d97706',
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                }}
+              >
+                <span style={{ fontSize: 20 }}>⚠️</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fbbf24', marginBottom: 4 }}>
+                    А4 цаас хэрэгтэй
+                  </div>
+                  <div style={{ fontSize: 12, color: '#d4a84b' }}>
+                    Таны захиалга {order.orderItems?.length || 0} нэр бараатай байна. Энэ нь A5
+                    хүснэгтэд багтахгүй тул <strong style={{ color: '#fbbf24' }}>A4 цаасанд</strong>{' '}
+                    хэвлэгдэнэ. Принтерт A4 цаас хийж, хэвлэх үед "A4" сонгоно уу.
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Захиалгын барааны жагсаалт */}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>Барааны жагсаалт</div>
@@ -1288,10 +1332,13 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
                         }}
                       >
                         <span style={{ flex: 1, paddingRight: 8 }}>
-                          {oi.product?.nameMongolian} ({'\u0423\u0440\u0430\u043c\u0448\u0443\u0443\u043b\u0430\u043b'})
+                          {oi.product?.nameMongolian} (
+                          {'\u0423\u0440\u0430\u043c\u0448\u0443\u0443\u043b\u0430\u043b'})
                         </span>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ color: '#94a3b8' }}>{bonusFreeQtyMap.get(oi.id) || 0} x 0</div>
+                          <div style={{ color: '#94a3b8' }}>
+                            {bonusFreeQtyMap.get(oi.id) || 0} x 0
+                          </div>
                           <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>= 0</div>
                         </div>
                       </div>
@@ -1407,9 +1454,7 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
             </div>
           ) : (
             <div style={{ marginBottom: 14 }}>
-              <label style={st.label}>
-                Регистр, эсвэл И-баримт хэрэглэгчийн дугаар
-              </label>
+              <label style={st.label}>Регистр, эсвэл И-баримт хэрэглэгчийн дугаар</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   style={st.input}
@@ -1535,5 +1580,3 @@ export default function EbarimtPrintModal({ order, onClose, onSuccess }: Props) 
     </div>
   );
 }
-
-

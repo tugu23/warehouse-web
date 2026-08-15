@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import {
   Edit as EditIcon,
+  Delete as DeleteIcon,
   LocationOn as LocationIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
@@ -23,6 +24,7 @@ interface CustomerDetailsModalProps {
   customer: Customer | null;
   onEdit: () => void;
   onViewOnMap: () => void;
+  onDelete?: () => void;
   canManage: boolean;
 }
 
@@ -30,6 +32,7 @@ export default function CustomerDetailsModal({
   customer,
   onEdit,
   onViewOnMap,
+  onDelete,
   canManage,
 }: CustomerDetailsModalProps) {
   if (!customer) return null;
@@ -248,9 +251,26 @@ export default function CustomerDetailsModal({
                 Үйлдлүүд
               </Typography>
               <Divider sx={{ mb: 2 }} />
-              <Button variant="contained" color="primary" startIcon={<EditIcon />} onClick={onEdit}>
-                Засах
-              </Button>
+              <Stack direction="row" spacing={2}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<EditIcon />}
+                  onClick={onEdit}
+                >
+                  Засах
+                </Button>
+                {onDelete && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    onClick={onDelete}
+                  >
+                    Устгах
+                  </Button>
+                )}
+              </Stack>
             </CardContent>
           </Card>
         )}

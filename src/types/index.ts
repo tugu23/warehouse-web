@@ -176,6 +176,9 @@ export interface Category {
   description?: string;
   classificationCode?: string;
   createdAt?: string;
+  _count?: {
+    products: number;
+  };
 }
 
 export interface CreateCategoryRequest {

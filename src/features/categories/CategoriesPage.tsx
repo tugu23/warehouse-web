@@ -68,6 +68,11 @@ export default function CategoriesPage() {
     setFormOpen(true);
   };
 
+  const handleDelete = () => {
+    setDetailsModalOpen(false);
+    fetchCategories();
+  };
+
   const handleRowClick = (category: Category) => {
     setSelectedCategory(category);
     reset({
@@ -167,6 +172,7 @@ export default function CategoriesPage() {
         <CategoryDetailsModal
           category={selectedCategory}
           onEdit={handleEdit}
+          onDelete={handleDelete}
           canManage={canManage()}
         />
       </Modal>

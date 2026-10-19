@@ -21,9 +21,10 @@ import {
   Receipt as ReceiptIcon,
   CheckCircle as CheckCircleIcon,
   Edit as EditIcon,
+  LocalOffer as DiscountIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
-import { Order } from '../../types';
+import { Order, OrderItem } from '../../types';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { ordersApi } from '../../api';
 import { formatDateMN } from '../../utils/dateFormatter';
@@ -201,28 +202,101 @@ export default function OrderDetailsModal({
             </TableRow>
           </TableHead>
           <TableBody>
-            {order.orderItems?.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.product?.nameMongolian || 'Тодорхойгүй'}</TableCell>
-                <TableCell align="center">{item.quantity}</TableCell>
-                <TableCell align="right">₮{Number(item.unitPrice).toLocaleString()}</TableCell>
-                <TableCell align="right">₮{Number(item.subtotal).toLocaleString()}</TableCell>
-                <TableCell align="center">
-                  {item.bonusFreeQty && item.bonusFreeQty > 0 ? (
-                    <Chip
-                      label={`+${item.bonusFreeQty} ширхэг үнэгүй`}
-                      color="success"
-                      size="small"
-                      variant="outlined"
-                    />
-                  ) : item.promotionId ? (
-                    <Chip label="Идэвхтэй" color="info" size="small" variant="outlined" />
-                  ) : (
-                    <Typography variant="caption" color="text.secondary">—</Typography>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+            {order.orderItems?.map((item: OrderItem) => {
+              const hasPromotion =
+                item.promotion != null || (item.promotionId && item.originalUnitPrice);
+              const isBuyXGetY = item.promotion?.type === 'BUY_X_GET_Y';
+
+              return (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    {item.product?.nameMongolian || 'Тодорхойгүй'}
+                    {hasPromotion && item.promotion && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                        <DiscountIcon sx={{ fontSize: 12, color: 'info.main' }} />
+                        <Typography variant="caption" color="info.main">
+                          {item.promotion.name}
+                        </Typography>
+                      </Box>
+                    )}
+                  </TableCell>
+                  <TableCell align="center">
+                    {item.quantity}
+                    {item.bonusFreeQty && item.bonusFreeQty > 0 && (
+                      <Typography variant="caption" color="success.main" sx={{ display: 'block' }}>
+                        +{item.bonusFreeQty} үнэгүй
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell align="right">
+                    {hasPromotion && item.originalUnitPrice ? (
+                      <Box sx={{ textAlign: 'right' }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ textDecoration: 'line-through', color: 'text.secondary' }}
+                        >
+                          ₮{Number(item.originalUnitPrice).toLocaleString()}
+                        </Typography>
+                        <Typography variant="body2" color="success.main" fontWeight="bold">
+                          ₮{Number(item.unitPrice).toLocaleString()}
+                        </Typography>
+                        {item.promotion?.discountPercent && (
+                          <Chip
+                            label={`-${item.promotion.discountPercent}%`}
+                            color="success"
+                            size="small"
+                            sx={{ mt: 0.5, height: 18, fontSize: 10 }}
+                          />
+                        )}
+                      </Box>
+                    ) : (
+                      <Typography variant="body2">
+                        ₮{Number(item.unitPrice).toLocaleString()}
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography variant="body2" fontWeight="bold">
+                      ₮{Number(item.subtotal).toLocaleString()}
+                    </Typography>
+                    {hasPromotion && item.discountAmount && item.discountAmount > 0 && (
+                      <Typography variant="caption" color="success.main">
+                        -₮{Number(item.discountAmount).toLocaleString()}
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell align="center">
+                    {item.bonusFreeQty && item.bonusFreeQty > 0 ? (
+                      <Chip
+                        label={`+${item.bonusFreeQty} ширхэг үнэгүй`}
+                        color="success"
+                        size="small"
+                        variant="outlined"
+                      />
+                    ) : hasPromotion && item.promotion?.discountPercent ? (
+                      <Chip
+                        label={`${item.promotion.discountPercent}% хөнгөлөлт`}
+                        color="info"
+                        size="small"
+                        variant="outlined"
+                        icon={<DiscountIcon sx={{ fontSize: 14 }} />}
+                      />
+                    ) : hasPromotion && isBuyXGetY ? (
+                      <Chip
+                        label={`${item.promotion?.buyQty}+${item.promotion?.freeQty}`}
+                        color="info"
+                        size="small"
+                        variant="outlined"
+                      />
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        —
+                      </Typography>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             <TableRow>
               <TableCell colSpan={3} align="right">
                 <Typography variant="h6">Нийт дүн:</Typography>
@@ -230,6 +304,7 @@ export default function OrderDetailsModal({
               <TableCell align="right">
                 <Typography variant="h6">₮{Number(order.totalAmount).toLocaleString()}</Typography>
               </TableCell>
+              <TableCell />
             </TableRow>
           </TableBody>
         </Table>
@@ -265,7 +340,6 @@ export default function OrderDetailsModal({
           </Button>
         )}
 
-
         {/* Төлөв өөрчлөх — Fulfilled болон eBarimt бүртгэгдээгүй тохиолдолд */}
         {canUpdateStatus && order.status === 'Pending' && !order.ebarimtRegistered && (
           <>
@@ -276,11 +350,7 @@ export default function OrderDetailsModal({
             >
               Цуцлах
             </Button>
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleFulfillAndPrintEbarimt}
-            >
+            <Button variant="contained" color="success" onClick={handleFulfillAndPrintEbarimt}>
               Гүйцэтгэх
             </Button>
           </>

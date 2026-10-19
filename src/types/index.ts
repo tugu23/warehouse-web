@@ -331,6 +331,20 @@ export interface OrderItem {
   promotionId?: number | null;
   /** Урамшууллын нэмэлт ширхэг (challenge ширхэг авсан үед) */
   bonusFreeQty?: number;
+  /** Урамшууллын хөнгөлөлтөөрөөр өмнөх нэгж үнэ (хажуугийн) */
+  originalUnitPrice?: number | null;
+  /** Нийт хөнгөлөлтийн дүн */
+  discountAmount?: number | null;
+  /** Сонгогдсон урамшууллын дэлгэрэнгүй мэдээлэл */
+  promotion?: {
+    id: number;
+    name: string;
+    type: 'PERCENT_DISCOUNT' | 'BUY_X_GET_Y';
+    discountPercent?: number | null;
+    buyQty?: number | null;
+    freeQty?: number | null;
+    minQuantity?: number | null;
+  } | null;
 }
 
 export interface CreateOrderRequest {

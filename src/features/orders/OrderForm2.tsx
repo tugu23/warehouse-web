@@ -314,7 +314,9 @@ function SearchSelect<T extends string | number>({
         .map((field) => String(field).toLowerCase().trim());
 
       if (matchMode === 'startsWith') {
-        return label.startsWith(normalized) || extraFields.some((field) => field.includes(normalized));
+        return (
+          label.startsWith(normalized) || extraFields.some((field) => field.includes(normalized))
+        );
       }
 
       return [label, ...extraFields].some((field) => field.includes(normalized));
@@ -626,9 +628,19 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       .getAll({ limit: 'all' })
       .then((res) => {
         const raw = res.data?.data?.products ?? [];
+        console.log('[DEBUG productsApi] Raw products count:', raw.length);
+        if (raw.length > 0) {
+          console.log('[DEBUG productsApi] First product:', JSON.stringify(raw[0], null, 2));
+        }
         setProducts(
           raw.map((p) => {
             const prices = (p.prices ?? []) as ProductPrice[];
+            console.log('[DEBUG productsApi] Product:', p.nameMongolian, {
+              defaultPrice: p.defaultPrice,
+              unitsPerBox: p.unitsPerBox,
+              pricePerBox: p.pricePerBox,
+              pricesCount: prices.length,
+            });
             return {
               id: p.id,
               name: p.nameMongolian,
@@ -652,7 +664,9 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
           })
         );
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('[DEBUG productsApi] Error:', err);
+      })
       .finally(() => setProductsLoading(false));
 
     customersApi
@@ -715,7 +729,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
               productId: '',
               productInput: '',
               productQuery: '',
-              qtyPieces: 1,
+              qtyPieces: 0,
               qtyBoxes: 0,
               priceMode: 'defaultPrice',
               priceModeInput: 'Үндсэн үнэ',
@@ -751,11 +765,21 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   }, [customerTypeLabel]);
 
   const priceForCustomerType = (p: ProductOption, ctId: number | undefined): number | null => {
-    if (ctId == null) return null;
-    const row = p.typePrices.find((t) => t.customerTypeId === ctId);
-    if (!row) return null;
-    const n = Number(row.price);
-    return Number.isFinite(n) && n > 0 ? n : null;
+    // Эхлээд тухайн харилцагчийн төрлөөр үнэ авах
+    if (ctId != null) {
+      const row = p.typePrices.find((t) => t.customerTypeId === ctId);
+      if (row) {
+        const n = Number(row.price);
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+    }
+    // Хэрэв тухайн төрлөөр үнэ байхгүй бол, хамгийн эхний үнэг авах (ямар ч төрлийн)
+    if (p.typePrices.length > 0) {
+      const firstPrice = p.typePrices[0];
+      const n = Number(firstPrice.price);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return null;
   };
 
   const pickDefaultPriceModeForProduct = (
@@ -787,7 +811,18 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     });
   }, [customerTypeId, products, PRICE_MODE_OPTIONS]);
 
-  const getProduct = (id: string) => products.find((p) => p.id === Number(id));
+  const getProduct = (id: string) => {
+    const product = products.find((p) => p.id === Number(id));
+    if (!product) {
+      console.log(
+        '[DEBUG getProduct] Product not found for id:',
+        id,
+        'Available products:',
+        products.length
+      );
+    }
+    return product;
+  };
 
   const isDuplicate = (idx: number) => {
     const item = orderItems[idx];
@@ -823,7 +858,10 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
   const getUnitPrice = (oi: OrderItem): number => {
     const p = getProduct(oi.productId);
-    if (!p) return 0;
+    if (!p) {
+      console.log('[DEBUG getUnitPrice] Product not found, oi.productId:', oi.productId);
+      return 0;
+    }
 
     let base: number;
     if (oi.priceMode === 'custom') {
@@ -832,13 +870,27 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       const tp = priceForCustomerType(p, customerTypeId);
       base = tp ?? p.defaultPrice ?? 0;
     } else {
-      base = p.defaultPrice || 0;
+      // 'defaultPrice' mode: хамгийн эхний үнэг авах
+      const tp = priceForCustomerType(p, customerTypeId);
+      base = tp ?? p.defaultPrice ?? 0;
     }
+
+    console.log('[DEBUG getUnitPrice]', {
+      priceMode: oi.priceMode,
+      customUnitPrice: oi.customUnitPrice,
+      customerTypeId,
+      customerTypePrice: priceForCustomerType(p, customerTypeId),
+      defaultPrice: p.defaultPrice,
+      base,
+      typePricesCount: p.typePrices.length,
+    });
 
     const promo = getSelectedPromotion(oi);
     if (promo?.type === 'PERCENT_DISCOUNT' && promo.discountPercent != null) {
       const dp = Math.max(0, Math.min(100, Number(promo.discountPercent)));
-      return Math.round(base * (1 - dp / 100) * 100) / 100;
+      const discounted = Math.round(base * (1 - dp / 100) * 100) / 100;
+      console.log('[DEBUG getUnitPrice] Applied discount:', dp, '%', base, '->', discounted);
+      return discounted;
     }
     return base;
   };
@@ -864,40 +916,81 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
   /** Хайрцаг + ширхэг холилдсон мөрийн дүн (урамшуулал тооцсон) */
   const getLineSubtotal = (oi: OrderItem): number => {
     const p = getProduct(oi.productId);
-    if (!p) return 0;
+    if (!p) {
+      console.log('[DEBUG] Product not found for oi.productId:', oi.productId);
+      return 0;
+    }
+
     const boxes = Math.max(0, Math.floor(Number(oi.qtyBoxes) || 0));
     const pieces = Math.max(0, Math.floor(Number(oi.qtyPieces) || 0));
     const upb = p.unitsPerBox && p.unitsPerBox > 0 ? p.unitsPerBox : 0;
+
+    // DEBUG logging
+    console.log('[DEBUG getLineSubtotal]', {
+      productId: oi.productId,
+      productName: p.name,
+      priceMode: oi.priceMode,
+      customUnitPrice: oi.customUnitPrice,
+      defaultPrice: p.defaultPrice,
+      unitsPerBox: upb,
+      qtyBoxes: boxes,
+      qtyPieces: pieces,
+      priceModeInput: oi.priceModeInput,
+    });
+
     const promo = getSelectedPromotion(oi);
     const isPercent = promo?.type === 'PERCENT_DISCOUNT';
     const discount = isPercent
       ? Math.max(0, Math.min(100, Number(promo!.discountPercent ?? 0))) / 100
       : 0;
 
+    // Нэгжийн үнэ авах
+    const unit = getUnitPrice(oi);
+    console.log('[DEBUG] Calculated unit price:', unit);
+
+    // Хэрэв нийт ширхэг 0 байвал 0 буцаах
+    const totalPieces = upb > 0 ? boxes * upb + pieces : pieces;
+    if (totalPieces === 0) {
+      console.log('[DEBUG] Total pieces is 0, returning 0');
+      return 0;
+    }
+
     if (oi.priceMode === 'custom') {
       const baseUnit = Number(oi.customUnitPrice || 0);
-      const unit = isPercent ? baseUnit * (1 - discount) : baseUnit;
-      if (!upb) return unit * Math.max(1, pieces || 1);
-      const totalP = boxes * upb + pieces;
-      return totalP > 0 ? unit * totalP : 0;
+      if (baseUnit <= 0) {
+        console.log('[DEBUG] Custom price is 0 or invalid');
+        return 0;
+      }
+      const finalUnit = isPercent ? baseUnit * (1 - discount) : baseUnit;
+      const subtotal = finalUnit * totalPieces;
+      console.log('[DEBUG] Custom price subtotal:', subtotal);
+      return subtotal;
     }
 
-    const unit = getUnitPrice(oi);
     if (!upb) {
-      return unit * Math.max(1, pieces || 1);
+      // Хайрцаггүй бараа
+      const subtotal = unit * Math.max(1, pieces || 1);
+      console.log('[DEBUG] No box subtotal:', subtotal);
+      return subtotal;
     }
 
+    // Хаирцагтай бараа - зөв тооцоолол
     let boxPart = 0;
-    if (boxes > 0) {
-      const baseBoxPrice =
-        p.pricePerBox != null && p.pricePerBox > 0 ? p.pricePerBox : upb * (p.defaultPrice || 0);
-      const effBoxPrice = isPercent ? baseBoxPrice * (1 - discount) : baseBoxPrice;
-      boxPart = boxes * effBoxPrice;
+    if (boxes > 0 && upb > 0) {
+      // Нийт ширхэг (хайрцаг + ширхэг)
+      const totalPiecesInBoxes = boxes * upb;
+      // Хайрцагны нийт дүн = нийт ширхэг × нэгжийн үнэ
+      boxPart = totalPiecesInBoxes * unit;
+      console.log('[DEBUG] Box calculation:', { boxes, upb, totalPiecesInBoxes, unit, boxPart });
     }
-    return boxPart + pieces * unit;
+    // Ширхэгээр нэмэлт авсан бол
+    const piecesPart = pieces * unit;
+    const subtotal = boxPart + piecesPart;
+    console.log('[DEBUG] Box + pieces subtotal:', { boxPart, piecesPart, total: subtotal });
+    return subtotal;
   };
 
-  /** Нэг нэгжийн үнээр × тоо хийхэд мөрийн дүн таарахгүй бол API-д дундаж нэгж илгээнэ */
+  /** Нэг нэгжийн үнээр × тоо хийхэд мөрийн дүн таарахгүй бол API-д дундаж нэгжийн үнэ илгээнэ */
   const needsWeightedUnitForApi = (oi: OrderItem, p?: ProductOption): boolean => {
     if (!p) return false;
     // Урамшуулал хэрэглэгдэж байвал заавал дундаж нэгжийн үнэ илгээнэ
@@ -929,7 +1022,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         productId: '',
         productInput: '',
         productQuery: '',
-        qtyPieces: 1,
+        qtyPieces: 0,
         qtyBoxes: 0,
         priceMode: 'defaultPrice',
         priceModeInput: 'Үндсэн үнэ',
@@ -957,7 +1050,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
 
     if (field === 'productId') {
       item.productId = val as string;
-      item.qtyPieces = 1;
+      item.qtyPieces = 0;
       item.qtyBoxes = 0;
       item.promotionId = undefined;
       const selected = products.find((p) => p.id === Number(val));
@@ -977,7 +1070,7 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
       const exact = products.find((p) => p.name.toLowerCase() === input.toLowerCase());
       if (exact) {
         item.productId = String(exact.id);
-        item.qtyPieces = 1;
+        item.qtyPieces = 0;
         item.qtyBoxes = 0;
         item.promotionId = undefined;
         const def = pickDefaultPriceModeForProduct(exact);
@@ -1089,17 +1182,43 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
         items: validItems.map((oi) => {
           const p = getProduct(oi.productId);
           const baseQty = getPieceQty(oi);
-          const line = getLineSubtotal(oi);
           const promo = getSelectedPromotion(oi);
-          // Урамшуулал хэрэглэгдсэн бол зөвхөн авсан ширхэгийг хадгална (bonus ширхэг нэмэгдэхгүй)
-          // Үнэгүй авах ширхэг зөвхөн хэвлэлтэнд "(Урамшуулал)" гэж харагдана
-          if (promo) {
+          const subtotal = getLineSubtotal(oi);
+
+          // Хайрцагтай бараа үед нийт дүнг quantity-д хувааж unitPrice болгоно
+          const hasBoxPricing = p?.unitsPerBox && p?.unitsPerBox > 0 && (oi.qtyBoxes || 0) > 0;
+
+          if (hasBoxPricing && baseQty > 0) {
+            // Нийт дүнг нийт ширхэгт хувааж unitPrice болгоно
+            const calculatedUnitPrice = subtotal / baseQty;
             return {
               productId: Number(oi.productId),
-              quantity: baseQty,  // bonus ширхэг нэмэгдэхгүй
+              quantity: baseQty,
               priceMode: 'custom' as const,
-              customUnitPrice: getUnitPrice(oi),  // бүтэн үнэ
-              promotionId: promo.id,  // сонгогдсон урамшууллыг хадгална
+              customUnitPrice: Math.round(calculatedUnitPrice * 100) / 100,
+              promotionId: promo?.id,
+            };
+          }
+
+          // Бусад тохиолдолд үндсэн логик
+          const getBasePrice = (): number => {
+            if (oi.priceMode === 'custom') {
+              return Number(oi.customUnitPrice || 0);
+            } else if (oi.priceMode === 'customerType' && p) {
+              const tp = priceForCustomerType(p, customerTypeId);
+              return tp ?? p.defaultPrice ?? 0;
+            }
+            return p?.defaultPrice ?? 0;
+          };
+
+          if (promo) {
+            const basePrice = getBasePrice();
+            return {
+              productId: Number(oi.productId),
+              quantity: baseQty,
+              priceMode: 'custom' as const,
+              customUnitPrice: basePrice,
+              promotionId: promo.id,
             };
           }
           if (oi.priceMode === 'custom') {
@@ -1108,16 +1227,6 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
               quantity: baseQty,
               priceMode: 'custom' as const,
               customUnitPrice: Number(oi.customUnitPrice || 0),
-              promotionId: oi.promotionId,
-            };
-          }
-          if (needsWeightedUnitForApi(oi, p) && baseQty > 0) {
-            const avg = Math.round((line / baseQty) * 100) / 100;
-            return {
-              productId: Number(oi.productId),
-              quantity: baseQty,
-              priceMode: 'custom' as const,
-              customUnitPrice: avg,
               promotionId: oi.promotionId,
             };
           }
@@ -1188,7 +1297,8 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                   value: c.id,
                   label: c.name,
                   meta: [c.phoneNumber, c.registrationNumber].filter(Boolean).join(' • '),
-                  searchText: `${(c.phoneNumber || '').trim()} ${(c.registrationNumber || '').trim()}`.trim(),
+                  searchText:
+                    `${(c.phoneNumber || '').trim()} ${(c.registrationNumber || '').trim()}`.trim(),
                 }))}
                 onSelect={(opt) => {
                   setSelectedCustomerId(opt.value);
@@ -1313,7 +1423,13 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
                   key={idx}
                   style={{
                     ...s.itemRow,
-                    ...(dup ? s.itemRowDuplicate : over ? s.itemRowWarning : isPromoItem ? s.itemRowPromo : {}),
+                    ...(dup
+                      ? s.itemRowDuplicate
+                      : over
+                        ? s.itemRowWarning
+                        : isPromoItem
+                          ? s.itemRowPromo
+                          : {}),
                   }}
                 >
                   <div style={s.itemGrid}>
@@ -1719,6 +1835,3 @@ export default function OrderForm2({ onClose, onSuccess, initialOrder }: Props) 
     </div>
   );
 }
-
-
-

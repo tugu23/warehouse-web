@@ -134,7 +134,7 @@ export default function OrdersPage() {
       return;
     }
 
-    if (!window.confirm('Та энэ захиалгыг бүрмösөн устгах уу? Энэ үйлдлийг буцаах боломжгүй!')) {
+    if (!window.confirm('Та энэ захиалгыг бүрмөсөн устгах уу? Энэ үйлдлийг буцаах боломжгүй!')) {
       return;
     }
 

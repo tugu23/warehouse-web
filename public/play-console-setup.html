@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="mn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OasisERP - Play Console бэлтгэл</title>
+    <style>
+      :root {
+        --fg: #1a1a1a;
+        --muted: #5f6368;
+        --line: #e2e2e2;
+        --accent: #1565c0;
+        --bg: #fff;
+        --soft: #f6f8fa;
+        --ok: #1a7f37;
+        --warn: #9a6700;
+        --code-bg: #f2f3f5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e8e8e8;
+          --muted: #a0a0a0;
+          --line: #333;
+          --accent: #64b5f6;
+          --bg: #141414;
+          --soft: #1c1c1c;
+          --ok: #57ab5a;
+          --warn: #d4a72c;
+          --code-bg: #202020;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 32px 16px 80px;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.65;
+        font-size: 15.5px;
+      }
+      main { max-width: 860px; margin: 0 auto; }
+      h1 { font-size: 28px; margin: 0 0 6px; }
+      .lede { color: var(--muted); margin: 0 0 28px; }
+      h2 {
+        font-size: 20px;
+        margin: 40px 0 10px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--line);
+      }
+      h3 { font-size: 16.5px; margin: 24px 0 6px; }
+      p { margin: 0 0 12px; }
+      ul, ol { padding-left: 22px; margin: 0 0 12px; }
+      li { margin-bottom: 5px; }
+      code {
+        background: var(--code-bg);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13.5px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        word-break: break-all;
+      }
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px 16px;
+        overflow-x: auto;
+        font-size: 13.5px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .box {
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--accent);
+        border-radius: 0 8px 8px 0;
+        padding: 14px 18px;
+        margin: 16px 0;
+      }
+      .box.ok { border-left-color: var(--ok); }
+      .box.warn { border-left-color: var(--warn); }
+      .box p:last-child { margin-bottom: 0; }
+      .tag {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 20px;
+        background: var(--code-bg);
+        border: 1px solid var(--line);
+        color: var(--muted);
+        vertical-align: middle;
+      }
+      .tag.done { color: var(--ok); border-color: var(--ok); }
+      .tag.todo { color: var(--warn); border-color: var(--warn); }
+      .field { margin: 14px 0; }
+      .field > .name {
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+      .copy {
+        float: right;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: none;
+        letter-spacing: 0;
+        color: var(--accent);
+        cursor: pointer;
+        background: none;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-family: inherit;
+      }
+      .copy:hover { border-color: var(--accent); }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0 18px;
+        font-size: 14.5px;
+      }
+      th, td {
+        border: 1px solid var(--line);
+        padding: 9px 11px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th { background: var(--code-bg); font-weight: 600; }
+      .muted { color: var(--muted); }
+      hr { border: 0; border-top: 1px solid var(--line); margin: 36px 0; }
+      a { color: var(--accent); }
+      .steps { counter-reset: s; list-style: none; padding-left: 0; }
+      .steps > li {
+        counter-increment: s;
+        margin-bottom: 14px;
+        padding-left: 34px;
+        position: relative;
+      }
+      .steps > li::before {
+        content: counter(s);
+        position: absolute;
+        left: 0;
+        top: 1px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      @media (max-width: 600px) {
+        body { font-size: 15px; padding: 20px 14px 56px; }
+        h1 { font-size: 23px; }
+        h2 { font-size: 18px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OasisERP — Play Console бэлтгэл</h1>
+      <p class="lede">
+        Google Play Console-д оруулах бүх хэсгийн бэлэн хариу. Бүх текст
+        Монголоор. <span class="tag done">бэлэн</span> <span class="tag todo">хийх шаардлагатай</span>
+      </p>
+
+      <div class="box ok">
+        <p>
+          <strong>Бэлэн болсон:</strong> Нууц тулгайн бодлого (URL + бүтэн
+          текст), App доторх холбоо, бүх өгөгдлийн төрлүүдийн
+          жагсаалт, дэлгүүрийн үйлдлийн тохиолдлууд.
+        </p>
+        <p>
+          <strong>Цорын ганц саад:</strong> Google Play <em>service account
+          key</em> файл — зөвхөн Google Cloud Console-аас авна. Энэ
+          байхгүйгээр <code>eas submit</code> ажиллахгүй.
+        </p>
+      </div>
+
+      <h2>1. Privacy policy <span class="tag done">бэлэн</span></h2>
+
+      <div class="field">
+        <div class="name">Privacy policy URL</div>
+        <pre id="pp-url">https://tugu23.github.io/warehouse-web/privacy-policy.html</pre>
+      </div>
+
+      <div class="field">
+        <div class="name">Бүтэн текст (хэрэв файл биш текст хэрэгтэй бол)</div>
+        <p class="muted">
+          Дараах бүтэн текст нь
+          <a href="https://tugu23.github.io/warehouse-web/privacy-policy.html"
+            >tugu23.github.io/warehouse-web/privacy-policy.html</a
+          >-д байгаа бүтэн хуудасны адил. Өөрөөр хэлбэл энэ нь
+          app-т хамаарах бүрэн, баталгааж болох Монгол нэгжийн
+          бодлого юм.
+        </p>
+        <pre>НУУЦ ТУЛГАЙН БОДЛОГО
+OasisERP — Агуулахын удирдлагын систем
+Сүүлийн шинжилгээ: 2026 оны 10 дугаар сарын 28 өдөр
+
+1. ХАМРАХ ХҮРЭЭ
+Энэхүү нууц тулгайн бодлогод OasisERP мобиль аппликейшнийг (Android)
+хэрэглэгчид болон Жи Эл Эф ХХК (цаашид «Компани» гэж нэрлэе)
+хооронд холбоотой хувьчлагдсан хувийн мэдээллийн үйлчилгээ, цуглуулалт,
+ашиглалт, хамгаалалтын бодлогыг тогтооно.
+Агуулахын бүртгэл, барааны нэмэлт, захиалгын бүртгэл, харилцагчийн
+мэдээлэл, е-баримт (e-Barimt) бүртгэл болон хэвлэлт гэсэн үйлдлийг
+хийхэд ашиглагдах бүх хувийн мэдээллийг хамарна.
+
+2. ЦУГЛУУЛЖ БУЙ МЭДЭЭЛЭЛ
+- Бүртгэлээр орох эрхмээ — таныг системд таньж баталгаажуулах
+- Ажилтны нэр, имэйл, албан тушаал — профайлд харуулах, үйл ажиллагааг
+  зохицуулах
+- Харилцагчийн нэр, утас, хаяг — захиалга үүсгэх, хүргэлт зохицуулах
+- Барааны нэр, үнэ, тоо, нэгж — бүртгэл, үлдэгдэл хяналт
+- Захиалгын мэдээлэл, нийт дүн, НӨАТ — тооцоо, е-баримт үүсгэх,
+  татлангийн бүртгэл
+- Байршлын мэдээлэл (Bluetooth принтер холбох үед) — Bluetooth зөвшөөрөл
+  авахын тулд Android талбай шаарддаг
+- Аппликейшний тохиргоо (принтер, хэл) — таны сонголтыг хадгалах
+Аппликейшнийг дурын хүрээнээс бүртгэхэд өгөгдөл цуглуулахгүй. Мөн
+байршлын мэдээллийг зөвхөн Bluetooth принтертэй холбох үед, Android
+зөвшөөрөл авах үед л ашиглана. Үлдэгдэл байршлын мэдээлэл цуглуулахгүй
+бөгөөд хадгалахгүй.
+
+3. МЭДЭЭЛЛИЙГ ЯМАР ЗОРИУЛАЛТААР АШИГЛАХ ВЭ
+- Агуулахын бүртгэл болон харилцагчийн мэдээллийн удирдлага
+- Захиалгын үүсгэлт, тооцоо, төлбөрийн бүртгэл
+- Монгол Улсын И-Баримт (e-Barimt) баталгаажуулалтын үүсгэлт
+- Хэвлэгчээр баримт хэвлэх
+- Татлангийн бүртгэл болон хяналтын тайлан
+- Аппликейшний ажиллагааг сайжруулах, алдаа засах
+Компани таны мэдээллийг зар сэтгэл хөдөлгөөнтэй худалдааны зорилгод
+ашиглахгүй.
+
+4. МЭДЭЭЛЛИЙН АШИГЛАЛТ БА ХУВААЛЦАЛ
+Таны мэдээллийг Компани өөрийн ажиллагч, түр эрхлэгч, аудит хийх
+байгууллагатай хуваалцах бөгөөд эдгээр нь нууц тулгайн зорилгын дагуу
+нууц байдлыг хадгалах үүрэгтэй. Үүнээс гадна:
+- Е-баримт: бүртгэсэн баримтын мэдээлэл дурын мөчлөгт
+  баталгаажуулалтын зориулалтаар Монгол Улсын Татлангийн е-баримтын
+  системд дамжуулна.
+- Хууль ёсны шаардлага: тооцооны болон татлангийн бүртгэл хадгалах үүрэгтэй
+  байгууллага, эрх бүхий байгуулалгад хууль ёсны үндэслэлээр
+  дамжуулж болно.
+- Сервер хостлогч: өгөгдлийг хадгалах, үйлчилгээ үзүүлэх зориулалтаар
+  хэрэглэдэг байгууллага.
+Компани таны хувийн мэдээллийг зарж болохгүй.
+
+5. ӨГӨГДЛИЙН АЮУЛГҮЙ БАЙДАЛ
+- Холбоо барих болон хадгалалтын сувгийг шифрлэсэн
+- Бүртгэлд ороход эрхмээ баталгаажуулах
+- Мэдээлэлд хандах эрхийг ажилтны байрлалаар хязгаарлана
+- Нөхцөл урьдчилан хяналт, хамгаалалтын бүртгэл хөтөлж, нэгэнт ижил
+  алдаа давхардахгүй байхыг баталгаажуулна
+- Бэлтгэл, шинэчлэл хийхдээ өгөгдлийн бүрэн бүтэн байдлыг хадгална
+Хэмээн өгөгдөл алдагдаж, зөвшөөрөгдсөн хүрээнээс гарах боломжтой бөгөөд
+Компани үүнийг хамгийн бага дамжилтай хамаарлын төрөл гэж үзэж,
+шаардлагатай арга хэмжээ авна.
+
+6. МЭДЭЭЛЛИЙН ХАДГАЛАХ ХУГАЦАА
+Таны мэдээллийг бүртгэлд үйлчилгээ үзүүлэх хугацааны турш, мөн тооцооны
+болон татлангийн бүртгэл хадгалах хууль ёсны хугацаагаар хадгална.
+Тооцооны бүртгэл хууль ёсны шаардлагаар тогтоосон хугацааны турш
+хадгалагдах бөгөөд энэ хугацаа дуусмагц архивжуулна.
+
+7. ТАНЫ ЭРХ
+- Хадгалагдаж буй өөрийн хувийн мэдээллийн хуулбар авах
+- Буруу эсвэл бүрэн биш мэдээллээ засах
+- Тохиромжтой нөхцөлд өгөгдлөө устгах, эсвэл боловсруулалтыг зогсоох
+- Мэдээллийн ашиглалтын талаар асуух
+Эрхээ хэрэглэхийн тулд доорх хаягаар бичиж, үйлчилгээний ажилтанд
+холбогдоно. Мөн АНУ-ын «Хувийн мэдээллийн тухай хууль»-д заасан эрх,
+үүрэг хүлээхэд дагах ёстой.
+
+8. ЗАЛУУ ХҮҮХДҮҮДЭД ХАМААРАХ
+OasisERP нь ажлын үйлдлийн хэрэглээнд зориулагдсан бөгөөд 13-аас
+доош насны хүүхдүүдэд зориулагдаагүй. Хэрэв 13-аас доош насны хүүхэд
+өөрийн бүртгэлийн мэдээллийг өгсөн бол эцэг, эх эсвэл асан хамаагч
+дамжуулан арилгаж болно.
+
+9. АППЛИКЕЙШНИЙ ЭРХ
+Энэ бодлогод нэмэлт эрх өгөх, өөрчилөх, үйлчилгээг зогсоох боломжтой
+байна. Эрх зүйн шалтгаан үндэслэлтэй эсвэл үйлчилгээ үзүүлэхэд зайлшгүй
+шаардлагатай үед аппликейшнийг урьдчилан мэдэгдэлгүйгээр түр хугацаагаар
+зогсооно.
+
+10. ЭНЭ БОДЛОГЫН ӨӨРЧЛӨЛТ
+Энэ бодлогыг цаашид шинэчилж болно. Өөрчлөлт хийсэн тохиолдолд шинэ
+хувилбарыг энэ хуудсанд байрлуулж, шинэчлэл хийсэн огноог бичиж,
+аппликейшний эсвэл вэб сайтын нууц тулгайн бодлогын хуудсанд оршино.
+Үүнээс өмнөх бодлогын нөхцөл таны хувьд хүчин төгөлдөр хэвээр байна.
+
+11. ХОЛБОО БАРИХ
+Нууц тулгайн бодлогын хүрээтэй холбогдох асуулт, санал, зэрэгцээ
+тэмдэглэл, эсвэл гомдлыг дараах хаягаар мэдэгдээрэй:
+- И-мэйл: info@jeleph.mn
+- Вэб: https://oasiserp.mn
+- Үйлдвэрлэгч: Жи Эл Эф ХХК
+Таны хүсэлтэд 10 хоногийн хугацаанд хариулна.
+
+© 2026 Жи Эл Эф ХХК. Бүх эрх хуулиар хамгаалагдсан.</pre>
+      </div>
+
+      <h2>2. Store listing <span class="tag done">бэлэн</span></h2>
+
+      <div class="field">
+        <div class="name">App name (хэвээр)</div>
+        <pre>OasisERP</pre>
+      </div>
+
+      <div class="field">
+        <div class="name">Short description (хэвээр, ≤80 тэмдэглэл)</div>
+        <pre>Агуулахын бүртгэл, захиалга, харилцагч, е-баримт</pre>
+      </div>
+
+      <div class="field">
+        <div class="name">Full description (хэвээр, ≤4000 тэмдэглэл)</div>
+        <pre>OasisERP нь агуулах, бөөнийн төвийн үйлдлийг удирдах мобиль
+аппликейшн юм.
+
+БОЛГОЖ БОЛОХ ҮЙЛДЭЛ:
+
+• Агуулахын бүртгэл — барааны нэр, үнэ, тоо, нэгж, үлдэгдэл, ангилал,
+  штрих кодоор шууд хайх
+• Харилцагчийн бүртгэл — нэр, утас, хаяг, ТТД, ХНН, төрлийг хадгалах
+  ба зорилтоор нь шууд сонгох
+• Захиалгын үүсгэлт — сагсан дотор бараа нэмж, тоо, үнэ, НӨАТ-ийг
+  автоматаар тооцон, хэвлэх, бүртгэх
+• Захиалгын хяналт — төлөв (шинэ, бэлэн, хүргэгдсэн), түүх, хуваарийн
+  үзүүлэлт
+• И-Баримт (e-Barimt) — ТТД шалгах, байгууллагын бүртгэл хайх, баримт
+  үүсгэж баталгаажуулах, QR кодтой баримт хэвлэх
+• Хэвлэлт — утасны принтер (Bluetooth) болон хэвлэлтийн preview, 1-р
+  болон 2-р хувь
+• KPI — өдрийн, сарын, жилийн борлуулалт, зорилтоос гүйцэлцэл,
+  түршүүдийн гүйцэтгэл
+• Ажилтны профайл, тохиргоо, хэл солих
+
+Онцгой:
+
+• Интернетгүй үед үйлдлүүдийг хүлээн авч, сүлжээ эргэлзэхэд
+  автоматаар явуулна (offline queue)
+• Бүх хэрэглэгчийн эрх хамгаалагдсан: ажилтны эрхээр үйлдэл
+  хязгаарлагдана
+• Бүх үйлдэл сервер дээр бүртгэгддэг тул тасалдал, алдаа гарсан
+  ч мэдээлэл утрахгүй
+• Хэвлэсэн баримт QR кодтой тул шууд шалгаж болно
+
+OasisERP нь агуулах, дистрибьюшн, худалдааны салбарын байгууллагууд
+зориулагдсан бөгөөд ажилтнууд талбарын үйлдлийг утаснаар
+удирдаж, татлангийн бүртгэлээ автоматаар хөтөлнө.</pre>
+      </div>
+
+      <div class="field">
+        <div class="name">Category / Tags</div>
+        <p>
+          <strong>Category:</strong> Business
+          <span class="muted">(эсвэл Productivity)</span><br />
+          <strong>Tags:</strong> Inventory, Point of sale, Reports
+        </p>
+      </div>
+
+      <div class="field">
+        <div class="name">App contact details</div>
+        <table>
+          <tr>
+            <th>Email</th>
+            <td><code>info@jeleph.mn</code></td>
+          </tr>
+          <tr>
+            <th>Phone</th>
+            <td class="muted">хэрэгтэй бол оруулна уу</td>
+          </tr>
+          <tr>
+            <th>Website</th>
+            <td><code>https://oasiserp.mn</code></td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="field">
+        <div class="name">Graphics шаардлага</div>
+        <table>
+          <tr>
+            <th>Ангилал</th>
+            <th>Хэмжээ</th>
+            <th>Бэлэн эсэх</th>
+          </tr>
+          <tr>
+            <td>App icon</td>
+            <td>512×512 PNG</td>
+            <td>
+              <span class="tag todo">хийх</span> — нэмэлт 512×512 PNG
+              үүсгэх шаардлагатай
+            </td>
+          </tr>
+          <tr>
+            <td>Feature graphic</td>
+            <td>1024×500 PNG</td>
+            <td><span class="tag todo">хийх</span></td>
+          </tr>
+          <tr>
+            <td>Phone screenshots</td>
+            <td>хамгийн бага 2, 16:9 эсвэл 9:16</td>
+            <td>
+              <span class="tag todo">хийх</span> — апп ажиллаж байгаа
+              тул бодит зураг авч болно
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <h2>3. Data safety <span class="tag done">бэлэн</span></h2>
+
+      <div class="box">
+        <p>
+          App дотор analytics, ads, сурталчилгаа, crash-report SDK
+          <strong>байхгүй</strong>. Бүх өгөгдөл өөрийн
+          <code>https://oasiserp.mn/api</code> сервер руу очно. Өөрийн
+          эрхээс өөр гуравдаг SDK байхгүй тул «third-party SDK-ийн
+          бүртгэл» гэж тэмдэглэх шаардлагагүй.
+        </p>
+      </div>
+
+      <h3>Does your app collect or share any of the required user data types?</h3>
+      <p><strong>Yes</strong></p>
+
+      <table>
+        <tr>
+          <th>Data type</th>
+          <th>Collected?</th>
+          <th>Shared?</th>
+          <th>Encrypted in transit?</th>
+          <th>Can users request deletion?</th>
+          <th>Purposes</th>
+        </tr>
+        <tr>
+          <td>Name</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>App functionality, Business purposes</td>
+        </tr>
+        <tr>
+          <td>Email address</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>App functionality, Business purposes</td>
+        </tr>
+        <tr>
+          <td>Phone number</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>App functionality, Business purposes</td>
+        </tr>
+        <tr>
+          <td>Physical address</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>App functionality, Business purposes</td>
+        </tr>
+        <tr>
+          <td>Financial info (purchase history, order totals)</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>App functionality, Business purposes</td>
+        </tr>
+        <tr>
+          <td>Other info (TIN, registration number)</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>App functionality, Business purposes</td>
+        </tr>
+        <tr>
+          <td>App activity (in-app actions)</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>App functionality, Analytics</td>
+        </tr>
+        <tr>
+          <td>Approximate location</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>Yes</td>
+          <td>No</td>
+          <td>App functionality</td>
+        </tr>
+      </table>
+
+      <h3>Notes буюу тайлбар</h3>
+      <ul>
+        <li>
+          <strong>Physical address / Phone number / Name</strong> — харилцагчийн
+          бүртгэл хадгалахад (бөөнийн төв, хүргэлтийн хаяг, утас).
+        </li>
+        <li>
+          <strong>Financial info</strong> — захиалгын нийт дүн, НӨАТ, төлбөрийн
+          арга. Э-баримт (e-Barimt) үүсгэхэд Монгол Улсын Татлангийн
+          системд дамжих тул "shared" гэж тэмдэглэгдэнэ.
+        </li>
+        <li>
+          <strong>Other info</strong> — харилцагчийн ТТД, ХНН. Ижил
+          зориулалтаар татлангийн системд очно.
+        </li>
+        <li>
+          <strong>Approximate location</strong> — зөвхөн Bluetooth принтер
+          холбох үед Android-ийн Bluetooth permission авах үед л
+          ашиглана. Үлдэгдэл байршил цуглуулахгүй.
+        </li>
+        <li>
+          <strong>App activity</strong> — захиалгын үйлдлийн түүх, KPI
+          тооцооллын өгөгдөл.
+        </li>
+        <li>
+          <strong>Data is encrypted in transit</strong> — бүх холбоо HTTPS.
+        </li>
+        <li>
+          <strong>Users can request data deletion</strong> —
+          <code>info@jeleph.mn</code> хаягаар хүсэлт тавьж болно.
+        </li>
+      </ul>
+
+      <h3>Data collected is shared with third parties?</h3>
+      <p>
+        <strong>Yes</strong> — зөвхөн Монгол Улсын Татлангийн е-баримтын
+        системтэй (заавал, хууль ёсны үндэслэлээр). Бусад гуравдаг
+        байгууллагатай хуваалцдаггүй, зарж болохгүй.
+      </p>
+
+      <h2>4. App content <span class="tag done">бэлэн</span></h2>
+      <table>
+        <tr>
+          <th>Асуулт</th>
+          <th>Хариу</th>
+        </tr>
+        <tr>
+          <td>Does your app contain ads?</td>
+          <td><strong>No</strong></td>
+        </tr>
+        <tr>
+          <td>Is your app a "News app"?</td>
+          <td><strong>No</strong></td>
+        </tr>
+        <tr>
+          <td>Does your app allow users to interact or exchange content?</td>
+          <td>
+            <strong>No</strong> — хэрэглэгчид бичлэг, нийтлэл, чат
+            бичихгүй. Тэгвэл "User generated content: No" гэж тэмдэглэ.
+          </td>
+        </tr>
+        <tr>
+          <td>Does your app share location with other users?</td>
+          <td><strong>No</strong></td>
+        </tr>
+        <tr>
+          <td>Does your app allow users to purchase digital goods?</td>
+          <td>
+            <strong>No</strong> — app дотор төлбөрийн төлбөрийн
+            үйлчилгээ байхгүй. Үйлчилгээг агуулах дотор удирддаг.
+          </td>
+        </tr>
+        <tr>
+          <td>Target audience</td>
+          <td>
+            18+ (ажлын хэрэглээ), бүх насны бүлэг — 13-аас доош
+            насны хүүхдүүдэд зориулагдаагүй
+          </td>
+        </tr>
+        <tr>
+          <td>Content rating questionnaire</td>
+          <td>
+            Хэнэ ч хэлбэрийн хэрэглээ, нөхцөл, зориулалт, сэтгэгдэл, өдөр
+            тутмын зүйл, секс, хууль ёсны зөрчил, зохиогчийн эрх, сексуал
+            контент — бүгд <strong>None</strong>. Нийт хамгийн дээд түвшин
+            нь 3+ гэж гарна.
+          </td>
+        </tr>
+      </table>
+
+      <h2>5. Техник шаардлага <span class="tag done">бэлэн</span></h2>
+      <table>
+        <tr>
+          <th>Ангилал</th>
+          <th>Утга</th>
+        </tr>
+        <tr>
+          <td>App name</td>
+          <td><code>OasisERP</code></td>
+        </tr>
+        <tr>
+          <td>Package name</td>
+          <td><code>com.tugu23.warehousemobile</code></td>
+        </tr>
+        <tr>
+          <td>Version</td>
+          <td><code>1.0.0</code></td>
+        </tr>
+        <tr>
+          <td>Format</td>
+          <td>Android App Bundle (<code>.aab</code>)</td>
+        </tr>
+        <tr>
+          <td>Target SDK</td>
+          <td>36</td>
+        </tr>
+        <tr>
+          <td>Min SDK</td>
+          <td>24 (Android 7.0)</td>
+        </tr>
+        <tr>
+          <td>Permissions</td>
+          <td>
+            <code>INTERNET</code>, <code>BLUETOOTH_SCAN</code>,
+            <code>BLUETOOTH_CONNECT</code>,
+            <code>ACCESS_FINE_LOCATION</code>
+            <span class="muted">(зөвхөн принтер холбох үед ашиглагдана)</span>
+          </td>
+        </tr>
+        <tr>
+          <td>Blocked permissions</td>
+          <td>
+            <code>SYSTEM_ALERT_WINDOW</code>,
+            <code>READ_EXTERNAL_STORAGE</code>,
+            <code>WRITE_EXTERNAL_STORAGE</code>
+          </td>
+        </tr>
+        <tr>
+          <td>Encryption</td>
+          <td>Бүх холбоо HTTPS. Cleartext HTTP хориглоно.</td>
+        </tr>
+      </table>
+
+      <h2>6. Үлдсэн алхам <span class="tag todo">хийх шаардлагатай</span></h2>
+
+      <ol class="steps">
+        <li>
+          <strong>Service account key авх</strong> —
+          <a
+            href="https://docs.expo.dev/submit/android/#service-account-key"
+            >Expo-ийн заавар</a
+          >. Google Cloud → IAM & Admin → Service Accounts → шинэ account →
+          Manage keys → Create new key → JSON. Файлыг
+          <code>tuvshuu/play-service-account.json</code> гэж нэг
+          <em>репозитороос гадуур</em> хадгална (<code>.gitignore</code>
+          дотор байгаа). Play Console → Users and permissions → энэ
+          email-ийг invite хийж: <em>View app information</em>,
+          <em>Edit and delete draft apps</em>, <em>Release to production</em>,
+          <em>Release apps to testing tracks</em>, <em>Manage testing tracks</em>,
+          <em>Manage store presence</em> эрхүүдийг өгнө.
+        </li>
+        <li>
+          <strong>Graphics үүсгэх</strong> — 512×512 icon, 1024×500 feature
+          graphic, 2+ phone screenshot.
+        </li>
+        <li>
+          <strong>Store listing хэсгүүдийг дүүргэх</strong> — дээрх
+          бэлэнлээс шууд paste хий.
+        </li>
+        <li>
+          <strong>Data safety хэсгийг дүүргэх</strong> — дээрх хүснэгтээр.
+        </li>
+        <li>
+          <strong>Content rating</strong> — бүгд None гэж тэмдэглэ.
+        </li>
+        <li>
+          <strong>Internal testing оронд оруулах</strong> —
+          <code>cd warehouse-mobile &amp;&amp; npx eas-cli submit --platform android --profile production --latest</code>
+        </li>
+        <li>
+          <strong>Internal testing → Closed testing → Production</strong> —
+          алхам алхмаар, дор хаяж 14 хоног closed testing дээр байх шаардлагатай.
+        </li>
+      </ol>
+
+      <div class="box warn">
+        <p>
+          <strong>Нэг зүйл анхаарч байна:</strong> AAB билдүүлэлт
+          амжилттай болсон ч бодит төхөөрөмж дээр апп
+          <em>ажиллаж үзээгүй</em>. Интернэтийн холбоо, бүртгэл, е-баримт
+          үүсгэх, хэвлэх гэсэн урсгалыг device дээр шалгаад
+          production-д илгээх нь зөв. Энэ нь урьдчилан төлөвлөөд
+          Internal testing-ээр турших боломжтой.
+        </p>
+      </div>
+
+      <hr />
+      <p class="muted">
+        Бэлтгэсэн: 2026 оны 10 дугаар сарын 28 өдөр. Бүх өгөгдлийн
+        эх сурвалж нь <code>warehouse-mobile/src/api/</code>,
+        <code>warehouse-service/src/</code> болон
+        <code>warehouse-mobile/app.json</code> файлуудаас шууд
+        шалгасан.
+      </p>
+    </main>
+  </body>
+</html>

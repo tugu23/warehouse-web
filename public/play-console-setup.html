@@ -225,13 +225,9 @@ OasisERP — Агуулахын удирдлагын систем
 - Барааны нэр, үнэ, тоо, нэгж — бүртгэл, үлдэгдэл хяналт
 - Захиалгын мэдээлэл, нийт дүн, НӨАТ — тооцоо, е-баримт үүсгэх,
   татлангийн бүртгэл
-- Байршлын мэдээлэл (Bluetooth принтер холбох үед) — Bluetooth зөвшөөрөл
-  авахын тулд Android талбай шаарддаг
 - Аппликейшний тохиргоо (принтер, хэл) — таны сонголтыг хадгалах
 Аппликейшнийг дурын хүрээнээс бүртгэхэд өгөгдөл цуглуулахгүй. Мөн
-байршлын мэдээллийг зөвхөн Bluetooth принтертэй холбох үед, Android
-зөвшөөрөл авах үед л ашиглана. Үлдэгдэл байршлын мэдээлэл цуглуулахгүй
-бөгөөд хадгалахгүй.
+байршлын мэдээллийг огт ашиглахгүй бөгөөд хадгалахгүй.
 
 3. МЭДЭЭЛЛИЙГ ЯМАР ЗОРИУЛАЛТААР АШИГЛАХ ВЭ
 - Агуулахын бүртгэл болон харилцагчийн мэдээллийн удирдлага
@@ -504,15 +500,7 @@ OasisERP нь агуулах, дистрибьюшн, худалдааны са�
           <td>No</td>
           <td>Yes</td>
           <td>Yes</td>
-          <td>App functionality, Analytics</td>
-        </tr>
-        <tr>
-          <td>Approximate location</td>
-          <td>Yes</td>
-          <td>No</td>
-          <td>Yes</td>
-          <td>No</td>
-          <td>App functionality</td>
+          <td>App functionality, Business purposes</td>
         </tr>
       </table>
 
@@ -530,11 +518,6 @@ OasisERP нь агуулах, дистрибьюшн, худалдааны са�
         <li>
           <strong>Other info</strong> — харилцагчийн ТТД, ХНН. Ижил
           зориулалтаар татлангийн системд очно.
-        </li>
-        <li>
-          <strong>Approximate location</strong> — зөвхөн Bluetooth принтер
-          холбох үед Android-ийн Bluetooth permission авах үед л
-          ашиглана. Үлдэгдэл байршил цуглуулахгүй.
         </li>
         <li>
           <strong>App activity</strong> — захиалгын үйлдлийн түүх, KPI
@@ -639,10 +622,10 @@ OasisERP нь агуулах, дистрибьюшн, худалдааны са�
         <tr>
           <td>Permissions</td>
           <td>
-            <code>INTERNET</code>, <code>BLUETOOTH_SCAN</code>,
-            <code>BLUETOOTH_CONNECT</code>,
-            <code>ACCESS_FINE_LOCATION</code>
-            <span class="muted">(зөвхөн принтер холбох үед ашиглагдана)</span>
+            <code>INTERNET</code>, <code>ACCESS_NETWORK_STATE</code>,
+            <code>ACCESS_WIFI_STATE</code>, <code>VIBRATE</code>
+            <span class="muted">(Bluetooth принтер холбох нь одоогоор
+            идэвхгүй тул Bluetooth/location permission асуухгүй)</span>
           </td>
         </tr>
         <tr>

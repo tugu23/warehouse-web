@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="mn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OasisERP — Play Console үлдсэн хэсгүүд</title>
+    <style>
+      :root {
+        --fg: #1a1a1a;
+        --muted: #5f6368;
+        --line: #e2e2e2;
+        --accent: #1565c0;
+        --bg: #fff;
+        --soft: #f6f8fa;
+        --ok: #1a7f37;
+        --warn: #9a6700;
+        --code-bg: #f2f3f5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e8e8e8;
+          --muted: #a0a0a0;
+          --line: #333;
+          --accent: #64b5f6;
+          --bg: #141414;
+          --soft: #1c1c1c;
+          --ok: #57ab5a;
+          --warn: #d4a72c;
+          --code-bg: #202020;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 32px 16px 80px;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.65;
+        font-size: 15.5px;
+      }
+      main { max-width: 860px; margin: 0 auto; }
+      h1 { font-size: 28px; margin: 0 0 6px; }
+      .lede { color: var(--muted); margin: 0 0 28px; }
+      h2 {
+        font-size: 20px;
+        margin: 40px 0 10px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--line);
+      }
+      h3 { font-size: 16.5px; margin: 24px 0 6px; }
+      p { margin: 0 0 12px; }
+      ul, ol { padding-left: 22px; margin: 0 0 12px; }
+      li { margin-bottom: 5px; }
+      code {
+        background: var(--code-bg);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13.5px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        word-break: break-all;
+      }
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px 16px;
+        overflow-x: auto;
+        font-size: 13.5px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0 18px;
+        font-size: 14.5px;
+      }
+      th, td {
+        border: 1px solid var(--line);
+        padding: 9px 11px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th { background: var(--soft); font-weight: 600; }
+      .box {
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--accent);
+        border-radius: 0 8px 8px 0;
+        padding: 14px 18px;
+        margin: 16px 0;
+      }
+      .box.ok { border-left-color: var(--ok); }
+      .box.warn { border-left-color: var(--warn); }
+      .box p:last-child { margin-bottom: 0; }
+      .tag {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 20px;
+        background: var(--code-bg);
+        border: 1px solid var(--line);
+        color: var(--muted);
+        vertical-align: middle;
+      }
+      .tag.done { color: var(--ok); border-color: var(--ok); }
+      .tag.todo { color: var(--warn); border-color: var(--warn); }
+      .field { margin: 14px 0; }
+      .field > .name {
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+      .muted { color: var(--muted); }
+      hr { border: 0; border-top: 1px solid var(--line); margin: 40px 0 20px; }
+      .yes { color: var(--ok); font-weight: 700; }
+      .no { color: var(--muted); font-weight: 700; }
+      @media (max-width: 600px) {
+        body { font-size: 15px; padding: 20px 14px 56px; }
+        h1 { font-size: 23px; }
+        h2 { font-size: 18px; }
+        table { font-size: 13.5px; }
+        th, td { padding: 7px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OasisERP — Play Console үлдсэн хэсгүүд</h1>
+      <p class="lede">
+        «Finish setting up your app» дээрх 11 хэсгээс үлдсэн 4-ийн бэлэн
+        хариу. Өмнөх хэсгүүд
+        <a href="play-console-setup.html">бэлтгэл хуудсанд</a> байна.
+      </p>
+
+      <div class="box warn">
+        <p>
+          <strong>Анхаарах нэг зүйл:</strong> Sign-in details хэсэгт
+          <em>үнэн ажилладаг</em> бүртгэл хэрэгтэй. Дараах бүртгэлүүдийн
+          аль нэгийг ашиглана уу.
+        </p>
+      </div>
+
+      <h2>1. Sign-in details <span class="tag todo">шаардлагатай</span></h2>
+
+      <p>
+        «Is any part of your app restricted?» → <strong class="yes">Yes</strong>
+        гэж сонгоно. Апп нь агуулах доторх ажилтнуудыг зөвхөн
+        администратор/менежер томилж оруулдаг тул бүртгэлгүй хэрэглэгч
+        орох боломжгүй. Дараах хэсгүүдийг тус бүр хариулна:
+      </p>
+
+      <table>
+        <tr>
+          <th>Play Console-ийн асуулт</th>
+          <th>Хариу</th>
+          <th>Тайлбар</th>
+        </tr>
+        <tr>
+          <td>Account sign-in details</td>
+          <td>
+            <strong>Yes</strong> — имэйл + нууц үгээр нэвтрэх
+          </td>
+          <td>
+            <code>admin@warehouse.com</code><br />
+            <code>Oasis@2026</code>
+          </td>
+        </tr>
+        <tr>
+          <td>Payments</td>
+          <td>
+            <strong class="no">No</strong>
+          </td>
+          <td>
+            Захиалгын дүн, НӨАТ бүртгэгдэх боловч апп дотор төлбөр
+            хүлээн авах, төлбөрийн үйлчилгээ үзүүлэх алба байхгүй.
+            Төлбөрийн аргыг (Cash / BankTransfer / Credit / Padan) зөвхөн
+            бүртгэдэг. Payment SDK байхгүй
+          </td>
+        </tr>
+        <tr>
+          <td>Referral codes and QR codes</td>
+          <td>
+            <strong class="no">No</strong>
+          </td>
+          <td>
+            Амлалт, урамшуулалтын код, invite код байхгүй. App дотор
+            QR зураг дүүсгэдэг нь е-баримт болон баримтын QR бөгөөд
+            referral биш
+          </td>
+        </tr>
+        <tr>
+          <td>One-time PINs and two-step verification</td>
+          <td>
+            <strong class="no">No</strong>
+          </td>
+          <td>
+            Хэрэглэгчийн OTP, хоёр дахь хүчин тэмдэглэх алхам байхгүй.
+            Е-баримтын QR нь агуулахын татлангийн албаны үйлчилгээний
+            баталгаажуулалтын холбоо бөгөөд хэрэглэгчийн нэмэлт
+            баталгаажуулалт биш
+          </td>
+        </tr>
+        <tr>
+          <td>Biometric authentication</td>
+          <td>
+            <strong class="no">No</strong>
+          </td>
+          <td>
+            <code>expo-local-authentication</code> dependency байхгүй,
+            апп дотор хурууны/цээжийн сангах огт ашиглахгүй
+          </td>
+        </tr>
+        <tr>
+          <td>Actions to be carried out on another device</td>
+          <td>
+            <strong class="yes">Yes</strong>
+          </td>
+          <td>
+            Захиалгын баримтыг <code>expo-print</code>-ийн системийн
+            хэвлэлтийн цонхоор сүлжээний принтерт, эсвэл
+            <code>expo-sharing</code>-ээр өөр төхөөрөмж рүү PDF
+            хуваахад хүргэнэ
+          </td>
+        </tr>
+      </table>
+
+      <h2>2. Government apps <span class="tag done">бэлэн</span></h2>
+      <p>
+        «Does this app belong to a government entity?» → <strong
+          class="no">No</strong>
+      </p>
+      <p class="muted">
+        Үйлдвэрлэгч нь хувийн компани (Жи Эл Эф ХХК). Засгийн байгууллага
+        биш.
+      </p>
+
+      <h2>3. Financial features <span class="tag done">бэлэн</span></h2>
+      <table>
+        <tr>
+          <th>Асуулт</th>
+          <th>Хариу</th>
+          <th>Тайлбар</th>
+        </tr>
+        <tr>
+          <td>Does your app provide financial services?</td>
+          <td><strong class="no">No</strong></td>
+          <td>
+            Банкны үйлчилгээ, төлбөрийн шилжүүлэг, зээл, даатгал
+            байхгүй. Апп зөвхөн агуулахын бараа, захиалгыг бүртгэнэ —
+            бодит төлбөрийн шилжүүлэлт болон эрхэнд тооцоо хийхгүй
+          </td>
+        </tr>
+        <tr>
+          <td>Does your app handle users' money in any way?</td>
+          <td><strong class="no">No</strong></td>
+          <td>
+            Борлуулалтын дүн, НӨАТ бүртгэгдэх боловч хөрөнгийг
+            төлбөр төлөх үйлчилгээ үзүүлэхгүй
+          </td>
+        </tr>
+        <tr>
+          <td>Does your app offer trading or investing features?</td>
+          <td><strong class="no">No</strong></td>
+          <td>Худалдаа, хөрөнгийн худалдааны үйлдэл байхгүй</td>
+        </tr>
+        <tr>
+          <td>Does your app sell or broker securities?</td>
+          <td><strong class="no">No</strong></td>
+          <td>Нэгж эрх, үнэт хэмжээг биржээр захирдаггүй</td>
+        </tr>
+        <tr>
+          <td>Does your app offer loans or credit?</td>
+          <td><strong class="no">No</strong></td>
+          <td>
+            Зээл, зээлийн өдөр тутмын тооцоо байхгүй. Захиалгын
+            <code>Credit</code> төлбөрийн арга нь агуулах доторх
+            барааны өр, үүнээс гадаадах санхүүгийн үйлчилгээ биш
+          </td>
+        </tr>
+        <tr>
+          <td>Does your app accept donations?</td>
+          <td><strong class="no">No</strong></td>
+          <td>Хандив, зориулго сомбын үйлчилгээ байхгүй</td>
+        </tr>
+      </table>
+
+      <h2>4. Health <span class="tag done">бэлэн</span></h2>
+      <table>
+        <tr>
+          <th>Асуулт</th>
+          <th>Хариу</th>
+        </tr>
+        <tr>
+          <td>Is this a health app?</td>
+          <td><strong class="no">No</strong></td>
+        </tr>
+        <tr>
+          <td>Does your app provide medical diagnosis or treatment?</td>
+          <td><strong class="no">No</strong></td>
+        </tr>
+        <tr>
+          <td>Does your app track health data?</td>
+          <td><strong class="no">No</strong></td>
+        </tr>
+      </table>
+      <p class="muted">
+        Апп нь агуулахын бараа, захиалгын удирдлага. Эрүүл мэндийн
+        өгөгдөл цуглуулах, эмчлэх зориулалттай огт биш.
+        <code>expo-health</code> dependency байхгүй.
+      </p>
+
+      <h2>5. Target audience <span class="tag done">бэлэн</span></h2>
+      <table>
+        <tr>
+          <th>Асуулт</th>
+          <th>Хариу</th>
+        </tr>
+        <tr>
+          <td>Target age groups</td>
+          <td>
+            18 and over гэж сонгоно. 13-аас доош насны бүлгийг
+            сонгохгүй
+          </td>
+        </tr>
+        <tr>
+          <td>Is the app primarily aimed at children?</td>
+          <td><strong class="no">No</strong></td>
+        </tr>
+      </table>
+      <p class="muted">
+        Ажлын үйлдлийн хэрэглээд зориулагдсан тул бүх насны бүлэгт
+        тохиромжтой. Гэхдээ 13-аас доош насны хүүхдүүдэд зориулагдаагүй
+        гэж нууц тулгайн бодлогод бичсэн.
+      </p>
+
+      <h2>6. Content rating <span class="tag done">бэлэн</span></h2>
+      <p>
+        Асуултын сонголт бүрд <strong class="no">None</strong> гэж
+        хариулна. Ингэснээр нийт дүн <strong>3+</strong> гарна. Дараах
+        категориуд бүгд асуугдана — бүгд None:
+      </p>
+      <ul>
+        <li>Violence, horror or threatening content</li>
+        <li>Sexually explicit or nude content</li>
+        <li>Profanity or crude humor</li>
+        <li>Horror or fear themes</li>
+        <li>Controlled substances (alcohol, tobacco, drugs)</li>
+        <li>Gambling or simulated gambling</li>
+        <li>User generated content</li>
+        <li>Users can interact or exchange content</li>
+        <li>Users can share their location with other users</li>
+        <li>Digital purchases</li>
+      </ul>
+      <p class="muted">
+        Апп нь бараа, захиалга бүртгэх ажлын хэрэглээ учраас эдгээр
+        асуулт гардаг. <strong>None</strong> бүгдийг сонгоно.
+      </p>
+
+      <h2>7. Store listing <span class="tag done">бэлэн</span></h2>
+      <p>
+        Store listing-ийн бүх талбар бэлэн. Дүрсүүд:
+      </p>
+      <ul>
+        <li>App icon — 512×512 PNG</li>
+        <li>Feature graphic — 1024×500 PNG</li>
+        <li>Phone screenshots — <strong>2-оос багагүй</strong>, 16:9 эсвэл
+          9:16, 320–3840px урт. Бодит төхөөрөмж дээр апп ажиллуулж авна уу</li>
+      </ul>
+
+      <hr />
+      <p class="muted">
+        Бэлтгэсэн: 2026 оны 10 дугаар сарын 30 өдөр. Эх сурвалж нь
+        <code>warehouse-mobile/package.json</code>,
+        <code>warehouse-mobile/app.json</code>, <code>warehouse-mobile/app/</code>
+        болон <code>warehouse-service/src/</code> файлуудаас шууд шалгасан.
+      </p>
+    </main>
+  </body>
+</html>
